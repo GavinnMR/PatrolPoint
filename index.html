@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PatrolPoint</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <p id="loading-message" style="margin-top:16px;color:#444;font-size:14px;">Loading road network data…</p>
+  </div>
+
+  <div id="app-container">
+    <div id="map"></div>
+
+    <div id="control-panel">
+      <div id="panel-header">
+        <h2 style="margin:0 0 2px 0;font-size:20px;color:#1a1a2e;">PatrolPoint</h2>
+        <p style="margin:0 0 14px 0;font-size:12px;color:#666;">Barangay Commonwealth Patrol Deployment</p>
+      </div>
+
+      <div id="warning-banner" role="alert"></div>
+
+      <p style="font-size:12px;color:#555;margin:0 0 12px 0;">
+        Click the map to plot incident coordinates. Click a marker to remove it.
+        <a class="collapsible-toggle" id="import-toggle" href="#">Import Coordinates</a>
+      </p>
+
+      <div id="import-body" class="collapsible-body">
+        <textarea id="coord-input" rows="5" placeholder="14.7023, 121.0934&#10;14.7041, 121.0912&#10;…" style="width:100%;box-sizing:border-box;font-size:12px;padding:6px;border:1px solid #ccc;border-radius:4px;resize:vertical;"></textarea>
+        <p class="import-hint">One coordinate per line. Format: 14.7023, 121.0934</p>
+        <button id="import-btn" style="width:100%;padding:7px;background:#6c757d;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Import</button>
+        <div id="import-message" style="font-size:12px;margin-top:6px;display:none;"></div>
+      </div>
+
+      <div id="patrol-count-group" style="margin-bottom:12px;">
+        <label for="patrol-count" style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Number of Patrols</label>
+        <input type="number" id="patrol-count" min="1" step="1" style="width:100%;padding:7px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;font-size:14px;" />
+        <div id="patrol-count-error"></div>
+      </div>
+
+      <div id="mode-group" style="margin-bottom:12px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Deployment Mode</label>
+        <div id="mode-toggle">
+          <label id="mode-label-stationary" class="mode-option mode-active">
+            <input type="radio" name="mode" value="stationary" checked style="display:none;" />
+            <span>Stationary</span>
+          </label>
+          <label id="mode-label-roaming" class="mode-option">
+            <input type="radio" name="mode" value="roaming" style="display:none;" />
+            <span>Roaming</span>
+          </label>
+        </div>
+      </div>
+
+      <button id="recalculate-btn" disabled>Recalculate (Ctrl+Enter)</button>
+      <button id="reset-btn">Reset</button>
+      <button id="undo-btn">Undo Last Removal</button>
+
+      <div id="trace-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:600;">Algorithm Trace</span>
+          <a class="collapsible-toggle" id="trace-toggle" href="#">Show</a>
+        </div>
+        <div id="trace-body" class="collapsible-body">
+          <div id="trace-stages"></div>
+          <div id="pipeline-summary"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;text-align:right;">
+        <button id="settings-btn" title="Settings" style="background:none;border:none;cursor:pointer;font-size:20px;color:#555;">&#9881;</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings-modal" role="dialog" aria-modal="true" aria-label="Settings">
+    <div id="settings-content">
+      <h3 style="margin:0 0 16px 0;font-size:16px;">Settings</h3>
+
+      <fieldset style="border:1px solid #ddd;border-radius:4px;padding:12px;margin-bottom:14px;">
+        <legend style="font-size:13px;font-weight:600;padding:0 6px;">Hill Climbing</legend>
+        <label class="settings-label">Restarts (r)
+          <input type="number" id="cfg-hc-restarts" min="1" step="1" class="settings-input" />
+        </label>
+        <label class="settings-label">Max Iterations per Restart
+          <input type="number" id="cfg-hc-maxiter" min="1" step="1" class="settings-input" />
+        </label>
+        <label class="settings-label">Radius Multiplier (k)
+          <input type="number" id="cfg-hc-radius" min="0.1" step="0.1" class="settings-input" />
+        </label>
+      </fieldset>
+
+      <fieldset style="border:1px solid #ddd;border-radius:4px;padding:12px;margin-bottom:14px;">
+        <legend style="font-size:13px;font-weight:600;padding:0 6px;">Convex Hull</legend>
+        <label class="settings-label">Area Threshold Divisor (c)
+          <input type="number" id="cfg-ch-area" min="1" step="1" class="settings-input" />
+        </label>
+        <label class="settings-label">Outlier Multiplier
+          <input type="number" id="cfg-ch-outlier" min="0.1" step="0.1" class="settings-input" />
+        </label>
+        <label class="settings-label settings-toggle-label">
+          <span>Include Outliers (bypass detection)</span>
+          <input type="checkbox" id="cfg-include-outliers" />
+        </label>
+      </fieldset>
+
+      <fieldset style="border:1px solid #ddd;border-radius:4px;padding:12px;margin-bottom:14px;">
+        <legend style="font-size:13px;font-weight:600;padding:0 6px;">TSP</legend>
+        <label class="settings-label">Max Crime Nodes per Zone
+          <input type="number" id="cfg-tsp-max" min="2" step="1" class="settings-input" />
+        </label>
+      </fieldset>
+
+      <fieldset style="border:1px solid #ddd;border-radius:4px;padding:12px;margin-bottom:16px;">
+        <legend style="font-size:13px;font-weight:600;padding:0 6px;">Display</legend>
+        <label class="settings-toggle-label">
+          <span>Show zone assignment lines</span>
+          <input type="checkbox" id="cfg-show-zone-lines" />
+        </label>
+        <label class="settings-toggle-label">
+          <span>Show route direction arrows</span>
+          <input type="checkbox" id="cfg-show-arrows" />
+        </label>
+        <label class="settings-toggle-label">
+          <span>Show overlap coloring</span>
+          <input type="checkbox" id="cfg-show-overlap" />
+        </label>
+      </fieldset>
+
+      <div style="display:flex;gap:8px;">
+        <button id="settings-apply" style="flex:1;padding:8px;background:#2563eb;color:#fff;border:none;border-radius:4px;cursor:pointer;">Apply</button>
+        <button id="settings-cancel" style="flex:1;padding:8px;background:#fff;border:1px solid #ccc;border-radius:4px;cursor:pointer;">Cancel</button>
+        <button id="settings-reset" style="flex:1;padding:8px;background:#fff;border:1px solid #dc3545;color:#dc3545;border-radius:4px;cursor:pointer;">Reset to Defaults</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
+  <script src="algorithms/dijkstra.js"></script>
+  <script src="algorithms/convexHull.js"></script>
+  <script src="algorithms/hillClimbing.js"></script>
+  <script src="algorithms/zoneAssignment.js"></script>
+  <script src="algorithms/tsp.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
