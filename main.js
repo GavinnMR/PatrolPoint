@@ -193,17 +193,39 @@ function onMapClick(e) {
     addCrimeNode({ lat, lng });
 }
 
-function normalMarkerStyle() {
-    return { radius: 7, color: '#c0392b', fillColor: '#e74c3c', fillOpacity: 0.9, weight: 2 };
+function normalNodeIcon() {
+    return L.divIcon({
+        className: 'crime-node-icon',
+        html: '<span style="color:#dc2626;text-shadow:-1px -1px 0 #7f1d1d,1px -1px 0 #7f1d1d,-1px 1px 0 #7f1d1d,1px 1px 0 #7f1d1d;">✕</span>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+    });
 }
 
-function outlierMarkerStyle() {
-    return { radius: 7, color: '#e67e22', fillColor: '#f39c12', fillOpacity: 0.75, weight: 2, dashArray: '4 4' };
+function outlierNodeIcon() {
+    return L.divIcon({
+        className: 'crime-node-icon',
+        html: '<span style="color:#E69F00;text-shadow:-1px -1px 0 #78350f,1px -1px 0 #78350f,-1px 1px 0 #78350f,1px 1px 0 #78350f;">✕</span>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+    });
+}
+
+function flashNodeIcon() {
+    return L.divIcon({
+        className: 'crime-node-icon',
+        html: '<span style="color:#fff;text-shadow:-1px -1px 0 #dc2626,1px -1px 0 #dc2626,-1px 1px 0 #dc2626,1px 1px 0 #dc2626;">✕</span>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+    });
 }
 
 function addCrimeNode(point, isOutlier = false) {
     P.push(point);
-    const marker = L.circleMarker([point.lat, point.lng], isOutlier ? outlierMarkerStyle() : normalMarkerStyle()).addTo(map);
+    const marker = L.marker([point.lat, point.lng], {
+        icon: isOutlier ? outlierNodeIcon() : normalNodeIcon(),
+        zIndexOffset: 1000
+    }).addTo(map);
     marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         removeCrimeNodeByMarker(marker);
@@ -218,9 +240,7 @@ function removeCrimeNodeByMarker(marker) {
 
     lastRemovedPoint = P[idx];
 
-    // Flash marker before removing
-    const origColor = marker.options.fillColor;
-    marker.setStyle({ fillColor: '#fff', color: '#fff' });
+    marker.setIcon(flashNodeIcon());
     setTimeout(() => {
         marker.remove();
         P.splice(idx, 1);
@@ -463,11 +483,11 @@ async function runPipeline() {
         const r1 = computeConvexHull(P, n, CONFIG);
         const t1ms = Math.round(performance.now() - t1);
 
-        // Re-style crime markers per outlier detection result
-        crimeMarkers.forEach(m => m.setStyle(normalMarkerStyle()));
+        // Re-icon crime markers per outlier detection result
+        crimeMarkers.forEach(m => m.setIcon(normalNodeIcon()));
         if (r1.data.outlierIndices && r1.data.outlierIndices.length > 0) {
             r1.data.outlierIndices.forEach(i => {
-                if (crimeMarkers[i]) crimeMarkers[i].setStyle(outlierMarkerStyle());
+                if (crimeMarkers[i]) crimeMarkers[i].setIcon(outlierNodeIcon());
             });
         }
 
@@ -744,6 +764,8 @@ document.getElementById('import-btn').addEventListener('click', () => {
     if (outlierCount > 0) msg += ` ${outlierCount} flagged as potential outlier${outlierCount !== 1 ? 's' : ''} (orange markers).`;
     showImportMessage(msg, 'success');
     setTimeout(() => { document.getElementById('import-message').style.display = 'none'; }, 3000);
+
+    runPipeline();
 });
 
 function showImportMessage(text, type) {
@@ -762,7 +784,7 @@ function detectAndMarkOutliers(points, markers) {
     const threshold = CONFIG.convexHull.outlierMultiplier * avg;
     let count = 0;
     dists.forEach((d, i) => {
-        if (d > threshold) { markers[i].setStyle(outlierMarkerStyle()); count++; }
+        if (d > threshold) { markers[i].setIcon(outlierNodeIcon()); count++; }
     });
     return count;
 }
