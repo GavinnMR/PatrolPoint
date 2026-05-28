@@ -441,6 +441,10 @@ async function runPipeline() {
         showBanner('error', 'Number of patrols must be a positive whole number.');
         return;
     }
+    if (deploymentMode === 'roaming' && P.length === 0) {
+        showBanner('error', 'Roaming mode requires at least one incident coordinate. Plot incidents or switch to Stationary mode.');
+        return;
+    }
     if (P.length === 0) {
         showBanner('error', 'No incident coordinates plotted. Please click the map to add incident coordinates.');
         return;
@@ -533,6 +537,19 @@ async function runPipeline() {
             ], r1.data.traceLog);
 
             pipelineResults = true;
+            stopPipeline();
+            return;
+        }
+
+        // "Outlier removal reduced below minimum" — warning with no hull
+        if (!r1.data.hull) {
+            addTraceStage(1, 'Brute Force Convex Hull', 'warning', [
+                `Input: ${P.length} incident coordinates`,
+                `Outliers flagged: ${(r1.data.outlierIndices || []).length}`,
+                `Status: ⚠️ ${r1.message}`,
+                `Runtime: ${t1ms}ms`
+            ], r1.data.traceLog);
+            showBanner('warning', r1.message);
             stopPipeline();
             return;
         }
@@ -657,7 +674,7 @@ recalcBtn.addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'Enter') {
         const active = document.activeElement;
-        const isTextInput = active && (active.tagName === 'TEXTAREA' || (active.tagName === 'INPUT' && active.type === 'text'));
+        const isTextInput = active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT');
         if (!isTextInput && !recalcBtn.disabled && !pipelineRunning) {
             runPipeline();
         }

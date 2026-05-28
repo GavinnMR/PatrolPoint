@@ -36,6 +36,7 @@ html, body {
 #map {
   flex: 1;
   min-width: 0;
+  position: relative;
 }
 
 #control-panel {
@@ -51,7 +52,7 @@ html, body {
 /* ── Loading overlay ── */
 
 #loading-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
   background: rgba(255, 255, 255, 0.92);
   display: flex;
