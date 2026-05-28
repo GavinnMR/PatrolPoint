@@ -407,9 +407,11 @@ document.getElementById('import-btn').addEventListener('click', () => {
     }
 
     // Commonwealth bounding box check — warn but still import
+    // Buffer of 0.005° (~550m) accounts for road network not reaching barangay edges
+    const BB_BUFFER = 0.005;
     const outsideCount = parsed.filter(p =>
-        p.lat < barangayBounds.minLat || p.lat > barangayBounds.maxLat ||
-        p.lng < barangayBounds.minLng || p.lng > barangayBounds.maxLng
+        p.lat < barangayBounds.minLat - BB_BUFFER || p.lat > barangayBounds.maxLat + BB_BUFFER ||
+        p.lng < barangayBounds.minLng - BB_BUFFER || p.lng > barangayBounds.maxLng + BB_BUFFER
     ).length;
     if (outsideCount > 0) {
         showBanner('warning',
