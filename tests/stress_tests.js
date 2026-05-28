@@ -17,7 +17,7 @@
 // NOTE: Stage 2 scenarios require Hill Climbing to be implemented (Build Step 4).
 //       Running them before that will stop after Stage 1 completes.
 
-const PP_TESTS = (() => {
+window.PP_TESTS = (() => {
 
     // ── Scenario definitions ──────────────────────────────────────────────────
     const SCENARIOS = [
@@ -428,3 +428,5 @@ const PP_TESTS = (() => {
 
     return { run, runAll, runStage, list, SCENARIOS };
 })();
+
+console.log('Access via: PP_TESTS.run(n), PP_TESTS.runStage(1), PP_TESTS.runAll()');
