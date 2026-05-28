@@ -224,9 +224,55 @@ function updateUndoButton() {
     document.getElementById('undo-btn').style.display = lastRemovedPoint ? 'block' : 'none';
 }
 
-// Placeholder — hull membership check implemented in Stage 1
+// Ray casting — cast ray in +lng direction, count hull edge crossings
+function rayCast(point, hull) {
+    let crossings = 0;
+    const m = hull.length;
+    for (let i = 0; i < m; i++) {
+        const a = hull[i], b = hull[(i + 1) % m];
+        if ((a.lat <= point.lat && b.lat > point.lat) ||
+            (b.lat <= point.lat && a.lat > point.lat)) {
+            const t = (point.lat - a.lat) / (b.lat - a.lat);
+            if (a.lng + t * (b.lng - a.lng) > point.lng) crossings++;
+        }
+    }
+    return crossings % 2 === 1;
+}
+
 function isPointInHull(point, hull) {
-    return true;
+    if (!hull || hull.length < 3) return false;
+    const eps = CONFIG.snapping.boundingBoxEpsilon;
+    const lats = hull.map(v => v.lat);
+    const lngs = hull.map(v => v.lng);
+    if (point.lat < Math.min(...lats) - eps || point.lat > Math.max(...lats) + eps ||
+        point.lng < Math.min(...lngs) - eps || point.lng > Math.max(...lngs) + eps) return false;
+    return rayCast(point, hull);
+}
+
+// Pre-filter all intersection nodes against hull using bounding box + ray casting
+function runRayCastPreFilter(hull) {
+    const eps = CONFIG.snapping.boundingBoxEpsilon;
+    const lats = hull.map(v => v.lat);
+    const lngs = hull.map(v => v.lng);
+    const minLat = Math.min(...lats) - eps, maxLat = Math.max(...lats) + eps;
+    const minLng = Math.min(...lngs) - eps, maxLng = Math.max(...lngs) + eps;
+
+    const candidates = [];
+    for (const id of intersectionNodes) {
+        const node = nodeMap.get(id);
+        if (!node) continue;
+        if (node.lat < minLat || node.lat > maxLat || node.lng < minLng || node.lng > maxLng) continue;
+        if (rayCast(node, hull)) candidates.push(node);
+    }
+    return candidates;
+}
+
+function hullsEqual(hull1, hull2) {
+    if (!hull1 || !hull2 || hull1.length !== hull2.length) return false;
+    const eps = CONFIG.convexHull.collinearityEpsilon;
+    return hull1.every((v, i) =>
+        Math.abs(v.lat - hull2[i].lat) < eps && Math.abs(v.lng - hull2[i].lng) < eps
+    );
 }
 
 // ── BANNER SYSTEM ─────────────────────────────────────────────
@@ -275,10 +321,255 @@ function clearMapResults({ clearHull = false, clearPatrols = false, clearRoutes 
     }
 }
 
-// ── PIPELINE STUB ─────────────────────────────────────────────
+// ── PIPELINE ──────────────────────────────────────────────────
+
+function yieldControl() {
+    return new Promise(r => setTimeout(r, 0));
+}
+
+function stopPipeline() {
+    pipelineRunning = false;
+    recalcBtn.disabled = false;
+    recalcBtn.textContent = 'Recalculate (Ctrl+Enter)';
+    loadingOverlay.style.display = 'none';
+    loadingMessage.style.color = '#444';
+    map.on('click', onMapClick);
+}
+
+function addTraceStage(num, name, status, summaryLines, logLines) {
+    const stagesEl = document.getElementById('trace-stages');
+    const icon = { success: '✅', warning: '⚠️', error: '❌' }[status] || '❓';
+    const logId = `trace-log-s${num}`;
+
+    const div = document.createElement('div');
+    div.className = 'trace-stage';
+
+    const header = document.createElement('div');
+    header.className = 'trace-stage-header';
+    header.innerHTML = `<span>Stage ${num} — ${name}</span><span class="trace-status">${icon}</span>`;
+
+    const summary = document.createElement('div');
+    summary.className = 'trace-summary';
+    summary.textContent = summaryLines.join('\n');
+
+    const logBtn = document.createElement('button');
+    logBtn.className = 'collapsible-toggle';
+    logBtn.style.marginTop = '4px';
+    logBtn.textContent = 'Full Log ▼';
+
+    const logEl = document.createElement('div');
+    logEl.className = 'trace-log';
+    logEl.id = logId;
+    logEl.textContent = (logLines || []).join('\n');
+
+    logBtn.addEventListener('click', () => logEl.classList.toggle('open'));
+    div.append(header, summary, logBtn, logEl);
+    stagesEl.appendChild(div);
+}
+
+function showNearestIntersectionHighlights(hull) {
+    const centroid = {
+        lat: hull.reduce((s, v) => s + v.lat, 0) / hull.length,
+        lng: hull.reduce((s, v) => s + v.lng, 0) / hull.length
+    };
+
+    const outside = [];
+    for (const id of intersectionNodes) {
+        const node = nodeMap.get(id);
+        if (!node || isPointInHull(node, hull)) continue;
+        outside.push({ node, dist: haversineDistance(centroid.lat, centroid.lng, node.lat, node.lng) });
+    }
+    outside.sort((a, b) => a.dist - b.dist);
+
+    outside.slice(0, 5).forEach(({ node }) => {
+        const m = L.circleMarker([node.lat, node.lng], {
+            radius: 10, color: '#ff9800', fillColor: '#ffb74d', fillOpacity: 0.7, weight: 3
+        })
+            .bindTooltip('Nearest available road intersection — plot incident coordinates near here.')
+            .addTo(map);
+        nearestHighlightMarkers.push(m);
+    });
+}
+
 async function runPipeline() {
-    console.log('[PatrolPoint] Pipeline not yet implemented — coming in Build Steps 3–6.');
-    showBanner('warning', 'Pipeline not yet implemented. Check back after Build Steps 3–6.');
+    if (pipelineRunning) return;
+
+    // ── Pre-pipeline validation ────────────────────────────────
+    clearBanner();
+
+    const rawN = patrolCountInput.value.trim();
+    const n = Number(rawN);
+
+    if (rawN === '' || !Number.isFinite(n)) {
+        showBanner('error', 'Number of patrols must be a positive whole number.');
+        return;
+    }
+    if (!Number.isInteger(n)) {
+        showBanner('error', 'Number of patrols must be a whole number.');
+        return;
+    }
+    if (n <= 0) {
+        showBanner('error', 'Number of patrols must be a positive whole number.');
+        return;
+    }
+    if (P.length === 0) {
+        showBanner('error', 'No incident coordinates plotted. Please click the map to add incident coordinates.');
+        return;
+    }
+    if (P.length === 1) {
+        showBanner('error', 'At least 2 incident coordinates are needed. Please plot more points.');
+        return;
+    }
+
+    // Collect non-blocking warnings
+    const pipelineWarnings = [];
+    if (n > n_max) {
+        pipelineWarnings.push(`Number of patrols (${n}) exceeds recommended maximum of ${n_max}. Results may be suboptimal.`);
+        showBanner('warning', pipelineWarnings);
+    }
+
+    // ── Start pipeline ─────────────────────────────────────────
+    pipelineRunning = true;
+    pipelineResults = false;
+    recalcBtn.disabled = true;
+    map.off('click', onMapClick);
+
+    clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true, clearNearestHighlights: true });
+    document.getElementById('trace-stages').innerHTML = '';
+    document.getElementById('pipeline-summary').textContent = '';
+    dijkstraCache = {};
+
+    loadingOverlay.style.display = 'flex';
+    loadingMessage.style.color = '#444';
+
+    const pipelineStart = performance.now();
+
+    try {
+        // ── Stage 1: Convex Hull ───────────────────────────────
+        recalcBtn.textContent = 'Running Stage 1 — Convex Hull…';
+        loadingMessage.textContent = 'Running Stage 1 — Convex Hull…';
+        await yieldControl();
+
+        const t1 = performance.now();
+        const r1 = computeConvexHull(P, n, CONFIG);
+        const t1ms = Math.round(performance.now() - t1);
+
+        // Re-style crime markers per outlier detection result
+        crimeMarkers.forEach(m => m.setStyle(normalMarkerStyle()));
+        if (r1.data.outlierIndices && r1.data.outlierIndices.length > 0) {
+            r1.data.outlierIndices.forEach(i => {
+                if (crimeMarkers[i]) crimeMarkers[i].setStyle(outlierMarkerStyle());
+            });
+        }
+
+        // Propagate Stage 1 warnings to pipeline banner
+        if (r1.warnings.length > 0) {
+            r1.warnings.forEach(w => { if (!pipelineWarnings.includes(w)) pipelineWarnings.push(w); });
+            showBanner('warning', pipelineWarnings.length === 1 ? pipelineWarnings[0] : pipelineWarnings);
+        }
+
+        if (r1.status === 'error') {
+            clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true });
+            showBanner('error', r1.message);
+            addTraceStage(1, 'Brute Force Convex Hull', 'error', [
+                `Status: ❌ ${r1.message}`,
+                `Runtime: ${t1ms}ms`
+            ], r1.data.traceLog);
+            stopPipeline();
+            return;
+        }
+
+        if (r1.data.linearHandler && r1.data.linearHandler.triggered) {
+            clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true });
+
+            // Render patrol positions along line
+            const positions = r1.data.linearHandler.patrolPositions;
+            positions.forEach((pos, i) => {
+                const color = patrolColor(i);
+                const marker = L.circleMarker([pos.lat, pos.lng], {
+                    radius: 9, color, fillColor: color, fillOpacity: 0.85, weight: 2
+                }).bindTooltip(`Patrol ${i + 1}`).addTo(map);
+                patrolMarkers.push(marker);
+            });
+
+            showBanner('warning', r1.message);
+
+            addTraceStage(1, 'Brute Force Convex Hull', 'warning', [
+                `Input: ${P.length} incident coordinates`,
+                `Outliers flagged: ${(r1.data.outlierIndices || []).length}`,
+                `Linear handler: ${r1.data.linearHandler.reason}`,
+                `Patrol positions placed: ${positions.length}`,
+                `Status: ⚠️ ${r1.message}`,
+                `Runtime: ${t1ms}ms`
+            ], r1.data.traceLog);
+
+            pipelineResults = true;
+            stopPipeline();
+            return;
+        }
+
+        // Hull computed — render polygon
+        currentHull = r1.data.hull;
+        if (hullPolygon) {
+            hullPolygon.setLatLngs(currentHull.map(v => [v.lat, v.lng]));
+        } else {
+            hullPolygon = L.polygon(currentHull.map(v => [v.lat, v.lng]), {
+                color: '#e74c3c',
+                fillColor: '#e74c3c',
+                fillOpacity: 0.1,
+                weight: 2
+            }).addTo(map);
+        }
+
+        await yieldControl();
+
+        // Ray Casting pre-filter (with cache)
+        let usedCache = false;
+        if (hullsEqual(currentHull, validCandidatesHullCache)) {
+            usedCache = true;
+        } else {
+            validCandidates = runRayCastPreFilter(currentHull);
+            validCandidatesHullCache = currentHull.map(v => ({ lat: v.lat, lng: v.lng }));
+        }
+
+        addTraceStage(1, 'Brute Force Convex Hull', r1.status, [
+            `Input: ${P.length} incident coordinates`,
+            `Outliers flagged: ${(r1.data.outlierIndices || []).length}`,
+            `Collinearity check: passed`,
+            `Hull vertices: ${r1.data.hull.length}`,
+            `Hull area: ${Math.round(r1.data.hullAreaM2)} m²`,
+            `Area threshold: ${r1.warnings.some(w => w.includes('clustered')) ? 'warning' : 'passed'}`,
+            `Valid candidates: ${validCandidates.length} of ${intersectionNodes.length} intersection nodes`,
+            `Ray cast cache: ${usedCache ? 'hit' : 'miss — recomputed'}`,
+            `Status: ${r1.status === 'success' ? '✅' : '⚠️'} ${r1.message}`,
+            `Runtime: ${t1ms}ms`
+        ], r1.data.traceLog);
+
+        if (validCandidates.length === 0) {
+            showBanner('error', 'No road intersections found inside the danger zone. Please plot incident coordinates closer to road intersections or expand the incident area.');
+            clearMapResults({ clearPatrols: true, clearRoutes: true, clearZoneLines: true });
+            showNearestIntersectionHighlights(currentHull);
+            stopPipeline();
+            return;
+        }
+
+        await yieldControl();
+
+        pipelineResults = true;
+
+        // ── Stage 2 placeholder (Build Step 4) ────────────────
+        recalcBtn.textContent = 'Running Stage 2 — Hill Climbing…';
+        loadingMessage.textContent = 'Running Stage 2 — Hill Climbing…';
+        await yieldControl();
+        // TODO: implement Hill Climbing in Build Step 4
+
+        stopPipeline();
+
+    } catch (err) {
+        showBanner('error', 'An unexpected error occurred. Please check your inputs and try again.');
+        console.error('[PatrolPoint] Pipeline error:', err);
+        stopPipeline();
+    }
 }
 
 // ── PATROL COUNT INPUT VALIDATION ────────────────────────────
