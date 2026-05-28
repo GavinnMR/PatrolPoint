@@ -32,6 +32,11 @@ window.PP_TESTS = (() => {
 
     // ── DOM / state readers ───────────────────────────────────────────────────
 
+    function stageStatus(n) {
+        const els = document.querySelectorAll('#trace-stages .trace-stage .trace-status');
+        return els[n - 1] ? els[n - 1].textContent.trim() : null;
+    }
+
     function bannerType() {
         const el = document.getElementById('warning-banner');
         if (el.style.display === 'none' || !el.style.display) return 'none';
@@ -42,10 +47,7 @@ window.PP_TESTS = (() => {
         return document.getElementById('warning-banner').textContent.trim();
     }
 
-    function stage1Status() {
-        const el = document.querySelector('#trace-stages .trace-stage .trace-status');
-        return el ? el.textContent.trim() : null;
-    }
+    function stage1Status() { return stageStatus(1); }
 
     function outlierMarkerCount() {
         return crimeMarkers.filter(m => {
@@ -78,7 +80,7 @@ window.PP_TESTS = (() => {
                 chkGt(currentHull ? currentHull.length : 0, 2, 'hull has 3+ vertices'),
                 chkNotNull(hullPolygon,            'hull polygon on map'),
                 chkGt(validCandidates ? validCandidates.length : 0, 0, 'valid candidates found'),
-                chkEq(bannerType(), 'none',        'no banner'),
+                chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner'),
                 chkEq(stage1Status(), '✅',         'Stage 1 success')
             ]; }
         },
@@ -203,7 +205,7 @@ window.PP_TESTS = (() => {
                 chkNotNull(currentHull,            'hull computed'),
                 chkEq(currentHull ? currentHull.length : 0, 8, 'all 8 points on hull'),
                 chkNotNull(hullPolygon,            'hull polygon on map'),
-                chkEq(bannerType(), 'none',        'no error banner'),
+                chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner'),
                 chkEq(stage1Status(), '✅',         'Stage 1 success')
             ]; }
         },
@@ -268,7 +270,6 @@ window.PP_TESTS = (() => {
         },
 
         // ══ Stage 2 — Hill Climbing ══════════════════════════════════════════
-        // NOTE: Requires Hill Climbing implementation (Build Step 4).
 
         {
             id: 'S2-T01', stage: 2, n: 1,
@@ -279,11 +280,12 @@ window.PP_TESTS = (() => {
                 { lat: 14.7080, lng: 121.0880 }
             ],
             check() { return [
-                chkEq(patrolMarkers.length, 1,     '1 patrol marker placed'),
-                chkEq(bannerType(), 'none',        'no error banner'),
+                chkEq(patrolMarkers.length, 1,              '1 patrol marker placed'),
+                chkEq(S_star ? S_star.length : 0, 1,        'S_star has 1 position'),
+                chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner'),
                 chkIncludes(
                     document.querySelector('#trace-stages')?.textContent || '',
-                    'single patrol',               'trace mentions single patrol mode'
+                    'single patrol',                        'trace mentions single patrol mode'
                 )
             ]; }
         },
@@ -299,8 +301,10 @@ window.PP_TESTS = (() => {
                 { lat: 14.6998, lng: 121.1005 }
             ],
             check() { return [
-                chkEq(patrolMarkers.length, 5,     '5 patrol markers placed'),
-                chkEq(bannerType(), 'none',        'no error banner')
+                chkEq(patrolMarkers.length, 5,              '5 patrol markers placed'),
+                chkEq(S_star ? S_star.length : 0, 5,        'S_star has 5 positions'),
+                chkEq(S_star ? new Set(S_star.map(p => p.id)).size : 0, 5, 'all 5 positions are unique nodes'),
+                chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
             ]; }
         },
 
@@ -316,22 +320,27 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.1018 }, { lat: 14.6985, lng: 121.0948 }
             ],
             check() { return [
-                chkGt(patrolMarkers.length, 0,     'patrol markers placed'),
-                chkEq(bannerType(), 'none',        'no error banner')
+                chkEq(patrolMarkers.length, 10,             '10 patrol markers placed'),
+                chkEq(S_star ? S_star.length : 0, 10,       'S_star has 10 positions'),
+                chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
             ]; }
         },
 
         {
             id: 'S2-T04', stage: 2, n: 30,
-            name: 'n=30 — at n_max soft cap',
+            name: 'n=30 — exactly at n_max, no n_max warning fires',
             coords: [
                 { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
                 { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() { return [
-                chkGt(patrolMarkers.length, 0,     'some patrol markers placed'),
-                { ok: 'manual', label: 'Check banner — may warn about n > n_max or capping' }
+                chkEq(patrolMarkers.length, 30,             '30 patrol markers placed'),
+                chkEq(S_star ? S_star.length : 0, 30,       'S_star has 30 positions'),
+                chkEq(bannerText().includes('recommended maximum') ? 'bad' : 'ok', 'ok',
+                    'n=30 is exactly n_max — no n_max warning fires'),
+                chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok',
+                    'no error banner (HC warnings are acceptable)')
             ]; }
         },
 
@@ -357,9 +366,201 @@ window.PP_TESTS = (() => {
                 { lat: 14.7035, lng: 121.0950 }
             ],
             check() { return [
-                chkGt(patrolMarkers.length, 0,     'patrol markers placed'),
+                chkGt(patrolMarkers.length, 0,              'patrol markers placed'),
                 { ok: 'manual', label: 'Check trace — may show "converged to previously found configuration"' }
             ]; }
+        },
+
+        {
+            id: 'S2-T07', stage: 2, n: 2,
+            name: 'n=2 — minimum multi-patrol, positions must be distinct nodes',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const distinct = S_star && S_star.length === 2 ? S_star[0].id !== S_star[1].id : false;
+                return [
+                    chkEq(patrolMarkers.length, 2,          '2 patrol markers placed'),
+                    chkEq(S_star ? S_star.length : 0, 2,    'S_star has 2 positions'),
+                    chkEq(distinct ? 'yes' : 'no', 'yes',   'both positions are at distinct nodes'),
+                    chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok',
+                        'no error banner (convergence warnings expected with n=2)')
+                ];
+            }
+        },
+
+        {
+            id: 'S2-T08', stage: 2, n: 5,
+            name: 'n=5 — all patrol positions lie inside hull',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const uniqueCount = S_star ? new Set(S_star.map(p => p.id)).size : 0;
+                const allInHull = S_star && currentHull
+                    ? S_star.every(p => isPointInHull(p, currentHull))
+                    : false;
+                return [
+                    chkEq(S_star ? S_star.length : 0, 5,    'S_star has 5 positions'),
+                    chkEq(uniqueCount, 5,                    'all 5 positions are unique nodes'),
+                    chkEq(allInHull ? 'yes' : 'no', 'yes',  'all positions lie inside hull'),
+                    chkEq(patrolMarkers.length, S_star ? S_star.length : -1,
+                        'marker count matches S_star length')
+                ];
+            }
+        },
+
+        {
+            id: 'S2-T09', stage: 2, n: 31,
+            name: 'n=31 — exceeds n_max, warning fires, pipeline continues',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() { return [
+                chkEq(bannerType(), 'warning',              'warning banner shown'),
+                chkIncludes(bannerText(), 'exceeds',        'banner mentions "exceeds"'),
+                chkEq(patrolMarkers.length, 31,             '31 patrol markers placed — pipeline continued')
+            ]; }
+        },
+
+        {
+            id: 'S2-T10', stage: 2, n: 8,
+            name: 'n=8 — S_star, patrolMarkers, and unique node IDs all in agreement',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 }
+            ],
+            check() {
+                const uniqueIds = S_star ? new Set(S_star.map(p => p.id)).size : 0;
+                return [
+                    chkEq(S_star ? S_star.length : 0, 8,   'S_star has 8 positions'),
+                    chkEq(patrolMarkers.length, 8,          '8 patrol markers on map'),
+                    chkEq(uniqueIds, 8,                     '8 unique node IDs in S_star'),
+                    chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
+                ];
+            }
+        },
+
+        // ══ Stage 3 — Zone Assignment (Build Step 5) ═════════════════════════
+
+        {
+            id: 'S3-T01', stage: 3, n: 3,
+            name: 'Happy path — zones array formed, line count matches assigned nodes',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const totalAssigned = zones ? zones.reduce((s, z) => s + z.length, 0) : -1;
+                return [
+                    chkEq(zones ? zones.length : -1, 3,             'zones array has 3 entries'),
+                    chkGt(totalAssigned, 0,                         'at least some nodes assigned'),
+                    chkEq(zoneLines.length, totalAssigned,          'one zone line per assigned node'),
+                    chkEq(stageStatus(3) === '✅' || stageStatus(3) === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 3 completed without error'),
+                    chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
+                ];
+            }
+        },
+
+        {
+            id: 'S3-T02', stage: 3, n: 5,
+            name: 'n=5 with 2 crime nodes — empty zone warning, stationary markers, single-node routes',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 },
+                { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.1005 }
+            ],
+            check() {
+                const emptyCount = zones ? zones.filter(z => z.length === 0).length : -1;
+                const hasSingle  = zones ? zones.some(z => z.length === 1) : false;
+                return [
+                    chkEq(patrolMarkers.length, 5,                  '5 patrol markers still on map'),
+                    chkGt(emptyCount, 0,                            'at least one empty zone'),
+                    chkEq(bannerType(), 'warning',                  'warning banner shown'),
+                    chkIncludes(bannerText(), 'stationary',         'banner mentions stationary'),
+                    chkEq(hasSingle ? 'yes' : 'no', 'yes',         'at least one single-node zone'),
+                    chkGt(routePolylines.length, 0,                 'single-node dashed routes rendered')
+                ];
+            }
+        },
+
+        {
+            id: 'S3-T03', stage: 3, n: 1,
+            name: 'Zone cap — n=1 with 28 spread nodes capped to maxCrimeNodesPerZone',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.6975, lng: 121.0870 },
+                { lat: 14.6990, lng: 121.0885 }, { lat: 14.7005, lng: 121.0900 },
+                { lat: 14.7020, lng: 121.0915 }, { lat: 14.7035, lng: 121.0930 },
+                { lat: 14.7050, lng: 121.0945 }, { lat: 14.7065, lng: 121.0960 },
+                { lat: 14.7080, lng: 121.0975 }, { lat: 14.7095, lng: 121.0990 },
+                { lat: 14.7110, lng: 121.1005 }, { lat: 14.7125, lng: 121.1020 },
+                { lat: 14.6970, lng: 121.0900 }, { lat: 14.6985, lng: 121.0932 },
+                { lat: 14.7000, lng: 121.0962 }, { lat: 14.7015, lng: 121.0875 },
+                { lat: 14.7030, lng: 121.0855 }, { lat: 14.7045, lng: 121.0910 },
+                { lat: 14.7060, lng: 121.0990 }, { lat: 14.7075, lng: 121.1022 },
+                { lat: 14.7090, lng: 121.0940 }, { lat: 14.7105, lng: 121.0870 },
+                { lat: 14.6965, lng: 121.0952 }, { lat: 14.6980, lng: 121.1002 },
+                { lat: 14.7055, lng: 121.0862 }, { lat: 14.7070, lng: 121.1042 },
+                { lat: 14.7140, lng: 121.0952 }, { lat: 14.6950, lng: 121.1002 }
+            ],
+            check() {
+                const cap = (typeof CONFIG !== 'undefined' && CONFIG.tsp) ? CONFIG.tsp.maxCrimeNodesPerZone : 10;
+                return [
+                    chkEq(zones ? zones.length : -1, 1,             '1 zone for 1 patrol'),
+                    chkEq(zones ? zones[0].length : -1, cap,        `zone capped to ${cap} nodes`),
+                    chkEq(bannerType(), 'warning',                  'warning banner shown'),
+                    chkIncludes(bannerText(), 'capped',             'banner mentions capped')
+                ];
+            }
+        },
+
+        {
+            id: 'S3-T04', stage: 3, n: 4,
+            name: 'zones.length always equals number of patrols',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 }
+            ],
+            check() { return [
+                chkEq(zones ? zones.length : -1, 4,                 'zones.length === 4'),
+                chkEq(zones ? zones.length : -1, S_star ? S_star.length : -2,
+                    'zones.length === S_star.length'),
+                chkEq(stageStatus(3) === '✅' || stageStatus(3) === '⚠️' ? 'ok' : 'fail', 'ok',
+                    'Stage 3 completed without error')
+            ]; }
+        },
+
+        {
+            id: 'S3-T05', stage: 3, n: 3,
+            name: 'Stage 3 trace entry present and status not error',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                return [
+                    chkIncludes(traceText, 'Zone Assignment',       'Stage 3 trace entry present'),
+                    chkIncludes(traceText, 'Hill Climbing',         'Stage 3 references Hill Climbing restart'),
+                    chkEq(stageStatus(3) === '✅' || stageStatus(3) === '⚠️' ? 'ok' : 'fail', 'ok',
+                        'Stage 3 status is not error')
+                ];
+            }
         }
     ];
 
@@ -402,6 +603,14 @@ window.PP_TESTS = (() => {
         return { passed, failed, manual };
     }
 
+    function printFailSummary(failedScenarios) {
+        if (failedScenarios.length === 0) return;
+        console.log('%c[PP_TESTS] ── Failed scenarios ──────────────────────', 'color:#D55E00; font-weight:bold');
+        failedScenarios.forEach(({ id, name }) =>
+            console.log(`  %c❌ ${id} — ${name}`, 'color:#D55E00')
+        );
+    }
+
     async function run(idx) {
         const s = SCENARIOS[idx - 1];
         if (!s) { console.error(`[PP_TESTS] No scenario ${idx}.`); return; }
@@ -420,34 +629,46 @@ window.PP_TESTS = (() => {
         console.log(`  Completed in ${elapsed}ms`);
         console.groupEnd();
 
-        return { passed, failed };
+        return { passed, failed, id: s.id, name: s.name };
     }
 
     async function runAll(delayMs = 3000) {
         let totalPassed = 0, totalFailed = 0;
+        const failedScenarios = [];
         console.log(`%c[PP_TESTS] Running all ${SCENARIOS.length} scenarios`, 'color:#D55E00; font-weight:bold');
         for (let i = 1; i <= SCENARIOS.length; i++) {
             const r = await run(i);
-            if (r) { totalPassed += r.passed; totalFailed += r.failed; }
+            if (r) {
+                totalPassed += r.passed;
+                totalFailed += r.failed;
+                if (r.failed > 0) failedScenarios.push({ id: r.id, name: r.name });
+            }
             if (i < SCENARIOS.length) await new Promise(r => setTimeout(r, delayMs));
         }
         const color = totalFailed > 0 ? '#D55E00' : '#009E73';
         console.log(`%c[PP_TESTS] Done — ${totalPassed} passed, ${totalFailed} failed`, `color:${color}; font-weight:bold`);
+        printFailSummary(failedScenarios);
     }
 
     async function runStage(stageNum, delayMs = 3000) {
         const matching = SCENARIOS.filter(s => s.stage === stageNum);
         if (!matching.length) { console.error(`[PP_TESTS] No scenarios for stage ${stageNum}.`); return; }
         let totalPassed = 0, totalFailed = 0;
+        const failedScenarios = [];
         console.log(`%c[PP_TESTS] Running ${matching.length} Stage ${stageNum} scenarios`, 'color:#D55E00; font-weight:bold');
         for (let i = 0; i < matching.length; i++) {
             const idx = SCENARIOS.indexOf(matching[i]) + 1;
             const r = await run(idx);
-            if (r) { totalPassed += r.passed; totalFailed += r.failed; }
+            if (r) {
+                totalPassed += r.passed;
+                totalFailed += r.failed;
+                if (r.failed > 0) failedScenarios.push({ id: r.id, name: r.name });
+            }
             if (i < matching.length - 1) await new Promise(r => setTimeout(r, delayMs));
         }
         const color = totalFailed > 0 ? '#D55E00' : '#009E73';
         console.log(`%c[PP_TESTS] Stage ${stageNum} done — ${totalPassed} passed, ${totalFailed} failed`, `color:${color}; font-weight:bold`);
+        printFailSummary(failedScenarios);
     }
 
     function list() {

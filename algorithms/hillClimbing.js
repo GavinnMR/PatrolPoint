@@ -191,7 +191,8 @@ function computeHillClimbing(validCandidates, hullAreaM2, n, config) {
 
                 // Precompute min pairwise excluding si — O(n²) once per patrol
                 const minExclSi = _hc_minPairwiseExcluding(positions, siIdx);
-                const curGlobalMin = _hc_globalMinPairwise(positions);
+                // curGlobalMin = min(minExclSi, si's closest neighbor) — O(n), avoids second O(n²) pass
+                const curGlobalMin = Math.min(minExclSi, _hc_minDistToOthers(si.lat, si.lng, positions, siIdx));
                 let bestMinForSi = curGlobalMin;
                 let bestNeighbor = null;
 

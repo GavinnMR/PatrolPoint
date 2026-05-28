@@ -220,6 +220,15 @@ function flashNodeIcon() {
     });
 }
 
+function excludedNodeIcon() {
+    return L.divIcon({
+        className: 'crime-node-icon',
+        html: '<span style="color:#9ca3af;text-shadow:-1px -1px 0 #6b7280,1px -1px 0 #6b7280,-1px 1px 0 #6b7280,1px 1px 0 #6b7280;">✕</span>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+    });
+}
+
 function makePatrolIcon(color, num, isStationary) {
     const label = isStationary ? 'S' : String(num);
     const bg    = isStationary ? 'transparent' : color;
@@ -240,6 +249,7 @@ function addCrimeNode(point, isOutlier = false) {
         zIndexOffset: 1000
     }).addTo(map);
     marker.on('click', (e) => {
+        if (pipelineRunning) return;
         L.DomEvent.stopPropagation(e);
         removeCrimeNodeByMarker(marker);
     });
@@ -481,6 +491,7 @@ async function runPipeline() {
     map.off('click', onMapClick);
 
     clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true, clearNearestHighlights: true });
+    zones = [];
     document.getElementById('trace-stages').innerHTML = '';
     document.getElementById('pipeline-summary').textContent = '';
     dijkstraCache = {};
@@ -687,7 +698,96 @@ async function runPipeline() {
             `Runtime: ${t2ms}ms`
         ], r2.data.traceLog);
 
-        // ── Stage 3 placeholder (Build Step 5) ────────────────
+        // ── Stage 3: Zone Assignment ───────────────────────────
+        recalcBtn.textContent = 'Running Stage 3 — Zone Assignment…';
+        loadingMessage.textContent = 'Running Stage 3 — Zone Assignment…';
+        await yieldControl();
+
+        const t3 = performance.now();
+        const r3 = computeZoneAssignment(P, S_star, validCandidates, currentHull, CONFIG);
+        const t3ms = Math.round(performance.now() - t3);
+
+        if (r3.warnings.length > 0) {
+            r3.warnings.forEach(w => { if (!pipelineWarnings.includes(w)) pipelineWarnings.push(w); });
+            showBanner('warning', pipelineWarnings.length === 1 ? pipelineWarnings[0] : pipelineWarnings);
+        }
+
+        if (r3.status === 'error') {
+            showBanner('error', r3.message);
+            addTraceStage(3, 'Zone Assignment', 'error', [
+                `Status: ❌ ${r3.message}`,
+                `Runtime: ${t3ms}ms`
+            ], r3.data.traceLog);
+            stopPipeline();
+            return;
+        }
+
+        zones = r3.data.zones;
+        const { zoneTypes, excludedPIndices, cappedExcludedPIndices, snappingStats, cappedZonesCount } = r3.data;
+
+        // Grey markers for zone-cap excluded crime nodes
+        cappedExcludedPIndices.forEach(pIdx => {
+            if (crimeMarkers[pIdx]) crimeMarkers[pIdx].setIcon(excludedNodeIcon());
+        });
+
+        // Empty zone patrol markers → stationary style
+        zoneTypes.forEach((type, i) => {
+            if (type === 'empty') {
+                patrolMarkers[i].setIcon(makePatrolIcon(S_star[i].color, i + 1, true));
+            }
+        });
+
+        // Zone assignment lines — original crime marker position → patrol position
+        for (let i = 0; i < S_star.length; i++) {
+            for (const sn of zones[i]) {
+                const p = P[sn.pIdx];
+                zoneLines.push(
+                    L.polyline([[p.lat, p.lng], [S_star[i].lat, S_star[i].lng]], {
+                        color: S_star[i].color, weight: 1, opacity: 0.4, dashArray: '4 6'
+                    }).addTo(map)
+                );
+            }
+        }
+
+        // Single-node dashed routes — patrol → snapped node
+        zoneTypes.forEach((type, i) => {
+            if (type === 'single') {
+                const sn = zones[i][0];
+                routePolylines.push(
+                    L.polyline([[S_star[i].lat, S_star[i].lng], [sn.lat, sn.lng]], {
+                        color: S_star[i].color, weight: 2, opacity: 0.8, dashArray: '6 8'
+                    }).addTo(map)
+                );
+            }
+        });
+
+        await yieldControl();
+
+        const emptyCount3    = zoneTypes.filter(t => t === 'empty').length;
+        const singleCount3   = zoneTypes.filter(t => t === 'single').length;
+        const multipleCount3 = zoneTypes.filter(t => t === 'multiple').length;
+        const bestRestartLabel = r2.data.bestRestartIdx !== null
+            ? `restart ${r2.data.bestRestartIdx}`
+            : 'N/A (single patrol)';
+
+        addTraceStage(3, 'Zone Assignment', r3.status, [
+            `Zone assignment using final optimized patrol positions from Hill Climbing ${bestRestartLabel}`,
+            `Crime nodes processed: ${P.length}`,
+            `Crime nodes excluded (no nearby intersection): ${snappingStats.excludedCount}`,
+            `Duplicate snapped nodes merged: ${snappingStats.mergedCount}`,
+            `Zero distance waypoints: ${snappingStats.waypointCount}`,
+            `Average snapping distance: ${Math.round(snappingStats.avgDist)}m`,
+            `Maximum snapping distance: ${Math.round(snappingStats.maxDist)}m`,
+            ...S_star.map((_, i) => `Patrol ${i + 1}: ${zones[i].length} node${zones[i].length !== 1 ? 's' : ''} (${zoneTypes[i]})`),
+            `Empty zones: ${emptyCount3} patrol${emptyCount3 !== 1 ? 's' : ''} stationary`,
+            `Single node zones: ${singleCount3} patrol${singleCount3 !== 1 ? 's' : ''} direct visit`,
+            `Multiple node zones: ${multipleCount3} patrol${multipleCount3 !== 1 ? 's' : ''} proceeding to TSP`,
+            `Zones capped: ${cappedZonesCount}`,
+            `Status: ${r3.status === 'success' ? '✅' : '⚠️'} ${r3.message}`,
+            `Runtime: ${t3ms}ms`
+        ], r3.data.traceLog);
+
+        // ── Stage 4 placeholder (Build Step 6) ────────────────
         stopPipeline();
 
     } catch (err) {
