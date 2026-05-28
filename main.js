@@ -514,9 +514,9 @@ async function runPipeline() {
             hullPolygon.setLatLngs(currentHull.map(v => [v.lat, v.lng]));
         } else {
             hullPolygon = L.polygon(currentHull.map(v => [v.lat, v.lng]), {
-                color: '#e74c3c',
+                color: '#c0392b',
                 fillColor: '#e74c3c',
-                fillOpacity: 0.1,
+                fillOpacity: 0.25,
                 weight: 2
             }).addTo(map);
         }
