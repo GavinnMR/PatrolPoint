@@ -85,7 +85,10 @@ window.PP_TESTS = (() => {
 
         {
             id: 'S1-T02', stage: 1, n: 2,
-            name: 'Tight cluster — area threshold warning',
+            // Hull is computed but too small to contain any road intersection nodes.
+            // Area threshold warning fires internally (visible in trace), then
+            // empty-candidates error overwrites the banner.
+            name: 'Tight cluster — hull too small for road intersections (empty candidates error)',
             coords: [
                 { lat: 14.7020, lng: 121.0935 }, { lat: 14.7022, lng: 121.0941 },
                 { lat: 14.7024, lng: 121.0946 }, { lat: 14.7026, lng: 121.0938 },
@@ -94,10 +97,11 @@ window.PP_TESTS = (() => {
                 { lat: 14.7032, lng: 121.0945 }, { lat: 14.7025, lng: 121.0940 }
             ],
             check() { return [
-                chkNotNull(currentHull,              'hull computed'),
-                chkEq(bannerType(), 'warning',       'warning banner shown'),
-                chkIncludes(bannerText(), 'clustered','banner mentions "clustered"'),
-                chkEq(stage1Status(), '⚠️',           'Stage 1 warning')
+                chkNotNull(hullPolygon,                       'hull polygon rendered (kept on map)'),
+                chkEq(validCandidates ? validCandidates.length : -1, 0, 'zero valid candidates'),
+                chkEq(bannerType(), 'error',                  'error banner shown'),
+                chkIncludes(bannerText(), 'road intersections','banner mentions "road intersections"'),
+                chkEq(stage1Status(), '⚠️',                   'Stage 1 trace shows area warning')
             ]; }
         },
 
