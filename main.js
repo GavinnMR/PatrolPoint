@@ -220,6 +220,19 @@ function flashNodeIcon() {
     });
 }
 
+function makePatrolIcon(color, num, isStationary) {
+    const label = isStationary ? 'S' : String(num);
+    const bg    = isStationary ? 'transparent' : color;
+    const border = isStationary ? `2px dashed ${color}` : `2px solid ${color}`;
+    const textColor = isStationary ? color : '#fff';
+    return L.divIcon({
+        className: '',
+        html: `<div style="width:26px;height:26px;border-radius:50%;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;color:${textColor};font-weight:700;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,0.3);">${label}</div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+    });
+}
+
 function addCrimeNode(point, isOutlier = false) {
     P.push(point);
     const marker = L.marker([point.lat, point.lng], {
@@ -427,7 +440,7 @@ async function runPipeline() {
     clearBanner();
 
     const rawN = patrolCountInput.value.trim();
-    const n = Number(rawN);
+    let n = Number(rawN);
 
     if (rawN === '' || !Number.isFinite(n)) {
         showBanner('error', 'Number of patrols must be a positive whole number.');
@@ -603,12 +616,78 @@ async function runPipeline() {
 
         pipelineResults = true;
 
-        // ── Stage 2 placeholder (Build Step 4) ────────────────
+        // ── Stage 2: Hill Climbing ─────────────────────────────
         recalcBtn.textContent = 'Running Stage 2 — Hill Climbing…';
         loadingMessage.textContent = 'Running Stage 2 — Hill Climbing…';
         await yieldControl();
-        // TODO: implement Hill Climbing in Build Step 4
 
+        const t2 = performance.now();
+        const r2 = computeHillClimbing(validCandidates, r1.data.hullAreaM2, n, CONFIG);
+        const t2ms = Math.round(performance.now() - t2);
+
+        // Cap n if Stage 2 reduced it
+        if (r2.data.cappedN) {
+            n = r2.data.actualN;
+            patrolCountInput.value = n;
+        }
+
+        // Propagate Stage 2 warnings
+        if (r2.warnings.length > 0) {
+            r2.warnings.forEach(w => { if (!pipelineWarnings.includes(w)) pipelineWarnings.push(w); });
+            showBanner('warning', pipelineWarnings.length === 1 ? pipelineWarnings[0] : pipelineWarnings);
+        }
+
+        if (r2.status === 'error') {
+            clearMapResults({ clearPatrols: true, clearRoutes: true, clearZoneLines: true });
+            showBanner('error', r2.message);
+            addTraceStage(2, 'Hill Climbing', 'error', [
+                `Status: ❌ ${r2.message}`,
+                `Runtime: ${t2ms}ms`
+            ], r2.data.traceLog);
+            stopPipeline();
+            return;
+        }
+
+        // Apply patrol colors and store S_star
+        S_star = r2.data.positions.map((p, i) => ({ ...p, color: patrolColor(i) }));
+
+        // Render patrol markers — update in place if count matches, else rebuild
+        const isStationary = deploymentMode === 'stationary';
+        if (patrolMarkers.length === S_star.length) {
+            S_star.forEach((pos, i) => {
+                patrolMarkers[i].setLatLng([pos.lat, pos.lng]);
+                patrolMarkers[i].setIcon(makePatrolIcon(pos.color, i + 1, isStationary));
+            });
+        } else {
+            patrolMarkers.forEach(m => m.remove());
+            patrolMarkers = [];
+            S_star.forEach((pos, i) => {
+                const marker = L.marker([pos.lat, pos.lng], {
+                    icon: makePatrolIcon(pos.color, i + 1, isStationary),
+                    zIndexOffset: 500
+                }).addTo(map);
+                patrolMarkers.push(marker);
+            });
+        }
+
+        await yieldControl();
+
+        const isN1 = r2.data.bestRestartIdx === null;
+        addTraceStage(2, 'Hill Climbing', r2.status, [
+            `Valid candidates: ${validCandidates.length} nodes`,
+            `Patrols: ${r2.data.actualN}${r2.data.cappedN ? ` (capped from ${r2.data.cappedN})` : ''}`,
+            `Radius R: ${r2.data.R > 0 ? Math.round(r2.data.R) + 'm' : 'N/A (single patrol)'}`,
+            `Restarts: ${isN1 ? 'N/A (single patrol)' : `${r2.data.restartsCompleted}`}`,
+            `Best restart: ${isN1 ? 'N/A' : r2.data.bestRestartIdx}`,
+            `Best min pairwise dist: ${r2.data.R > 0 ? Math.round(r2.data.bestMinPairwiseDist) + 'm' : 'N/A'}`,
+            `Radius expansions: ${r2.data.radiusExpansions}`,
+            `Max iter warnings: ${r2.data.maxIterWarnings}`,
+            `Duplicate config warnings: ${r2.data.duplicateConfigWarnings}`,
+            `Status: ${r2.status === 'success' ? '✅' : '⚠️'} ${r2.message}`,
+            `Runtime: ${t2ms}ms`
+        ], r2.data.traceLog);
+
+        // ── Stage 3 placeholder (Build Step 5) ────────────────
         stopPipeline();
 
     } catch (err) {
