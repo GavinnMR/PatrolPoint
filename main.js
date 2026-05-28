@@ -45,6 +45,7 @@ let dijkstraCache = {};            // cleared each pipeline run
 let intersectionNodes = [];        // nodes with degree >= 3
 let n_max = 30;                    // soft cap, computed from intersection count
 let barangayArea_m2 = 0;           // bounding-box area of road network
+let barangayBounds = { minLat: 0, maxLat: 0, minLng: 0, maxLng: 0 };
 let deploymentMode = 'stationary'; // 'stationary' | 'roaming'
 let pipelineResults = false;       // true if any pipeline results exist on map
 
@@ -145,6 +146,7 @@ const Legend = L.Control.extend({
         div.innerHTML = `
             <h4>Legend</h4>
             <div class="legend-row"><span class="legend-dot crime"></span>Crime incident</div>
+            <div class="legend-row"><span class="legend-dot outlier"></span>Potential outlier</div>
             <div class="legend-row"><span class="legend-dot filled"></span>Roaming patrol</div>
             <div class="legend-row"><span class="legend-dot hollow"></span>Stationary patrol</div>
             <div class="legend-row"><span class="legend-line zone"></span>Zone assignment</div>
@@ -182,28 +184,22 @@ function onMapClick(e) {
     addCrimeNode({ lat, lng });
 }
 
-function addCrimeNode(point) {
+function normalMarkerStyle() {
+    return { radius: 7, color: '#c0392b', fillColor: '#e74c3c', fillOpacity: 0.9, weight: 2 };
+}
+
+function outlierMarkerStyle() {
+    return { radius: 7, color: '#e67e22', fillColor: '#f39c12', fillOpacity: 0.75, weight: 2, dashArray: '4 4' };
+}
+
+function addCrimeNode(point, isOutlier = false) {
     P.push(point);
-    const marker = L.circleMarker([point.lat, point.lng], {
-        radius: 7,
-        color: '#c0392b',
-        fillColor: '#e74c3c',
-        fillOpacity: 0.9,
-        weight: 2,
-        zIndexOffset: 1000
-    }).addTo(map);
-
-    marker.on('click', () => removeCrimeNode(P.length - 1 - (crimeMarkers.length - 1 - crimeMarkers.indexOf(marker))));
-    crimeMarkers.push(marker);
-
-    // Wire click with correct index capture
-    const idx = P.length - 1;
-    marker.off('click');
+    const marker = L.circleMarker([point.lat, point.lng], isOutlier ? outlierMarkerStyle() : normalMarkerStyle()).addTo(map);
     marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         removeCrimeNodeByMarker(marker);
     });
-
+    crimeMarkers.push(marker);
     updateUndoButton();
 }
 
@@ -410,8 +406,20 @@ document.getElementById('import-btn').addEventListener('click', () => {
         return;
     }
 
+    // Commonwealth bounding box check — warn but still import
+    const outsideCount = parsed.filter(p =>
+        p.lat < barangayBounds.minLat || p.lat > barangayBounds.maxLat ||
+        p.lng < barangayBounds.minLng || p.lng > barangayBounds.maxLng
+    ).length;
+    if (outsideCount > 0) {
+        showBanner('warning',
+            `${outsideCount} coordinate${outsideCount !== 1 ? 's' : ''} fall outside Barangay Commonwealth. ` +
+            `These points may produce no valid patrol positions.`
+        );
+    }
+
     const existingCount = P.length;
-    let confirmMsg = `Importing will replace ${existingCount} existing incident point${existingCount !== 1 ? 's' : ''}. Continue?`;
+    const confirmMsg = `Importing will replace ${existingCount} existing incident point${existingCount !== 1 ? 's' : ''}. Continue?`;
     if (existingCount > 0 && !confirm(confirmMsg)) return;
 
     // Clear existing
@@ -421,12 +429,17 @@ document.getElementById('import-btn').addEventListener('click', () => {
     lastRemovedPoint = null;
     updateUndoButton();
 
-    // Plot imported
+    // Plot imported points
     parsed.forEach(pt => addCrimeNode(pt));
+
+    // Outlier detection — restyle flagged markers after all are plotted
+    const outlierCount = detectAndMarkOutliers(parsed, crimeMarkers);
+
     document.getElementById('coord-input').value = '';
 
     let msg = `${parsed.length} point${parsed.length !== 1 ? 's' : ''} imported successfully.`;
     if (skipped > 0) msg += ` ${skipped} line${skipped !== 1 ? 's' : ''} skipped due to invalid format.`;
+    if (outlierCount > 0) msg += ` ${outlierCount} flagged as potential outlier${outlierCount !== 1 ? 's' : ''} (orange markers).`;
     showImportMessage(msg, 'success');
     setTimeout(() => { document.getElementById('import-message').style.display = 'none'; }, 3000);
 });
@@ -436,6 +449,20 @@ function showImportMessage(text, type) {
     el.textContent = text;
     el.className = type;
     el.style.display = 'block';
+}
+
+function detectAndMarkOutliers(points, markers) {
+    if (CONFIG.convexHull_includeOutliers || points.length < 3) return 0;
+    const centLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
+    const centLng = points.reduce((s, p) => s + p.lng, 0) / points.length;
+    const dists = points.map(p => haversineDistance(centLat, centLng, p.lat, p.lng));
+    const avg = dists.reduce((s, d) => s + d, 0) / dists.length;
+    const threshold = CONFIG.convexHull.outlierMultiplier * avg;
+    let count = 0;
+    dists.forEach((d, i) => {
+        if (d > threshold) { markers[i].setStyle(outlierMarkerStyle()); count++; }
+    });
+    return count;
 }
 
 // ── SETTINGS MODAL ────────────────────────────────────────────
@@ -623,6 +650,7 @@ function computeBarangayArea() {
     const centroidLat = (minLat + maxLat) / 2;
     const lngScale = 111000 * Math.cos(centroidLat * Math.PI / 180);
     barangayArea_m2 = (maxLat - minLat) * 111000 * (maxLng - minLng) * lngScale;
+    barangayBounds = { minLat, maxLat, minLng, maxLng };
     console.log(`[PatrolPoint] Barangay bounding area: ${Math.round(barangayArea_m2)} m²`);
 }
 

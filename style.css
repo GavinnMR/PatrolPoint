@@ -412,6 +412,11 @@ html, body {
   background: #e74c3c;
 }
 
+.legend-dot.outlier {
+  background: #f39c12;
+  border: 2px dashed #e67e22;
+}
+
 .legend-line {
   width: 20px;
   height: 3px;
