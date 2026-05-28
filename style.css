@@ -3,16 +3,16 @@
    ============================================================ */
 
 :root {
-  --patrol-0: #e74c3c;
-  --patrol-1: #3498db;
-  --patrol-2: #2ecc71;
-  --patrol-3: #f39c12;
-  --patrol-4: #9b59b6;
-  --patrol-5: #1abc9c;
-  --patrol-6: #e67e22;
-  --patrol-7: #34495e;
-  --patrol-8: #e91e63;
-  --patrol-9: #00bcd4;
+  --patrol-0: #0072B2;
+  --patrol-1: #D55E00;
+  --patrol-2: #009E73;
+  --patrol-3: #CC79A7;
+  --patrol-4: #E69F00;
+  --patrol-5: #56B4E9;
+  --patrol-6: #332288;
+  --patrol-7: #44AA99;
+  --patrol-8: #882255;
+  --patrol-9: #DDCC77;
 }
 
 * {
@@ -400,12 +400,12 @@ html, body {
 }
 
 .legend-dot.filled {
-  background: #3498db;
+  background: #0072B2;
 }
 
 .legend-dot.hollow {
   background: transparent;
-  border: 2px dashed #3498db;
+  border: 2px dashed #0072B2;
 }
 
 .legend-dot.crime {
@@ -424,12 +424,12 @@ html, body {
 }
 
 .legend-line.zone {
-  border-top: 2px dashed #3498db;
+  border-top: 2px dashed #0072B2;
   height: 0;
 }
 
 .legend-line.route {
-  background: #3498db;
+  background: #0072B2;
 }
 
 .legend-line.overlap-2 {

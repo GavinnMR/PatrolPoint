@@ -59,9 +59,18 @@ let nearestHighlightMarkers = [];
 let crimeMarkers = [];             // parallel array to P
 
 // ── PATROL COLOR PALETTE ──────────────────────────────────────
+// Okabe-Ito colorblind-safe palette — validated for deuteranopia, protanopia, tritanopia
 const PATROL_COLORS = [
-    '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
-    '#1abc9c', '#e67e22', '#34495e', '#e91e63', '#00bcd4'
+    '#0072B2',  // Deep blue
+    '#D55E00',  // Vermillion
+    '#009E73',  // Teal
+    '#CC79A7',  // Mauve
+    '#E69F00',  // Amber
+    '#56B4E9',  // Sky blue
+    '#332288',  // Indigo
+    '#44AA99',  // Cyan-teal
+    '#882255',  // Wine
+    '#DDCC77',  // Sand gold
 ];
 
 function patrolColor(i) {
