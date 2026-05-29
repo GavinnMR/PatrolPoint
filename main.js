@@ -745,6 +745,22 @@ async function runPipeline() {
             }
         });
 
+        // Patrol marker tooltips — show status and node count on hover
+        patrolMarkers.forEach((marker, i) => {
+            const type = zoneTypes[i];
+            const count = zones[i].length;
+            const countStr = `${count} node${count !== 1 ? 's' : ''}`;
+            let text;
+            if (deploymentMode !== 'roaming' || type === 'empty') {
+                text = `Patrol ${i + 1} — Stationary · ${countStr}`;
+            } else if (type === 'single') {
+                text = `Patrol ${i + 1} — Roaming · ${countStr} (direct visit)`;
+            } else {
+                text = `Patrol ${i + 1} — Roaming · ${countStr}`;
+            }
+            marker.bindTooltip(text, { direction: 'top', offset: [0, -13] });
+        });
+
         // Zone assignment lines — original crime marker position → patrol position
         for (let i = 0; i < S_star.length; i++) {
             for (const sn of zones[i]) {
