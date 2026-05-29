@@ -48,6 +48,7 @@ let barangayArea_m2 = 0;           // bounding-box area of road network
 let barangayBounds = { minLat: 0, maxLat: 0, minLng: 0, maxLng: 0 };
 let deploymentMode = 'stationary'; // 'stationary' | 'roaming'
 let pipelineResults = false;       // true if any pipeline results exist on map
+let traceStageOpenState = {};      // expand/collapse state per stage, keyed by stage num (1–4)
 
 // ── MAP LAYER REFERENCES ──────────────────────────────────────
 let hullPolygon = null;
@@ -414,6 +415,7 @@ function addTraceStage(num, name, status, summaryLines, logLines) {
     logEl.id = logId;
     logEl.textContent = (logLines || []).join('\n');
 
+    if (traceStageOpenState[num]) logEl.classList.add('open');
     logBtn.addEventListener('click', () => logEl.classList.toggle('open'));
     div.append(header, summary, logBtn, logEl);
     stagesEl.appendChild(div);
@@ -492,6 +494,12 @@ async function runPipeline() {
 
     clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true, clearNearestHighlights: true });
     zones = [];
+    // Save expand/collapse state before wiping trace panel
+    traceStageOpenState = {};
+    document.querySelectorAll('#trace-stages .trace-stage').forEach((div, idx) => {
+        const logEl = div.querySelector('.trace-log');
+        if (logEl) traceStageOpenState[idx + 1] = logEl.classList.contains('open');
+    });
     document.getElementById('trace-stages').innerHTML = '';
     document.getElementById('pipeline-summary').textContent = '';
     dijkstraCache = {};
@@ -809,6 +817,7 @@ async function runPipeline() {
         let tspCount = 0, stationaryCount4 = 0, directCount4 = 0;
         let totalDijkstraCalls = 0, totalCacheHits = 0;
         let stage4Status = 'success';
+        const stage4CircuitSummaries = [];
 
         // Edges rendered across all patrol routes — for overlap detection
         const allRenderedPaths = []; // [{ path: [nodeId, ...], color }]
@@ -838,6 +847,10 @@ async function runPipeline() {
 
             tspCount++;
             const { circuitNodes, legPaths, totalDistance } = r4.data;
+            const circSumStr = [...circuitNodes, circuitNodes[0]]
+                .map(n => `${n.id} (${n.lat.toFixed(4)}, ${n.lng.toFixed(4)})`)
+                .join(' → ');
+            stage4CircuitSummaries.push(`Patrol ${i + 1}: optimal circuit: ${circSumStr}. Total: ${Math.round(totalDistance)}m`);
             const color = S_star[i].color;
 
             // Render each leg as a road-following polyline
@@ -935,6 +948,7 @@ async function runPipeline() {
             `Patrols with TSP routes: ${tspCount}`,
             `Patrols stationary (empty zone): ${stationaryCount4}`,
             `Patrols with direct visit (single node): ${directCount4}`,
+            ...stage4CircuitSummaries,
             `Total Dijkstra calls: ${totalDijkstraCalls}`,
             `Dijkstra calls avoided (cache): ${totalCacheHits}`,
             `Route overlap: ${overlapEdges2} edge${overlapEdges2 !== 1 ? 's' : ''} with 2 patrols, ${overlapEdges3} edge${overlapEdges3 !== 1 ? 's' : ''} with 3+ patrols`,
