@@ -787,9 +787,204 @@ window.PP_TESTS = (() => {
                     chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error')
                 ];
             }
+        },
+
+        // ══ Stage 7 — Build Step 7: Trace Panel & Settings Modal ═════════════
+
+        {
+            id: 'S7-T01', stage: 7, n: 3, mode: 'roaming',
+            name: 'Roaming — Stage 4 summary includes per-patrol optimal circuit strings',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const summaries = document.querySelectorAll('#trace-stages .trace-summary');
+                const s4Summary = summaries[summaries.length - 1]?.textContent || '';
+                return [
+                    chkNotNull(stageStatus(4),                                                               'Stage 4 trace entry present'),
+                    chkEq(s4Summary.toLowerCase().includes('optimal circuit') ? 'ok' : 'fail', 'ok',
+                        'Stage 4 summary contains "optimal circuit" string'),
+                    chkEq(/total:\s*\d+m/i.test(s4Summary) ? 'ok' : 'fail', 'ok',
+                        'Stage 4 summary contains "Total: Xm" distance')
+                ];
+            }
+        },
+
+        {
+            id: 'S7-T02', stage: 7, n: 3,
+            name: 'Settings modal — all fields reflect current CONFIG values on open',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                openSettings();
+                const results = [
+                    chkEq(parseInt(document.getElementById('cfg-hc-restarts').value),    CONFIG.hillClimbing.restarts,          'restarts field matches CONFIG'),
+                    chkEq(parseInt(document.getElementById('cfg-hc-maxiter').value),     CONFIG.hillClimbing.maxIterations,     'maxIterations field matches CONFIG'),
+                    chkEq(parseFloat(document.getElementById('cfg-hc-radius').value),    CONFIG.hillClimbing.radiusMultiplier,  'radiusMultiplier field matches CONFIG'),
+                    chkEq(parseInt(document.getElementById('cfg-ch-area').value),         CONFIG.convexHull.areaThresholdDivisor,'areaThresholdDivisor field matches CONFIG'),
+                    chkEq(parseFloat(document.getElementById('cfg-ch-outlier').value),   CONFIG.convexHull.outlierMultiplier,   'outlierMultiplier field matches CONFIG'),
+                    chkEq(parseInt(document.getElementById('cfg-tsp-max').value),         CONFIG.tsp.maxCrimeNodesPerZone,      'maxCrimeNodesPerZone field matches CONFIG'),
+                    chkEq(document.getElementById('cfg-show-zone-lines').checked,         CONFIG.display.showZoneLines,         'showZoneLines checkbox matches CONFIG'),
+                    chkEq(document.getElementById('cfg-show-arrows').checked,             CONFIG.display.showRouteArrows,       'showRouteArrows checkbox matches CONFIG'),
+                    chkEq(document.getElementById('cfg-show-overlap').checked,            CONFIG.display.showOverlapColoring,   'showOverlapColoring checkbox matches CONFIG')
+                ];
+                closeSettings();
+                return results;
+            }
+        },
+
+        {
+            id: 'S7-T03', stage: 7, n: 3,
+            name: 'Settings Apply — updates CONFIG values and closes modal',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const orig = { restarts: CONFIG.hillClimbing.restarts, maxZone: CONFIG.tsp.maxCrimeNodesPerZone };
+                openSettings();
+                document.getElementById('cfg-hc-restarts').value = '7';
+                document.getElementById('cfg-tsp-max').value = '8';
+                document.getElementById('settings-apply').click();
+                const results = [
+                    chkEq(CONFIG.hillClimbing.restarts,        7,        'CONFIG.hillClimbing.restarts updated to 7'),
+                    chkEq(CONFIG.tsp.maxCrimeNodesPerZone,     8,        'CONFIG.tsp.maxCrimeNodesPerZone updated to 8'),
+                    chkEq(document.getElementById('settings-modal').classList.contains('open') ? 'open' : 'closed', 'closed',
+                        'modal closed after Apply')
+                ];
+                CONFIG.hillClimbing.restarts    = orig.restarts;
+                CONFIG.tsp.maxCrimeNodesPerZone = orig.maxZone;
+                return results;
+            }
+        },
+
+        {
+            id: 'S7-T04', stage: 7, n: 3,
+            name: 'Settings Cancel — does not modify CONFIG, closes modal',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const origRestarts = CONFIG.hillClimbing.restarts;
+                openSettings();
+                document.getElementById('cfg-hc-restarts').value = '99';
+                document.getElementById('settings-cancel').click();
+                return [
+                    chkEq(CONFIG.hillClimbing.restarts, origRestarts,
+                        'Cancel did not modify CONFIG.hillClimbing.restarts'),
+                    chkEq(document.getElementById('settings-modal').classList.contains('open') ? 'open' : 'closed', 'closed',
+                        'modal closed after Cancel')
+                ];
+            }
+        },
+
+        {
+            id: 'S7-T05', stage: 7, n: 3,
+            name: 'Settings Reset to Defaults — restores all CONFIG values',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                CONFIG.hillClimbing.restarts     = 99;
+                CONFIG.tsp.maxCrimeNodesPerZone  = 25;
+                openSettings();
+                document.getElementById('settings-reset').click();
+                // reset handler calls openSettings() again — modal stays open with defaults populated
+                const results = [
+                    chkEq(CONFIG.hillClimbing.restarts,          CONFIG_DEFAULTS.hillClimbing.restarts,         'hillClimbing.restarts restored to default'),
+                    chkEq(CONFIG.hillClimbing.maxIterations,     CONFIG_DEFAULTS.hillClimbing.maxIterations,    'hillClimbing.maxIterations restored to default'),
+                    chkEq(CONFIG.hillClimbing.radiusMultiplier,  CONFIG_DEFAULTS.hillClimbing.radiusMultiplier, 'hillClimbing.radiusMultiplier restored to default'),
+                    chkEq(CONFIG.tsp.maxCrimeNodesPerZone,       CONFIG_DEFAULTS.tsp.maxCrimeNodesPerZone,      'tsp.maxCrimeNodesPerZone restored to default'),
+                    chkEq(CONFIG.display.showZoneLines,          CONFIG_DEFAULTS.display.showZoneLines,         'display.showZoneLines restored to default'),
+                    chkEq(CONFIG.display.showRouteArrows,        CONFIG_DEFAULTS.display.showRouteArrows,       'display.showRouteArrows restored to default'),
+                    chkEq(CONFIG.display.showOverlapColoring,    CONFIG_DEFAULTS.display.showOverlapColoring,   'display.showOverlapColoring restored to default')
+                ];
+                closeSettings();
+                return results;
+            }
+        },
+
+        {
+            id: 'S7-T06', stage: 7, n: 3,
+            name: 'Map legend — DOM element present with all required marker type entries',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const legend = document.querySelector('.map-legend');
+                const legendText = legend ? legend.textContent : '';
+                return [
+                    chkNotNull(legend,                          'map legend element exists'),
+                    chkIncludes(legendText, 'crime',            'legend has crime incident entry'),
+                    chkIncludes(legendText, 'patrol',           'legend has patrol entry'),
+                    chkIncludes(legendText, 'zone',             'legend has zone assignment entry'),
+                    chkIncludes(legendText, 'overlap',          'legend has route overlap entry')
+                ];
+            }
         }
 
     ];
+
+    // ── Standalone: trace expand/collapse state preservation (two-run test) ───
+
+    async function testStatePreservation() {
+        console.group('%c[PP_TESTS] S7-T00 — Trace expand/collapse state preserved across recalculations', 'color:#0072B2; font-weight:bold');
+        if (!resetApp()) { console.groupEnd(); return; }
+
+        document.getElementById('patrol-count').value = 3;
+        [
+            { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+            { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+            { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+            { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+            { lat: 14.6998, lng: 121.1005 }
+        ].forEach(pt => addCrimeNode(pt));
+
+        // First pipeline run
+        await runPipeline();
+
+        // Expand Stage 1 full log
+        const firstLog = document.querySelector('#trace-stages .trace-stage .trace-log');
+        if (!firstLog) {
+            console.log('%c  ❌ FAIL    No Stage 1 trace log found after first run', 'color:#D55E00; font-weight:bold');
+            console.groupEnd();
+            return;
+        }
+        firstLog.classList.add('open');
+
+        // Second pipeline run — same crime nodes still in P
+        await runPipeline();
+
+        // Verify Stage 1 log is still open
+        const firstLogAfter = document.querySelector('#trace-stages .trace-stage .trace-log');
+        const isOpen = firstLogAfter ? firstLogAfter.classList.contains('open') : false;
+
+        const results = [
+            chkEq(isOpen ? 'yes' : 'no', 'yes', 'Stage 1 full log remains open after second pipeline run')
+        ];
+        let passed = 0, failed = 0;
+        results.forEach(r => {
+            if (r.ok) { console.log(`  %c✅ PASS    ${r.label}`, 'color:#009E73'); passed++; }
+            else      { console.log(`  %c❌ FAIL    ${r.label}  (got: ${r.got}, expected: ${r.expected})`, 'color:#D55E00; font-weight:bold'); failed++; }
+        });
+        const color = failed > 0 ? '#D55E00' : '#009E73';
+        console.log(`  %cS7-T00: ${passed}/${passed + failed} assertions passed`, `color:${color}; font-weight:bold`);
+        console.groupEnd();
+    }
 
     // ── Runner helpers ────────────────────────────────────────────────────────
 
@@ -929,6 +1124,6 @@ window.PP_TESTS = (() => {
         console.log('\nRun: PP_TESTS.run(n)  |  PP_TESTS.runStage(1)  |  PP_TESTS.runAll()');
     }
 
-    console.log('%c[PP_TESTS] Stress tests loaded. Commands: PP_TESTS.run(n) | runStage(1) | runAll() | list()', 'color:#009E73; font-weight:bold');
-    return { run, runAll, runStage, list, SCENARIOS };
+    console.log('%c[PP_TESTS] Stress tests loaded. Commands: PP_TESTS.run(n) | runStage(1..7) | runAll() | list() | testStatePreservation()', 'color:#009E73; font-weight:bold');
+    return { run, runAll, runStage, list, SCENARIOS, testStatePreservation };
 })();
