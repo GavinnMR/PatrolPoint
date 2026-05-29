@@ -60,6 +60,51 @@ window.PP_TESTS = (() => {
 
     const SCENARIOS = [
 
+        // ══ Stage 0 — Pre-pipeline Validation ════════════════════════════════
+
+        {
+            id: 'S0-T01', stage: 0, n: 0,
+            name: 'n=0 — error banner, pipeline fully blocked',
+            coords: [
+                { lat: 14.7000, lng: 121.0900 }, { lat: 14.7050, lng: 121.0950 }
+            ],
+            check() { return [
+                chkEq(bannerType(), 'error',                        'error banner shown'),
+                chkIncludes(bannerText(), 'positive whole number',  'banner mentions valid n requirement'),
+                chkEq(patrolMarkers.length, 0,                      'no patrol markers placed'),
+                chkNull(currentHull,                                'no hull computed'),
+                chkEq(zones.length, 0,                              'zones not populated')
+            ]; }
+        },
+
+        {
+            id: 'S0-T02', stage: 0, n: 2.5,
+            name: 'n=2.5 decimal — error banner, pipeline fully blocked',
+            coords: [
+                { lat: 14.7000, lng: 121.0900 }, { lat: 14.7050, lng: 121.0950 }
+            ],
+            check() { return [
+                chkEq(bannerType(), 'error',                'error banner shown'),
+                chkIncludes(bannerText(), 'whole number',   'banner mentions whole number requirement'),
+                chkEq(patrolMarkers.length, 0,              'no patrol markers placed'),
+                chkNull(currentHull,                        'no hull computed')
+            ]; }
+        },
+
+        {
+            id: 'S0-T03', stage: 0, n: 3,
+            name: '|P|=1 — error banner, pipeline fully blocked',
+            coords: [
+                { lat: 14.7000, lng: 121.0900 }
+            ],
+            check() { return [
+                chkEq(bannerType(), 'error',                        'error banner shown'),
+                chkIncludes(bannerText(), '2 incident',             'banner mentions minimum 2 coords'),
+                chkEq(patrolMarkers.length, 0,                      'no patrol markers placed'),
+                chkNull(currentHull,                                'no hull computed')
+            ]; }
+        },
+
         // ══ Stage 1 — Convex Hull ════════════════════════════════════════════
 
         {
@@ -266,6 +311,24 @@ window.PP_TESTS = (() => {
             check() { return [
                 chkNotNull(hullPolygon,            'hull polygon on map'),
                 { ok: 'manual', label: 'Outlier count depends on Settings multiplier — check amber markers on map' }
+            ]; }
+        },
+
+        {
+            id: 'S1-T12', stage: 1, n: 2,
+            name: 'Empty candidates — 5 nearest intersection highlights rendered',
+            coords: [
+                { lat: 14.7020, lng: 121.0935 }, { lat: 14.7022, lng: 121.0941 },
+                { lat: 14.7024, lng: 121.0946 }, { lat: 14.7026, lng: 121.0938 },
+                { lat: 14.7028, lng: 121.0943 }, { lat: 14.7030, lng: 121.0937 },
+                { lat: 14.7023, lng: 121.0948 }, { lat: 14.7027, lng: 121.0933 },
+                { lat: 14.7032, lng: 121.0945 }, { lat: 14.7025, lng: 121.0940 }
+            ],
+            check() { return [
+                chkEq(validCandidates ? validCandidates.length : -1, 0, 'zero valid candidates'),
+                chkEq(nearestHighlightMarkers.length, 5,             '5 nearest intersection highlights on map'),
+                chkEq(bannerType(), 'error',                         'error banner shown'),
+                chkIncludes(bannerText(), 'road intersections',      'banner mentions road intersections')
             ]; }
         },
 
@@ -561,7 +624,172 @@ window.PP_TESTS = (() => {
                         'Stage 3 status is not error')
                 ];
             }
+        },
+
+        {
+            id: 'S3-T06', stage: 3, n: 3,
+            name: 'Snapping distance >200m — Stage 3 status Warning, banner fires',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() { return [
+                chkEq(stageStatus(3), '⚠️',                         'Stage 3 status is Warning'),
+                chkEq(bannerType(), 'warning',                      'warning banner shown'),
+                chkIncludes(bannerText(), 'snapping distance',      'banner mentions snapping distance')
+            ]; }
+        },
+
+        {
+            id: 'S3-T07', stage: 3, n: 3,
+            name: 'Stage 4 data readiness — zone nodes and S_star have valid id/lat/lng',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const nodesValid = zones
+                    ? zones.every(z => z.every(sn =>
+                        typeof sn.id === 'string' &&
+                        typeof sn.lat === 'number' &&
+                        typeof sn.lng === 'number'))
+                    : false;
+                const sStarValid = S_star
+                    ? S_star.every(p => typeof p.id === 'string' && p.id.startsWith('n'))
+                    : false;
+                const multipleZones = zones ? zones.some(z => z.length > 1) : false;
+                const multiNodesUnique = zones
+                    ? zones.every(z => z.length <= 1 || new Set(z.map(sn => sn.id)).size === z.length)
+                    : false;
+                return [
+                    chkEq(nodesValid ? 'ok' : 'fail', 'ok',        'all zone nodes have string id, number lat/lng'),
+                    chkEq(sStarValid ? 'ok' : 'fail', 'ok',        'all S_star positions have node id starting with n'),
+                    chkEq(multipleZones ? 'ok' : 'skip', 'ok',     'at least one multi-node zone exists'),
+                    chkEq(multiNodesUnique ? 'ok' : 'fail', 'ok',  'no duplicate node IDs within any zone')
+                ];
+            }
         }
+        // ══ Stage 4 — Backtracking TSP ══════════════════════════════════════
+
+        {
+            id: 'S4-T01', stage: 4, n: 3, mode: 'roaming',
+            name: 'Roaming — n=3, 9 crime nodes — TSP routes rendered, Stage 4 present',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const s4 = stageStatus(4);
+                return [
+                    chkGt(routePolylines.length, 0,                     'route polylines rendered'),
+                    chkNotNull(s4,                                       'Stage 4 trace entry present'),
+                    chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error'),
+                    chkEq(['none','warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
+                ];
+            }
+        },
+
+        {
+            id: 'S4-T02', stage: 4, n: 3, mode: 'stationary',
+            name: 'Stationary — same coords — no Stage 4 trace entry, pipeline stops after Stage 3',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                return [
+                    chkNull(stageStatus(4),                              'no Stage 4 trace entry (stationary stops after Stage 3)'),
+                    chkEq(['none','warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner'),
+                    chkEq(stageStatus(3) === '✅' || stageStatus(3) === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 3 completed'),
+                    { ok: 'manual', label: 'Verify: zone lines visible on map, no road-following routes' }
+                ];
+            }
+        },
+
+        {
+            id: 'S4-T03', stage: 4, n: 1, mode: 'roaming',
+            name: 'Roaming — n=1, 2 crime nodes — k=2 case, circuit rendered',
+            coords: [
+                { lat: 14.6990, lng: 121.0880 }, { lat: 14.7060, lng: 121.0960 },
+                { lat: 14.7030, lng: 121.1010 }, { lat: 14.6970, lng: 121.0970 },
+                { lat: 14.7080, lng: 121.0880 },
+                { lat: 14.7000, lng: 121.0900 },
+                { lat: 14.7050, lng: 121.0940 }
+            ],
+            check() {
+                const s4 = stageStatus(4);
+                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                return [
+                    chkGt(routePolylines.length, 0,                         'route polylines rendered'),
+                    chkNotNull(s4,                                           'Stage 4 trace entry present'),
+                    chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error'),
+                    chkEq(['none','warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
+                ];
+            }
+        },
+
+        {
+            id: 'S4-T04', stage: 4, n: 2, mode: 'roaming',
+            name: 'Roaming — n=2, multiple crime nodes — dijkstraCache populated',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }
+            ],
+            check() {
+                const cachePopulated = Object.keys(dijkstraCache).length > 0;
+                return [
+                    chkGt(routePolylines.length, 0,                     'route polylines rendered'),
+                    chkEq(cachePopulated ? 'ok' : 'fail', 'ok',         'dijkstraCache populated after TSP run'),
+                    chkEq(stageStatus(4) === '✅' || stageStatus(4) === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error')
+                ];
+            }
+        },
+
+        {
+            id: 'S4-T05', stage: 4, n: 1, mode: 'roaming',
+            name: 'Roaming — n=1, 28 crime nodes — zone capped, TSP runs on capped set',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.6975, lng: 121.0870 },
+                { lat: 14.6990, lng: 121.0885 }, { lat: 14.7005, lng: 121.0900 },
+                { lat: 14.7020, lng: 121.0915 }, { lat: 14.7035, lng: 121.0930 },
+                { lat: 14.7050, lng: 121.0945 }, { lat: 14.7065, lng: 121.0960 },
+                { lat: 14.7080, lng: 121.0975 }, { lat: 14.7095, lng: 121.0990 },
+                { lat: 14.7110, lng: 121.1005 }, { lat: 14.7125, lng: 121.1020 },
+                { lat: 14.6970, lng: 121.0900 }, { lat: 14.6985, lng: 121.0932 },
+                { lat: 14.7000, lng: 121.0962 }, { lat: 14.7015, lng: 121.0875 },
+                { lat: 14.7030, lng: 121.0855 }, { lat: 14.7045, lng: 121.0910 },
+                { lat: 14.7060, lng: 121.0990 }, { lat: 14.7075, lng: 121.1022 },
+                { lat: 14.7090, lng: 121.0940 }, { lat: 14.7105, lng: 121.0870 },
+                { lat: 14.6965, lng: 121.0952 }, { lat: 14.6980, lng: 121.1002 },
+                { lat: 14.7055, lng: 121.0862 }, { lat: 14.7070, lng: 121.1042 },
+                { lat: 14.7140, lng: 121.0952 }, { lat: 14.6950, lng: 121.1002 }
+            ],
+            check() {
+                const cap = (typeof CONFIG !== 'undefined' && CONFIG.tsp) ? CONFIG.tsp.maxCrimeNodesPerZone : 10;
+                const s4 = stageStatus(4);
+                return [
+                    chkEq(zones ? zones[0].length : -1, cap,            `zone capped to ${cap} nodes`),
+                    chkGt(routePolylines.length, 0,                     'TSP routes rendered for capped zone'),
+                    chkNotNull(s4,                                       'Stage 4 trace entry present'),
+                    chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error')
+                ];
+            }
+        }
+
     ];
 
     // ── Runner helpers ────────────────────────────────────────────────────────
@@ -576,6 +804,14 @@ window.PP_TESTS = (() => {
         crimeMarkers.length = 0;
         lastRemovedPoint = null;
         pipelineResults = false;
+        // Reset deployment mode to stationary so tests start from a clean state
+        deploymentMode = 'stationary';
+        document.querySelectorAll('#mode-toggle input[type=radio]').forEach(r => {
+            r.checked = r.value === 'stationary';
+        });
+        document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('mode-active'));
+        const stationaryOption = document.querySelector('.mode-option');
+        if (stationaryOption) stationaryOption.classList.add('mode-active');
         clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true, clearNearestHighlights: true });
         clearBanner();
         document.getElementById('trace-stages').innerHTML = '';
@@ -617,6 +853,18 @@ window.PP_TESTS = (() => {
         if (!resetApp()) return;
 
         console.group(`%c[PP_TESTS] ${s.id} — ${s.name}`, 'color:#0072B2; font-weight:bold');
+
+        // Apply scenario deployment mode if specified (default: stationary)
+        if (s.mode === 'roaming') {
+            deploymentMode = 'roaming';
+            document.querySelectorAll('#mode-toggle input[type=radio]').forEach(r => {
+                r.checked = r.value === 'roaming';
+            });
+            document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('mode-active'));
+            const roamingOption = document.querySelector('.mode-option:last-of-type');
+            if (roamingOption) roamingOption.classList.add('mode-active');
+        }
+
         document.getElementById('patrol-count').value = s.n;
         s.coords.forEach(pt => addCrimeNode(pt));
 

@@ -787,7 +787,167 @@ async function runPipeline() {
             `Runtime: ${t3ms}ms`
         ], r3.data.traceLog);
 
-        // ── Stage 4 placeholder (Build Step 6) ────────────────
+        // ── Stationary mode — pipeline complete after Stage 3 ─
+        if (deploymentMode !== 'roaming') {
+            const totalMs = Math.round(performance.now() - pipelineStart);
+            document.getElementById('pipeline-summary').textContent =
+                `Pipeline Complete — Total time: ${totalMs}ms | Stationary mode | ${S_star.length} patrol${S_star.length !== 1 ? 's' : ''}`;
+            const traceBodyEl = document.getElementById('trace-body');
+            if (traceBodyEl) traceBodyEl.scrollTop = traceBodyEl.scrollHeight;
+            stopPipeline();
+            return;
+        }
+
+        // ── Stage 4: Backtracking TSP ──────────────────────────
+        recalcBtn.textContent = 'Running Stage 4 — TSP…';
+        loadingMessage.textContent = 'Running Stage 4 — TSP…';
+        await yieldControl();
+
+        const t4 = performance.now();
+        const stage4Warnings = [];
+        const stage4Log = [];
+        let tspCount = 0, stationaryCount4 = 0, directCount4 = 0;
+        let totalDijkstraCalls = 0, totalCacheHits = 0;
+        let stage4Status = 'success';
+
+        // Edges rendered across all patrol routes — for overlap detection
+        const allRenderedPaths = []; // [{ path: [nodeId, ...], color }]
+
+        const multipleZoneCount = zoneTypes.filter(t => t === 'multiple').length;
+
+        for (let i = 0; i < S_star.length; i++) {
+            if (zoneTypes[i] === 'empty') { stationaryCount4++; continue; }
+            if (zoneTypes[i] === 'single') { directCount4++; continue; }
+            // zoneTypes[i] === 'multiple'
+
+            const r4 = computeTSP(i, S_star[i], zones[i], nodeMap, adjacencyList, dijkstraCache, CONFIG);
+
+            totalDijkstraCalls += r4.data.dijkstraCalls;
+            totalCacheHits    += r4.data.cacheHits;
+            r4.data.traceLog.forEach(l => stage4Log.push(l));
+            r4.warnings.forEach(w => { if (!stage4Warnings.includes(w)) stage4Warnings.push(w); });
+
+            if (r4.data.emptyZone) {
+                // All crime nodes unreachable — treat zone as empty
+                patrolMarkers[i].setIcon(makePatrolIcon(S_star[i].color, i + 1, true));
+                stationaryCount4++;
+                stage4Status = 'warning';
+                stage4Log.push(`Patrol ${i + 1}: all crime nodes excluded — patrol stationary.`);
+                continue;
+            }
+
+            tspCount++;
+            const { circuitNodes, legPaths, totalDistance } = r4.data;
+            const color = S_star[i].color;
+
+            // Render each leg as a road-following polyline
+            for (let leg = 0; leg < circuitNodes.length; leg++) {
+                const path = legPaths[leg]; // array of node IDs
+                if (!path || path.length < 2) continue;
+
+                const latLngs = path.map(id => {
+                    const nd = nodeMap.get(id);
+                    return [nd.lat, nd.lng];
+                });
+
+                const polyline = L.polyline(latLngs, {
+                    color, weight: 3, opacity: 0.85
+                }).addTo(map);
+                routePolylines.push(polyline);
+
+                if (CONFIG.display.showRouteArrows && typeof L.polylineDecorator === 'function') {
+                    const decorator = L.polylineDecorator(polyline, {
+                        patterns: [{
+                            offset: '10%',
+                            repeat: '20%',
+                            symbol: L.Symbol.arrowHead({
+                                pixelSize: 6,
+                                polygon: false,
+                                pathOptions: { color, weight: 2, opacity: 0.9 }
+                            })
+                        }]
+                    }).addTo(map);
+                    routePolylines.push(decorator);
+                }
+
+                allRenderedPaths.push({ path, color });
+            }
+
+            await yieldControl();
+        }
+
+        // All multi-node zones failed AND no single-node routes exist → no reachable crime nodes
+        if (multipleZoneCount > 0 && tspCount === 0 && directCount4 === 0) {
+            showBanner('error', 'No reachable crime nodes found for any patrol. Check road network connectivity.');
+            addTraceStage(4, 'Backtracking TSP', 'error', [
+                `Status: ❌ No reachable crime nodes for any patrol.`,
+                `Runtime: ${Math.round(performance.now() - t4)}ms`
+            ], stage4Log);
+            stopPipeline();
+            return;
+        }
+
+        // Remove zone assignment lines — replaced by route polylines in roaming mode
+        zoneLines.forEach(l => l.remove());
+        zoneLines = [];
+
+        // Overlap tracking — render overlay layer for shared edges
+        if (CONFIG.display.showOverlapColoring && allRenderedPaths.length > 0) {
+            const edgeUsage = new Map();
+            for (const { path } of allRenderedPaths) {
+                for (let e = 0; e < path.length - 1; e++) {
+                    const key = normalizeEdgeKey(path[e], path[e + 1]);
+                    edgeUsage.set(key, (edgeUsage.get(key) || 0) + 1);
+                }
+            }
+
+            const overlapLines = [];
+            let edges2 = 0, edges3 = 0;
+            for (const [key, count] of edgeUsage) {
+                if (count < 2) continue;
+                const [idA, idB] = key.split('|');
+                const nA = nodeMap.get(idA), nB = nodeMap.get(idB);
+                if (!nA || !nB) continue;
+                const overlapColor = count === 2 ? '#FFA500' : '#FF0000';
+                overlapLines.push(L.polyline([[nA.lat, nA.lng], [nB.lat, nB.lng]], {
+                    color: overlapColor, weight: 5, opacity: 0.45
+                }));
+                if (count === 2) edges2++; else edges3++;
+            }
+
+            if (overlapLines.length > 0) {
+                overlapLayer = L.layerGroup(overlapLines).addTo(map);
+                stage4Log.push(`Route overlap: ${edges2} edge${edges2 !== 1 ? 's' : ''} with 2 patrols, ${edges3} edge${edges3 !== 1 ? 's' : ''} with 3+ patrols.`);
+            }
+        }
+
+        // Propagate Stage 4 warnings to banner
+        if (stage4Warnings.length > 0) {
+            stage4Warnings.forEach(w => { if (!pipelineWarnings.includes(w)) pipelineWarnings.push(w); });
+            showBanner('warning', pipelineWarnings.length === 1 ? pipelineWarnings[0] : pipelineWarnings);
+        }
+
+        const t4ms = Math.round(performance.now() - t4);
+        if (stage4Warnings.length > 0 && stage4Status === 'success') stage4Status = 'warning';
+
+        addTraceStage(4, 'Backtracking TSP', stage4Status, [
+            `Patrols with TSP routes: ${tspCount}`,
+            `Patrols stationary (empty zone): ${stationaryCount4}`,
+            `Patrols with direct visit (single node): ${directCount4}`,
+            `Total Dijkstra calls: ${totalDijkstraCalls}`,
+            `Total cache hits: ${totalCacheHits}`,
+            `Status: ${stage4Status === 'success' ? '✅' : '⚠️'} ${stage4Warnings.length > 0 ? stage4Warnings[0] : 'All circuits computed'}`,
+            `Runtime: ${t4ms}ms`
+        ], stage4Log);
+
+        // Pipeline complete
+        const totalMs = Math.round(performance.now() - pipelineStart);
+        document.getElementById('pipeline-summary').textContent =
+            `Pipeline Complete — Total time: ${totalMs}ms | ${tspCount} roaming patrol${tspCount !== 1 ? 's' : ''} | ${stationaryCount4} stationary | ${directCount4} direct visit`;
+
+        const traceBodyEl = document.getElementById('trace-body');
+        if (traceBodyEl) traceBodyEl.scrollTop = traceBodyEl.scrollHeight;
+
         stopPipeline();
 
     } catch (err) {
