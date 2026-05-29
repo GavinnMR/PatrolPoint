@@ -26,10 +26,6 @@ function computeTSP(patrolIdx, si, zone, nodeMap, adjacencyList, dijkstraCache, 
         };
     }
 
-    if (k === 2) {
-        log.push(`2 crime nodes in zone — both visiting sequences are equivalent. First sequence selected.`);
-    }
-
     // nodes[0] = patrol si, nodes[1..k] = zone crime nodes
     const nodes = [si, ...zone];
     const sz = nodes.length; // k + 1
@@ -51,14 +47,12 @@ function computeTSP(patrolIdx, si, zone, nodeMap, adjacencyList, dijkstraCache, 
         const needsCompute = [];
         for (let j = i + 1; j < sz; j++) {
             const key = normalizeEdgeKey(src.id, nodes[j].id);
-            if (dijkstraCache[key] !== undefined) {
-                cacheHits++;
-            } else {
-                needsCompute.push(j);
-            }
+            if (dijkstraCache[key] === undefined) needsCompute.push(j);
         }
 
-        if (needsCompute.length > 0) {
+        if (needsCompute.length === 0 && i + 1 < sz) {
+            cacheHits++; // all pairs from this source were already cached — 1 Dijkstra call avoided
+        } else if (needsCompute.length > 0) {
             dijkstraCalls++;
             const { distances, parents } = runDijkstra(src.id, adjacencyList, nodeMap);
 
@@ -112,6 +106,10 @@ function computeTSP(patrolIdx, si, zone, nodeMap, adjacencyList, dijkstraCache, 
     }
 
     const reachableK = reachable.length - 1; // crime nodes only
+
+    if (reachableK === 2) {
+        log.push(`2 crime nodes in zone — both visiting sequences are equivalent. First sequence selected.`);
+    }
 
     if (reachableK === 0) {
         return {

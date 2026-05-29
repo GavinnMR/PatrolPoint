@@ -121,7 +121,8 @@ function reconstructPath(sourceId, destId, parents) {
     while (curr !== sourceId) {
         curr = parents.get(curr);
         if (curr === null || curr === undefined) return null;
-        path.unshift(curr);
+        path.push(curr);
     }
+    path.reverse(); // O(n) once instead of O(n²) from repeated unshift
     return path;
 }

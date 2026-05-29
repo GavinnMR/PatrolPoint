@@ -883,6 +883,8 @@ async function runPipeline() {
                 `Status: ❌ No reachable crime nodes for any patrol.`,
                 `Runtime: ${Math.round(performance.now() - t4)}ms`
             ], stage4Log);
+            zoneLines.forEach(l => l.remove());
+            zoneLines = [];
             stopPipeline();
             return;
         }
@@ -892,6 +894,7 @@ async function runPipeline() {
         zoneLines = [];
 
         // Overlap tracking — render overlay layer for shared edges
+        let overlapEdges2 = 0, overlapEdges3 = 0;
         if (CONFIG.display.showOverlapColoring && allRenderedPaths.length > 0) {
             const edgeUsage = new Map();
             for (const { path } of allRenderedPaths) {
@@ -902,7 +905,6 @@ async function runPipeline() {
             }
 
             const overlapLines = [];
-            let edges2 = 0, edges3 = 0;
             for (const [key, count] of edgeUsage) {
                 if (count < 2) continue;
                 const [idA, idB] = key.split('|');
@@ -912,12 +914,11 @@ async function runPipeline() {
                 overlapLines.push(L.polyline([[nA.lat, nA.lng], [nB.lat, nB.lng]], {
                     color: overlapColor, weight: 5, opacity: 0.45
                 }));
-                if (count === 2) edges2++; else edges3++;
+                if (count === 2) overlapEdges2++; else overlapEdges3++;
             }
 
             if (overlapLines.length > 0) {
                 overlapLayer = L.layerGroup(overlapLines).addTo(map);
-                stage4Log.push(`Route overlap: ${edges2} edge${edges2 !== 1 ? 's' : ''} with 2 patrols, ${edges3} edge${edges3 !== 1 ? 's' : ''} with 3+ patrols.`);
             }
         }
 
@@ -935,7 +936,8 @@ async function runPipeline() {
             `Patrols stationary (empty zone): ${stationaryCount4}`,
             `Patrols with direct visit (single node): ${directCount4}`,
             `Total Dijkstra calls: ${totalDijkstraCalls}`,
-            `Total cache hits: ${totalCacheHits}`,
+            `Dijkstra calls avoided (cache): ${totalCacheHits}`,
+            `Route overlap: ${overlapEdges2} edge${overlapEdges2 !== 1 ? 's' : ''} with 2 patrols, ${overlapEdges3} edge${overlapEdges3 !== 1 ? 's' : ''} with 3+ patrols`,
             `Status: ${stage4Status === 'success' ? '✅' : '⚠️'} ${stage4Warnings.length > 0 ? stage4Warnings[0] : 'All circuits computed'}`,
             `Runtime: ${t4ms}ms`
         ], stage4Log);
