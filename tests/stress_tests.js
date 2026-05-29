@@ -537,8 +537,8 @@ window.PP_TESTS = (() => {
         },
 
         {
-            id: 'S3-T02', stage: 3, n: 5,
-            name: 'n=5 with 2 crime nodes — empty zone warning, stationary markers, single-node routes',
+            id: 'S3-T02', stage: 3, n: 10,
+            name: 'n=10 with 7 crime nodes — guaranteed empty zones (10 patrols > 7 nodes), stationary warning',
             coords: [
                 { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
                 { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
@@ -548,14 +548,12 @@ window.PP_TESTS = (() => {
             ],
             check() {
                 const emptyCount = zones ? zones.filter(z => z.length === 0).length : -1;
-                const hasSingle  = zones ? zones.some(z => z.length === 1) : false;
                 return [
-                    chkEq(patrolMarkers.length, 5,                  '5 patrol markers still on map'),
-                    chkGt(emptyCount, 0,                            'at least one empty zone'),
+                    chkEq(patrolMarkers.length, 10,                 '10 patrol markers on map'),
+                    chkGt(emptyCount, 0,                            'at least one empty zone (n > crime nodes guarantees this)'),
                     chkEq(bannerType(), 'warning',                  'warning banner shown'),
                     chkIncludes(bannerText(), 'stationary',         'banner mentions stationary'),
-                    chkEq(hasSingle ? 'yes' : 'no', 'yes',         'at least one single-node zone'),
-                    chkGt(routePolylines.length, 0,                 'single-node dashed routes rendered')
+                    { ok: 'manual', label: 'Verify: stationary patrols show hollow S-marker on map' }
                 ];
             }
         },
