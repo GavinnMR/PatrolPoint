@@ -674,7 +674,8 @@ window.PP_TESTS = (() => {
                     chkEq(multiNodesUnique ? 'ok' : 'fail', 'ok',  'no duplicate node IDs within any zone')
                 ];
             }
-        }
+        },
+
         // ══ Stage 4 — Backtracking TSP ══════════════════════════════════════
 
         {
