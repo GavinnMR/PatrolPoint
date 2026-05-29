@@ -155,6 +155,7 @@ function computeHillClimbing(validCandidates, hullAreaM2, n, config) {
     let totalMaxIterWarnings = 0;
     let totalDuplicateWarnings = 0;
     const previousConfigs = [];
+    let perPatrolNoNeighborOccurred = false;
 
     // ── Restart loop ──────────────────────────────────────────────────────────
     for (let restart = 0; restart < config.hillClimbing.restarts; restart++) {
@@ -185,6 +186,7 @@ function computeHillClimbing(validCandidates, hullAreaM2, n, config) {
 
                 if (neighbors.length === 0) {
                     log.push(`  i${iteration} P${siIdx + 1}(${si.id}): no neighbors within R=${Math.round(localR)}m`);
+                    perPatrolNoNeighborOccurred = true;
                     continue;
                 }
                 anyHadNeighbor = true;
@@ -252,6 +254,8 @@ function computeHillClimbing(validCandidates, hullAreaM2, n, config) {
     log.push(`\nBest: restart ${bestRestartIdx}, min pairwise dist = ${Math.round(bestMinDist)}m`);
 
     // Build warning messages for status
+    if (perPatrolNoNeighborOccurred)
+        warnings.push('Some patrols had no unoccupied neighbors within radius R during hill climbing — those patrols skipped affected iterations.');
     if (totalRadiusExpansions > 0)
         warnings.push(`Radius R expanded ${totalRadiusExpansions} time(s) due to patrols with no unoccupied neighbors.`);
     if (totalMaxIterWarnings > 0)

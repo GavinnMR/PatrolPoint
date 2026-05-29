@@ -560,9 +560,11 @@ async function runPipeline() {
             showBanner('warning', r1.message);
 
             addTraceStage(1, 'Brute Force Convex Hull', 'warning', [
-                `Input: ${P.length} incident coordinates`,
+                `Input: ${r1.data.filteredCount ?? P.length} incident coordinates after outlier removal`,
                 `Outliers flagged: ${(r1.data.outlierIndices || []).length}`,
                 `Linear handler: ${r1.data.linearHandler.reason}`,
+                `Line length: ${Math.round(r1.data.linearHandler.lineLength ?? 0)}m`,
+                `Patrol spacing: ~${Math.round(r1.data.linearHandler.patrolSpacing ?? 0)}m`,
                 `Patrol positions placed: ${positions.length}`,
                 `Status: ⚠️ ${r1.message}`,
                 `Runtime: ${t1ms}ms`
@@ -576,7 +578,7 @@ async function runPipeline() {
         // "Outlier removal reduced below minimum" — warning with no hull
         if (!r1.data.hull) {
             addTraceStage(1, 'Brute Force Convex Hull', 'warning', [
-                `Input: ${P.length} incident coordinates`,
+                `Input: ${r1.data.filteredCount ?? P.length} incident coordinates after outlier removal`,
                 `Outliers flagged: ${(r1.data.outlierIndices || []).length}`,
                 `Status: ⚠️ ${r1.message}`,
                 `Runtime: ${t1ms}ms`
@@ -611,9 +613,10 @@ async function runPipeline() {
         }
 
         addTraceStage(1, 'Brute Force Convex Hull', r1.status, [
-            `Input: ${P.length} incident coordinates`,
+            `Input: ${r1.data.filteredCount ?? P.length} incident coordinates after outlier removal`,
             `Outliers flagged: ${(r1.data.outlierIndices || []).length}`,
             `Collinearity check: passed`,
+            `Valid hull edges found: ${r1.data.validEdgesCount ?? r1.data.hull.length}`,
             `Hull vertices: ${r1.data.hull.length}`,
             `Hull area: ${Math.round(r1.data.hullAreaM2)} m²`,
             `Area threshold: ${r1.warnings.some(w => w.includes('clustered')) ? 'warning' : 'passed'}`,
@@ -761,14 +764,16 @@ async function runPipeline() {
         });
 
         // Zone assignment lines — original crime marker position → patrol position
-        for (let i = 0; i < S_star.length; i++) {
-            for (const sn of zones[i]) {
-                const p = P[sn.pIdx];
-                zoneLines.push(
-                    L.polyline([[p.lat, p.lng], [S_star[i].lat, S_star[i].lng]], {
-                        color: S_star[i].color, weight: 1, opacity: 0.4, dashArray: '4 6'
-                    }).addTo(map)
-                );
+        if (CONFIG.display.showZoneLines) {
+            for (let i = 0; i < S_star.length; i++) {
+                for (const sn of zones[i]) {
+                    const p = P[sn.pIdx];
+                    zoneLines.push(
+                        L.polyline([[p.lat, p.lng], [S_star[i].lat, S_star[i].lng]], {
+                            color: S_star[i].color, weight: 1, opacity: 0.4, dashArray: '4 6'
+                        }).addTo(map)
+                    );
+                }
             }
         }
 
@@ -904,7 +909,7 @@ async function runPipeline() {
                     routePolylines.push(decorator);
                 }
 
-                allRenderedPaths.push({ path, color });
+                allRenderedPaths.push({ path, color, patrolIdx: i });
             }
 
             await yieldControl();
@@ -930,25 +935,28 @@ async function runPipeline() {
         // Overlap tracking — render overlay layer for shared edges
         let overlapEdges2 = 0, overlapEdges3 = 0;
         if (CONFIG.display.showOverlapColoring && allRenderedPaths.length > 0) {
-            const edgeUsage = new Map();
-            for (const { path } of allRenderedPaths) {
+            // Track which distinct patrol indices use each edge — Set deduplicates
+            // same-patrol multi-leg traversals so only cross-patrol sharing triggers overlap
+            const edgePatrols = new Map();
+            for (const { path, patrolIdx } of allRenderedPaths) {
                 for (let e = 0; e < path.length - 1; e++) {
                     const key = normalizeEdgeKey(path[e], path[e + 1]);
-                    edgeUsage.set(key, (edgeUsage.get(key) || 0) + 1);
+                    if (!edgePatrols.has(key)) edgePatrols.set(key, new Set());
+                    edgePatrols.get(key).add(patrolIdx);
                 }
             }
 
             const overlapLines = [];
-            for (const [key, count] of edgeUsage) {
-                if (count < 2) continue;
+            for (const [key, patrols] of edgePatrols) {
+                if (patrols.size < 2) continue;
                 const [idA, idB] = key.split('|');
                 const nA = nodeMap.get(idA), nB = nodeMap.get(idB);
                 if (!nA || !nB) continue;
-                const overlapColor = count === 2 ? '#FFA500' : '#FF0000';
+                const overlapColor = patrols.size === 2 ? '#FFA500' : '#FF0000';
                 overlapLines.push(L.polyline([[nA.lat, nA.lng], [nB.lat, nB.lng]], {
                     color: overlapColor, weight: 7, opacity: 0.55
                 }));
-                if (count === 2) overlapEdges2++; else overlapEdges3++;
+                if (patrols.size === 2) overlapEdges2++; else overlapEdges3++;
             }
 
             if (overlapLines.length > 0) {

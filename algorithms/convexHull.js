@@ -39,7 +39,7 @@ function computeConvexHull(points, n, config) {
                 status: 'warning',
                 message: 'Outlier removal reduced incident points below minimum required for danger zone computation. Either plot more points or adjust the outlier sensitivity in Settings.',
                 warnings,
-                data: { outlierIndices, traceLog: log, linearHandler: { triggered: false } }
+                data: { filteredCount: filtered.length, outlierIndices, traceLog: log, linearHandler: { triggered: false } }
             };
         }
     } else {
@@ -119,7 +119,7 @@ function computeConvexHull(points, n, config) {
                 status: 'error',
                 message: 'Danger zone boundary could not be constructed. Please try different incident coordinates.',
                 warnings,
-                data: { outlierIndices, linearHandler: { triggered: false }, traceLog: log }
+                data: { filteredCount: filtered.length, outlierIndices, linearHandler: { triggered: false }, traceLog: log }
             };
         }
         ordered.push(remaining.splice(nextIdx, 1)[0]);
@@ -155,7 +155,7 @@ function computeConvexHull(points, n, config) {
             status: 'error',
             message: 'Danger zone has zero area. Please try different incident coordinates.',
             warnings,
-            data: { outlierIndices, linearHandler: { triggered: false }, traceLog: log }
+            data: { filteredCount: filtered.length, outlierIndices, linearHandler: { triggered: false }, traceLog: log }
         };
     }
 
@@ -183,20 +183,22 @@ function computeConvexHull(points, n, config) {
             ? 'Danger zone computed — incident coordinates are tightly clustered.'
             : 'Danger zone boundary computed successfully.',
         warnings,
-        data: { hull, hullAreaDeg, hullAreaM2, outlierIndices, linearHandler: { triggered: false }, traceLog: log }
+        data: { hull, hullAreaDeg, hullAreaM2, filteredCount: filtered.length, validEdgesCount: validEdges.length, outlierIndices, linearHandler: { triggered: false }, traceLog: log }
     };
 }
 
 function makeLinearResult(points, n, reason, message, warnings, outlierIndices, log) {
-    const positions = computeLinearPositions(points, n);
-    log.push(`Linear handler: ${positions.length} patrol positions placed along line`);
+    const { positions, lineLength } = computeLinearPositions(points, n);
+    const patrolSpacing = lineLength / (positions.length + 1);
+    log.push(`Linear handler: line length ${Math.round(lineLength)}m, ${positions.length} patrol position${positions.length !== 1 ? 's' : ''} placed, spacing ~${Math.round(patrolSpacing)}m`);
     return {
         status: 'warning',
         message,
         warnings,
         data: {
+            filteredCount: points.length,
             outlierIndices,
-            linearHandler: { triggered: true, reason, patrolPositions: positions },
+            linearHandler: { triggered: true, reason, patrolPositions: positions, lineLength, patrolSpacing },
             traceLog: log
         }
     };
@@ -213,6 +215,8 @@ function computeLinearPositions(points, n) {
         return pp - pq;
     });
     const first = sorted[0], last = sorted[sorted.length - 1];
+    // L = total line length via Haversine — spec-required intermediate value
+    const lineLength = haversineDistance(first.lat, first.lng, last.lat, last.lng);
 
     // position_k = (k × L) / (n + 1) — equal intervals with buffer on both ends
     const positions = [];
@@ -223,5 +227,5 @@ function computeLinearPositions(points, n) {
             lng: first.lng + t * (last.lng - first.lng)
         });
     }
-    return positions;
+    return { positions, lineLength };
 }

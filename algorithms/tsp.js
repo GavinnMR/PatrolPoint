@@ -50,9 +50,10 @@ function computeTSP(patrolIdx, si, zone, nodeMap, adjacencyList, dijkstraCache, 
             if (dijkstraCache[key] === undefined) needsCompute.push(j);
         }
 
-        if (needsCompute.length === 0 && i + 1 < sz) {
-            cacheHits++; // all pairs from this source were already cached — 1 Dijkstra call avoided
-        } else if (needsCompute.length > 0) {
+        // Count pairs for this source that were served from cache
+        cacheHits += (sz - i - 1) - needsCompute.length;
+
+        if (needsCompute.length > 0) {
             dijkstraCalls++;
             const { distances, parents } = runDijkstra(src.id, adjacencyList, nodeMap);
 
