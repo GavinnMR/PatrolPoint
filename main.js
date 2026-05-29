@@ -738,9 +738,10 @@ async function runPipeline() {
             if (crimeMarkers[pIdx]) crimeMarkers[pIdx].setIcon(excludedNodeIcon());
         });
 
-        // Empty zone patrol markers → stationary style
+        // Empty and single-node zone patrol markers → stationary style
+        // Single-node patrols have no circuit — hollow S marker reflects that accurately
         zoneTypes.forEach((type, i) => {
-            if (type === 'empty') {
+            if (type === 'empty' || type === 'single') {
                 patrolMarkers[i].setIcon(makePatrolIcon(S_star[i].color, i + 1, true));
             }
         });
@@ -751,10 +752,8 @@ async function runPipeline() {
             const count = zones[i].length;
             const countStr = `${count} node${count !== 1 ? 's' : ''}`;
             let text;
-            if (deploymentMode !== 'roaming' || type === 'empty') {
+            if (deploymentMode !== 'roaming' || type === 'empty' || type === 'single') {
                 text = `Patrol ${i + 1} — Stationary · ${countStr}`;
-            } else if (type === 'single') {
-                text = `Patrol ${i + 1} — Roaming · ${countStr} (direct visit)`;
             } else {
                 text = `Patrol ${i + 1} — Roaming · ${countStr}`;
             }
