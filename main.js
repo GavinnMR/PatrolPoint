@@ -763,7 +763,7 @@ async function runPipeline() {
                 const sn = zones[i][0];
                 routePolylines.push(
                     L.polyline([[S_star[i].lat, S_star[i].lng], [sn.lat, sn.lng]], {
-                        color: S_star[i].color, weight: 2, opacity: 0.8, dashArray: '6 8'
+                        color: S_star[i].color, weight: 4, opacity: 0.9, dashArray: '8 10'
                     }).addTo(map)
                 );
             }
@@ -863,8 +863,14 @@ async function runPipeline() {
                     return [nd.lat, nd.lng];
                 });
 
+                // White casing underneath makes the colored route stand out on OSM tiles
+                const casing = L.polyline(latLngs, {
+                    color: '#ffffff', weight: 7, opacity: 0.75, lineCap: 'round', lineJoin: 'round'
+                }).addTo(map);
+                routePolylines.push(casing);
+
                 const polyline = L.polyline(latLngs, {
-                    color, weight: 3, opacity: 0.85
+                    color, weight: 4, opacity: 0.95, lineCap: 'round', lineJoin: 'round'
                 }).addTo(map);
                 routePolylines.push(polyline);
 
@@ -874,9 +880,9 @@ async function runPipeline() {
                             offset: '10%',
                             repeat: '20%',
                             symbol: L.Symbol.arrowHead({
-                                pixelSize: 6,
+                                pixelSize: 9,
                                 polygon: false,
-                                pathOptions: { color, weight: 2, opacity: 0.9 }
+                                pathOptions: { color, weight: 2, opacity: 1.0 }
                             })
                         }]
                     }).addTo(map);
@@ -925,7 +931,7 @@ async function runPipeline() {
                 if (!nA || !nB) continue;
                 const overlapColor = count === 2 ? '#FFA500' : '#FF0000';
                 overlapLines.push(L.polyline([[nA.lat, nA.lng], [nB.lat, nB.lng]], {
-                    color: overlapColor, weight: 5, opacity: 0.45
+                    color: overlapColor, weight: 7, opacity: 0.55
                 }));
                 if (count === 2) overlapEdges2++; else overlapEdges3++;
             }
