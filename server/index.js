@@ -5,6 +5,7 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import authRouter from './routes/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,9 @@ app.use(express.static(path.join(__dirname, '..', 'client')));
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: '2.0' });
 });
+
+// Routes
+app.use('/api/auth', authRouter);
 
 // Catch-all: serve frontend for any non-API GET
 app.get(/^(?!\/api).*/, (req, res) => {
