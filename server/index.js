@@ -6,6 +6,7 @@ import { WebSocketServer } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRouter from './routes/auth.js';
+import networkRouter from './routes/network.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +33,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRouter);
+app.use('/api/network', networkRouter);
 
 // Catch-all: serve frontend for any non-API GET
 app.get(/^(?!\/api).*/, (req, res) => {
