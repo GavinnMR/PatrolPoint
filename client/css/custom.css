@@ -1,0 +1,98 @@
+/* PatrolPoint V2 — custom overrides on top of Tailwind */
+
+[x-cloak] { display: none !important; }
+
+#map { cursor: crosshair; }
+
+/* Leaflet z-index fixes */
+.leaflet-top, .leaflet-bottom { z-index: 800; }
+.leaflet-pane { z-index: 400; }
+
+/* Crime node marker */
+.crime-marker {
+    width: 14px;
+    height: 14px;
+    background: #ef4444;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    cursor: pointer;
+}
+.crime-marker.outlier {
+    background: #f97316;
+    border-color: #fbbf24;
+}
+.crime-marker.excluded {
+    background: #9ca3af;
+    border-color: #e5e7eb;
+}
+.crime-marker-label {
+    font-size: 9px;
+    font-family: monospace;
+    white-space: nowrap;
+    color: #374151;
+    margin-top: 2px;
+    text-align: center;
+    text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+}
+
+/* Patrol marker (roaming) */
+.patrol-marker-roaming {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    border: 2px solid rgba(255,255,255,0.8);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    cursor: default;
+}
+
+/* Patrol marker (stationary) */
+.patrol-marker-stationary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: default;
+}
+.patrol-pin {
+    width: 28px;
+    height: 36px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.patrol-pin svg { width: 28px; height: 36px; }
+.patrol-pin-label {
+    position: absolute;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    top: 7px;
+}
+.patrol-pulse-ring {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+/* Scrollbar styling for trace panel */
+#trace-content::-webkit-scrollbar { width: 4px; }
+#trace-content::-webkit-scrollbar-track { background: transparent; }
+#trace-content::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+
+/* Print styles */
+@media print {
+    .fixed, button, #trace-content,
+    [x-show="showTracePanel"],
+    [x-show="showSettings"] { display: none !important; }
+    #map { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+}
