@@ -50,26 +50,31 @@ export async function getOrFetchNetwork(barangayName) {
     const { roadData, boundaryData } = await fetchBarangayData(barangayName, bbox);
     const processed = processOverpassResponse(roadData, boundaryData);
 
-    await saveRoadNetwork({
-        barangay_name: barangayName,
-        city: 'Quezon City',
-        osm_relation_id: processed.osmRelationId,
-        nodes: processed.nodes,
-        edges: processed.edges,
-        boundary: processed.boundary,
-        adjacency_list: processed.adjacencyList,
-        intersection_node_ids: processed.intersectionNodeIds,
-        node_count: processed.nodeCount,
-        edge_count: processed.edgeCount,
-        intersection_count: processed.intersectionCount,
-        bbox_south: processed.bbox.south,
-        bbox_west: processed.bbox.west,
-        bbox_north: processed.bbox.north,
-        bbox_east: processed.bbox.east
-    });
+    try {
+        await saveRoadNetwork({
+            barangay_name: barangayName,
+            city: 'Quezon City',
+            osm_relation_id: processed.osmRelationId,
+            nodes: processed.nodes,
+            edges: processed.edges,
+            boundary: processed.boundary,
+            adjacency_list: processed.adjacencyList,
+            intersection_node_ids: processed.intersectionNodeIds,
+            node_count: processed.nodeCount,
+            edge_count: processed.edgeCount,
+            intersection_count: processed.intersectionCount,
+            bbox_south: processed.bbox.south,
+            bbox_west: processed.bbox.west,
+            bbox_north: processed.bbox.north,
+            bbox_east: processed.bbox.east
+        });
+        console.log(`Network cached to database: ${barangayName}`);
+    } catch (dbErr) {
+        console.error(`Failed to cache network to database for ${barangayName}:`, dbErr.message);
+        // Non-fatal — in-memory cache still serves this request and subsequent ones
+    }
 
     networkCache[barangayName] = processed;
-    console.log(`Network cached to database: ${barangayName}`);
 
     return { ...processed, fromCache: false };
 }

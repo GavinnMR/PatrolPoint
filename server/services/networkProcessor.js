@@ -86,6 +86,10 @@ export function processOverpassResponse(roadData, boundaryData) {
         osmToInternalId.set(node.id, id);
     });
 
+    if (Object.keys(nodeMap).length === 0) {
+        throw new Error(`Overpass returned no road nodes for this barangay. Check the barangay name or bounding box.`);
+    }
+
     // Step 3-4: Extract highway ways (exclude steps), build edges with deduplication
     const ways = elements.filter(e =>
         e.type === 'way' &&
@@ -154,10 +158,6 @@ export function processOverpassResponse(roadData, boundaryData) {
     const nodeCount = Object.keys(nodeMap).length;
     const edgeCount = edges.length;
     const intersectionCount = intersectionNodeIds.length;
-
-    if (nodeCount === 0) {
-        throw new Error(`Overpass returned no road nodes for this barangay. Check the barangay name or bounding box.`);
-    }
 
     console.log(`Network processed: ${nodeCount} nodes, ${edgeCount} edges, ${intersectionCount} intersection nodes, ${boundary.length} boundary vertices`);
 

@@ -9,6 +9,7 @@ router.get('/:barangay', async (req, res) => {
     try {
         const { barangay } = req.params;
 
+        // TODO Build Step 6: replace with validateBarangay(barangay) from middleware/sanitize.js
         if (!barangay || !/^[a-zA-Z0-9 ]{1,255}$/.test(barangay)) {
             return res.status(400).json({ error: 'Invalid barangay name.' });
         }
