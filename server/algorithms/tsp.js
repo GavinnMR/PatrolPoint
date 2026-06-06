@@ -278,7 +278,7 @@ export function runTSP(
             totalDist = (D[sId]?.[crimeIds[0]] ?? 0) +
                         (D[crimeIds[0]]?.[crimeIds[1]] ?? 0) +
                         (D[crimeIds[1]]?.[sId] ?? 0);
-            log.push(`Patrol ${patrol.id}: k=2 — both visiting sequences are equivalent. First sequence selected.`);
+            log.push(`Patrol ${patrol.id}: 2 crime nodes in zone — both visiting sequences are equivalent. First sequence selected.`);
 
         } else if (actualK > fallbackThreshold) {
             const result = nearestNeighborTSP(sId, crimeIds, D);
