@@ -92,10 +92,10 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     const { incidents, n, mode } = data;
 
     const {
-        previousHull           = null,
-        previousValidCandidates = null,
-        previousIncidents       = null,
-        previousHullAreaM2      = null
+        hull:            previousHull            = null,
+        validCandidates: previousValidCandidates  = null,
+        incidents:       previousIncidents        = null,
+        hullAreaM2:      previousHullAreaM2       = null
     } = previousState;
 
     // Build the networkData object that Stage 1 expects
