@@ -8,6 +8,9 @@ export function validateIncidents(incidents) {
     if (incidents.length > 300) throw new Error('Maximum 300 incident coordinates allowed.');
     for (let i = 0; i < incidents.length; i++) {
         const inc = incidents[i];
+        if (!inc || typeof inc !== 'object') {
+            throw new Error(`Incident ${i + 1}: each element must be an object with lat and lng.`);
+        }
         if (typeof inc.lat !== 'number' || typeof inc.lng !== 'number') {
             throw new Error(`Incident ${i + 1}: lat and lng must be numbers.`);
         }
@@ -52,6 +55,9 @@ export function validateConfig(config) {
         if (hc.adaptiveMaxRestarts !== undefined && (typeof hc.adaptiveMaxRestarts !== 'number' || hc.adaptiveMaxRestarts < 1 || hc.adaptiveMaxRestarts > 100)) {
             throw new Error('hillClimbing.adaptiveMaxRestarts must be between 1 and 100.');
         }
+        if (hc.synchronousMode !== undefined && typeof hc.synchronousMode !== 'boolean') {
+            throw new Error('hillClimbing.synchronousMode must be a boolean.');
+        }
     }
 
     const ch = config.convexHull;
@@ -62,6 +68,9 @@ export function validateConfig(config) {
         if (ch.areaThresholdDivisor !== undefined && (typeof ch.areaThresholdDivisor !== 'number' || ch.areaThresholdDivisor < 1 || ch.areaThresholdDivisor > 1000)) {
             throw new Error('convexHull.areaThresholdDivisor must be between 1 and 1000.');
         }
+        if (ch.collinearityEpsilon !== undefined && (typeof ch.collinearityEpsilon !== 'number' || ch.collinearityEpsilon <= 0)) {
+            throw new Error('convexHull.collinearityEpsilon must be a positive number.');
+        }
     }
 
     const tsp = config.tsp;
@@ -71,6 +80,16 @@ export function validateConfig(config) {
         }
         if (tsp.nearestNeighborFallbackThreshold !== undefined && (typeof tsp.nearestNeighborFallbackThreshold !== 'number' || tsp.nearestNeighborFallbackThreshold < 1 || tsp.nearestNeighborFallbackThreshold > 50)) {
             throw new Error('tsp.nearestNeighborFallbackThreshold must be between 1 and 50.');
+        }
+    }
+
+    const snap = config.snapping;
+    if (snap) {
+        if (snap.boundingBoxEpsilon !== undefined && (typeof snap.boundingBoxEpsilon !== 'number' || snap.boundingBoxEpsilon <= 0)) {
+            throw new Error('snapping.boundingBoxEpsilon must be a positive number.');
+        }
+        if (snap.initialSearchRadiusMeters !== undefined && (typeof snap.initialSearchRadiusMeters !== 'number' || snap.initialSearchRadiusMeters <= 0)) {
+            throw new Error('snapping.initialSearchRadiusMeters must be a positive number.');
         }
     }
 }

@@ -82,7 +82,6 @@ router.post('/pdf', async (req, res) => {
         doc.moveDown(0.5);
 
         const colX = { id: 50, lat: 120, lng: 220, zoneSize: 320, circuit: 390, status: 470 };
-        const rowH = 18;
         const tableTop = doc.y;
 
         // Header row
@@ -150,8 +149,11 @@ router.post('/pdf', async (req, res) => {
     } catch (err) {
         console.error('PDF export error:', err);
         if (!res.headersSent) {
-            res.status(err.message.includes('not found') || err.message.includes('permission') ? 404 : 400)
-               .json({ error: err.message });
+            const msg = err.message || '';
+            const status = (msg.includes('not found') || msg.includes('permission')) ? 404
+                : (msg.includes('sessionId') || msg.includes('Request body')) ? 400
+                : 500;
+            res.status(status).json({ error: msg || 'PDF generation failed. Please try again.' });
         }
     }
 });
@@ -203,8 +205,11 @@ router.post('/csv', async (req, res) => {
         res.send(csv);
     } catch (err) {
         console.error('CSV export error:', err);
-        res.status(err.message.includes('not found') || err.message.includes('permission') ? 404 : 400)
-           .json({ error: err.message });
+        const msg = err.message || '';
+        const status = (msg.includes('not found') || msg.includes('permission')) ? 404
+            : (msg.includes('sessionId') || msg.includes('Request body')) ? 400
+            : 500;
+        res.status(status).json({ error: msg || 'CSV generation failed. Please try again.' });
     }
 });
 
