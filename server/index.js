@@ -7,6 +7,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import authRouter from './routes/auth.js';
 import networkRouter from './routes/network.js';
+import sessionsRouter from './routes/sessions.js';
+import exportRouter from './routes/export.js';
+import { apiLimiter } from './middleware/rateLimit.js';
 import { handlePipelineConnection } from './websocket/pipelineSocket.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,6 +30,9 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'client')));
 
+// Rate limiter — applied to all /api routes only
+app.use('/api', apiLimiter);
+
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: '2.0' });
@@ -35,6 +41,8 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/network', networkRouter);
+app.use('/api/sessions', sessionsRouter);
+app.use('/api/export', exportRouter);
 
 // Catch-all: serve frontend for any non-API GET
 app.get(/^(?!\/api).*/, (req, res) => {
