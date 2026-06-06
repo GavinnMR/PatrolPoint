@@ -17,7 +17,14 @@ export async function getOrFetchNetwork(barangayName) {
     }
 
     // 2. Database hit — warm start after server restart
-    const dbRecord = await getRoadNetwork(barangayName);
+    // Catch DB errors (host unreachable, pool timeout, etc.) and fall through to Overpass
+    // so the service stays available even when the database is temporarily down.
+    let dbRecord = null;
+    try {
+        dbRecord = await getRoadNetwork(barangayName);
+    } catch (dbErr) {
+        console.warn(`Database unavailable for "${barangayName}" (${dbErr.message}) — falling back to Overpass API`);
+    }
     if (dbRecord) {
         console.log(`Network cache hit (database): ${barangayName}`);
         const data = {
