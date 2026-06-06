@@ -242,6 +242,7 @@ export function runZoneAssignment(
         if (seenSnappedIds.has(node.snappedNodeId)) {
             mergedCount++;
             log.push(`Crime node ${node.crimeId} merged with nearby incident at node ${node.snappedNodeId} — duplicate snapped position.`);
+            warnings.push(`Crime node ${node.crimeId} merged with nearby incident at node ${node.snappedNodeId}.`);
         } else {
             seenSnappedIds.set(node.snappedNodeId, node);
             deduplicatedNodes.push(node);
