@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import authRouter from './routes/auth.js';
 import networkRouter from './routes/network.js';
+import { handlePipelineConnection } from './websocket/pipelineSocket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,9 +41,9 @@ app.get(/^(?!\/api).*/, (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'client', 'index.html'));
 });
 
-// WebSocket connection handler (pipelineSocket wired in later steps)
+// WebSocket connection handler — delegates to pipelineSocket.js
 wss.on('connection', (ws, req) => {
-    ws.send(JSON.stringify({ type: 'connected' }));
+    handlePipelineConnection(ws, req);
 });
 
 const PORT = process.env.PORT || 3000;
