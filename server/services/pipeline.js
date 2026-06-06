@@ -87,7 +87,7 @@ function yieldToEventLoop() {
 //
 // Returns { previousState } — updated state for the next pipeline run on this connection.
 export async function runPipeline(networkData, data, pushMessage, isCancelled, previousState = {}) {
-    const pipelineStartMs = Date.now();
+    const pipelineStartMs = performance.now();
     const config          = mergeConfig(data.config);
     const { incidents, n, mode } = data;
 
@@ -115,7 +115,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     if (isCancelled()) return { previousState };
 
     pushMessage({ type: 'stage_start', data: { stage: 1, name: 'Brute Force Convex Hull' } });
-    const stage1StartMs = Date.now();
+    const stage1StartMs = performance.now();
 
     let hull1Result;
     try {
@@ -130,7 +130,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         return { previousState };
     }
 
-    const stage1RuntimeMs = Date.now() - stage1StartMs;
+    const stage1RuntimeMs = performance.now() - stage1StartMs;
     const s1Data          = hull1Result.data;
 
     // Forward all Stage 1 warnings to the client
@@ -162,10 +162,11 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     // ── Linear handler: pipeline stops after Stage 1 ──────────────────────────
     if (s1Data.linearHandler?.triggered) {
         const linearPositions = (s1Data.linearHandler.patrolPositions || []).map((pos, i) => ({
-            id:    `s${i + 1}`,
-            lat:   pos.lat,
-            lng:   pos.lng,
-            color: PATROL_COLORS[i % PATROL_COLORS.length]
+            id:     `s${i + 1}`,
+            nodeId: null,  // linear handler places patrols geometrically — no road node
+            lat:    pos.lat,
+            lng:    pos.lng,
+            color:  PATROL_COLORS[i % PATROL_COLORS.length]
         }));
 
         pushMessage({
@@ -176,7 +177,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
                 zones:              null,
                 routes:             null,
                 trace:              { linearHandler: true, message: hull1Result.message },
-                totalRuntimeMs:     Date.now() - pipelineStartMs,
+                totalRuntimeMs:     performance.now() - pipelineStartMs,
                 verificationReport: null
             }
         });
@@ -203,7 +204,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
 
     pushMessage({ type: 'stage_start', data: { stage: 2, name: 'Hill Climbing' } });
-    const stage2StartMs = Date.now();
+    const stage2StartMs = performance.now();
 
     let hill2Result;
     try {
@@ -215,7 +216,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
     }
 
-    const stage2RuntimeMs = Date.now() - stage2StartMs;
+    const stage2RuntimeMs = performance.now() - stage2StartMs;
     const s2Data          = hill2Result.data;
 
     for (const w of (hill2Result.warnings || [])) {
@@ -251,7 +252,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
 
     pushMessage({ type: 'stage_start', data: { stage: 3, name: 'Zone Assignment' } });
-    const stage3StartMs = Date.now();
+    const stage3StartMs = performance.now();
 
     // dijkstraCache is initialized here and shared with Stage 4 — many pairs computed
     // in Stage 3 are reused in Stage 4, avoiding redundant Dijkstra calls.
@@ -269,7 +270,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
     }
 
-    const stage3RuntimeMs = Date.now() - stage3StartMs;
+    const stage3RuntimeMs = performance.now() - stage3StartMs;
     const s3Data          = zone3Result.data;
 
     for (const w of (zone3Result.warnings || [])) {
@@ -311,7 +312,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
 
         pushMessage({ type: 'stage_start', data: { stage: 4, name: 'Backtracking TSP' } });
-        const stage4StartMs = Date.now();
+        const stage4StartMs = performance.now();
 
         let tsp4Result;
         try {
@@ -330,7 +331,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
             return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
         }
 
-        const stage4RuntimeMs = Date.now() - stage4StartMs;
+        const stage4RuntimeMs = performance.now() - stage4StartMs;
         const s4Data          = tsp4Result.data;
 
         for (const w of (tsp4Result.warnings || [])) {
@@ -364,11 +365,16 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
 
     // ── Post-pipeline verification ────────────────────────────────────────────
     // Run verifyAll after all stages complete. Non-fatal if verifier itself crashes.
+    // Pass only non-outlier incidents — outlier points were intentionally excluded from
+    // hull computation and lie outside the hull, so verifyConvexHull would give a false
+    // failure if raw incidents (which include outliers) were passed instead.
     let verificationReport = null;
     try {
+        const outlierIndices = new Set(s1Data.outlierIndices || []);
+        const incidentsForVerification = incidents.filter((_, i) => !outlierIndices.has(i));
         verificationReport = verifyAll({
             hull,
-            incidents,
+            incidents: incidentsForVerification,
             patrols,
             validCandidates,
             zones,
@@ -388,7 +394,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
             zones,
             routes,
             trace:              { stagesComplete: mode === 'roaming' ? 4 : 3 },
-            totalRuntimeMs:     Date.now() - pipelineStartMs,
+            totalRuntimeMs:     performance.now() - pipelineStartMs,
             verificationReport
         }
     });
