@@ -335,7 +335,13 @@ export function verifyAll(pipelineResult) {
     if (patrols && zones) {
         for (let pi = 0; pi < patrols.length; pi++) {
             const route = (routes || []).find(r => r.patrolIndex === pi);
-            const k     = zones[pi]?.length ?? 0;
+            // Derive k from the route's actual sequence, not zones[pi].length.
+            // tsp.js never mutates zones[pi] — it filters unreachable crime nodes into a
+            // local reachable subset and only those appear in route.sequence. Using
+            // zones[pi].length would cause false pass:false when any node is unreachable.
+            const k = route && !route.isEmpty && !route.isSingleNode
+                ? Math.max(0, route.sequence.length - 2)
+                : (zones[pi]?.length ?? 0);
 
             if (!route) {
                 // Patrol has no route entry — stationary (empty zone) or stationary-mode run
