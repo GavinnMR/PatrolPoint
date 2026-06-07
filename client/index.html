@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PatrolPoint V2</title>
 
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS — configure dark mode and patrol color palette -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -27,14 +27,18 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
+  <!-- Leaflet.markercluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
   <!-- Custom CSS -->
   <link rel="stylesheet" href="/css/custom.css" />
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-screen overflow-hidden"
       x-data="patrolPointApp()">
 
-  <!-- Connection loading overlay -->
-  <div x-show="!wsConnected"
+  <!-- Connection / loading overlay — shown until WS connects and road network loads -->
+  <div x-show="!wsConnected" x-cloak
        class="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-900/80">
     <div class="bg-white dark:bg-gray-800 rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
       <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -42,77 +46,113 @@
     </div>
   </div>
 
-  <!-- Main layout -->
-  <div class="flex h-screen" x-show="wsConnected">
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Main layout                                                              -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <div class="flex h-screen">
 
-    <!-- Map container -->
+    <!-- ── Map container ──────────────────────────────────────────────────── -->
     <div class="flex-1 relative">
       <div id="map" class="w-full h-full z-0"></div>
 
       <!-- Map overlays -->
+
+      <!-- Reset View + OSM Graph toggle (top-left, offset to not cover Leaflet zoom controls) -->
       <div class="absolute top-3 left-12 z-[1000] flex flex-col gap-2">
         <button @click="resetView()"
-                class="bg-white dark:bg-gray-800 text-sm px-3 py-1.5 rounded shadow hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                class="bg-white dark:bg-gray-800 text-sm px-3 py-1.5 rounded shadow hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200">
           Reset View
         </button>
         <button @click="toggleOsmGraph()"
-                :class="osmGraphMode ? 'bg-blue-500 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200'"
-                class="text-sm px-3 py-1.5 rounded shadow border border-gray-200 dark:border-gray-600">
+                :class="osmGraphMode
+                  ? 'bg-blue-500 text-white border-blue-500'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600'"
+                class="text-sm px-3 py-1.5 rounded shadow border">
           OSM Graph
         </button>
       </div>
 
-      <!-- Live coordinate display -->
+      <!-- Minimap container (bottom-right) — initialized by map.js in Part 9 -->
+      <div id="minimap"
+           class="absolute bottom-3 right-3 z-[1000] w-[150px] h-[150px] rounded-lg shadow-lg border border-gray-300 dark:border-gray-600 overflow-hidden bg-gray-100 dark:bg-gray-800">
+        <!-- Leaflet minimap renders here -->
+      </div>
+
+      <!-- Live coordinate display (bottom-left, above legend) -->
       <div id="coord-display"
            class="absolute bottom-8 left-3 z-[1000] bg-white/80 dark:bg-gray-800/80 text-xs px-2 py-1 rounded font-mono hidden">
         Lat: -- &nbsp; Lng: --
       </div>
 
-      <!-- Map legend -->
+      <!-- Map legend (bottom-left) -->
       <div class="absolute bottom-3 left-3 z-[1000] bg-white/90 dark:bg-gray-800/90 rounded-lg shadow p-3 text-xs space-y-1.5 max-w-[180px]">
         <p class="font-semibold text-gray-700 dark:text-gray-300 mb-1">Legend</p>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></span><span>Crime incident</span></div>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0"></span><span>Roaming patrol</span></div>
-        <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border-2 border-blue-500 flex-shrink-0"></span><span>Stationary patrol</span></div>
-        <div class="flex items-center gap-2"><span class="w-6 border-t-2 border-dashed border-blue-400 flex-shrink-0"></span><span>Zone assignment</span></div>
-        <div class="flex items-center gap-2"><span class="w-6 border-t-2 border-blue-500 flex-shrink-0"></span><span>Patrol route</span></div>
-        <div class="flex items-center gap-2"><span class="w-6 border-t-2 border-orange-400 flex-shrink-0"></span><span>2-patrol overlap</span></div>
-        <div class="flex items-center gap-2"><span class="w-6 border-t-2 border-red-500 flex-shrink-0"></span><span>3+ patrol overlap</span></div>
-      </div>
-    </div>
-
-    <!-- Control panel -->
-    <div class="w-80 flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-y-auto z-10">
-
-      <!-- Header -->
-      <div class="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <div>
-          <h1 class="text-lg font-bold text-gray-900 dark:text-white">PatrolPoint <span class="text-blue-500">V2</span></h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Patrol Deployment Optimizer</p>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></span>
+          <span>Crime incident</span>
         </div>
         <div class="flex items-center gap-2">
-          <!-- Dark mode toggle -->
-          <button @click="toggleDarkMode()" title="Toggle dark mode"
-                  class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
-            <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-            <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-          </button>
-          <!-- Settings gear -->
-          <button @click="showSettings = true" title="Settings"
-                  :disabled="pipelineRunning"
-                  class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-40">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
+          <span class="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0"></span>
+          <span>Roaming patrol</span>
         </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full border-2 border-blue-500 flex-shrink-0"></span>
+          <span>Stationary patrol</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-6 border-t-2 border-dashed border-blue-400 flex-shrink-0"></span>
+          <span>Zone assignment</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-6 border-t-2 border-blue-500 flex-shrink-0"></span>
+          <span>Patrol route</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-6 border-t-2 border-orange-400 flex-shrink-0"></span>
+          <span>2-patrol overlap</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-6 border-t-2 border-red-500 flex-shrink-0"></span>
+          <span>3+ patrol overlap</span>
+        </div>
+      </div>
+    </div><!-- end map container -->
+
+    <!-- ── Control panel (320px, right side) ─────────────────────────────── -->
+    <div class="w-80 flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col z-10">
+
+      <!-- Header: title + dark mode toggle -->
+      <div class="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+        <div>
+          <h1 class="text-lg font-bold text-gray-900 dark:text-white">
+            PatrolPoint <span class="text-blue-500">V2</span>
+          </h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Patrol Deployment Optimizer</p>
+        </div>
+        <button @click="toggleDarkMode()" title="Toggle dark mode"
+                class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
+          <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+          <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+        </button>
       </div>
 
       <!-- Warning/Error banner -->
       <div x-show="bannerMessage" x-cloak
-           :class="bannerType === 'error' ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200' : 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'"
-           class="mx-3 mt-3 p-3 rounded-lg border text-xs">
+           :class="bannerType === 'error'
+             ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200'
+             : 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'"
+           class="mx-3 mt-3 p-3 rounded-lg border text-xs flex-shrink-0">
         <template x-if="bannerList.length > 1">
           <ul class="list-disc list-inside space-y-1">
-            <template x-for="msg in bannerList" :key="msg"><li x-text="msg"></li></template>
+            <template x-for="msg in bannerList" :key="msg">
+              <li x-text="msg"></li>
+            </template>
           </ul>
         </template>
         <template x-if="bannerList.length <= 1">
@@ -120,8 +160,8 @@
         </template>
       </div>
 
-      <!-- Main controls -->
-      <div class="px-4 py-3 space-y-3 flex-1">
+      <!-- Main controls (scrollable) -->
+      <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
 
         <!-- Barangay selector -->
         <div>
@@ -129,7 +169,9 @@
           <select x-model="selectedBarangay" @change="onBarangayChange()"
                   :disabled="pipelineRunning"
                   class="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
-            <template x-for="b in barangayOptions" :key="b"><option :value="b" x-text="b"></option></template>
+            <template x-for="b in barangayOptions" :key="b">
+              <option :value="b" x-text="b"></option>
+            </template>
           </select>
         </div>
 
@@ -142,19 +184,24 @@
         <div class="flex items-center justify-between text-xs">
           <template x-if="!currentUser">
             <button @click="showAuth = true"
-                    class="text-blue-500 hover:text-blue-600 font-medium">Sign in to save sessions</button>
+                    class="text-blue-500 hover:text-blue-600 font-medium">
+              Sign in to save sessions
+            </button>
           </template>
           <template x-if="currentUser">
-            <div class="flex items-center gap-2">
-              <span class="text-gray-600 dark:text-gray-400" x-text="'Signed in as ' + currentUser.username"></span>
-              <button @click="logout()" class="text-red-500 hover:text-red-600">Sign out</button>
+            <div class="flex items-center gap-2 flex-1">
+              <span class="text-gray-600 dark:text-gray-400 truncate"
+                    x-text="'Signed in as ' + currentUser.username"></span>
+              <button @click="logout()" class="text-red-500 hover:text-red-600 flex-shrink-0">Sign out</button>
             </div>
           </template>
           <button x-show="currentUser" @click="showSessions = true"
-                  class="text-blue-500 hover:text-blue-600 font-medium">Sessions</button>
+                  class="text-blue-500 hover:text-blue-600 font-medium flex-shrink-0 ml-2">
+            Sessions
+          </button>
         </div>
 
-        <!-- Number of patrols -->
+        <!-- Number of patrols input -->
         <div>
           <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1"
                  title="How many tanod patrol units to deploy">
@@ -163,26 +210,35 @@
           <input type="number" x-model.number="nPatrols" min="1" step="1"
                  :placeholder="nMax ? '1 – ' + nMax : 'Enter number of patrols'"
                  :disabled="pipelineRunning"
-                 :class="nPatrolsError ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'"
+                 :class="nPatrolsError
+                   ? 'border-red-400 focus:ring-red-400'
+                   : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'"
                  class="w-full text-sm rounded-lg border bg-white dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 disabled:opacity-50"
                  @input="validateNPatrols()" />
           <p x-show="nPatrolsError" class="text-red-500 text-xs mt-1" x-text="nPatrolsError"></p>
-          <p x-show="!nPatrolsError && nMax" class="text-gray-400 text-xs mt-1" x-text="'Max recommended: ' + nMax"></p>
+          <p x-show="!nPatrolsError && nMax" class="text-gray-400 text-xs mt-1"
+             x-text="'Max recommended: ' + nMax"></p>
         </div>
 
         <!-- Deployment mode toggle -->
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Deployment Mode</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            Deployment Mode
+          </label>
           <div class="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 text-sm">
             <button @click="deploymentMode = 'stationary'"
-                    :class="deploymentMode === 'stationary' ? 'bg-blue-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'"
+                    :class="deploymentMode === 'stationary'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'"
                     :disabled="pipelineRunning"
                     class="flex-1 py-2 font-medium transition-colors disabled:opacity-50"
                     title="Place patrol units at optimal positions without assigning routes">
               Deploy Only
             </button>
             <button @click="deploymentMode = 'roaming'"
-                    :class="deploymentMode === 'roaming' ? 'bg-blue-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'"
+                    :class="deploymentMode === 'roaming'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'"
                     :disabled="pipelineRunning"
                     class="flex-1 py-2 font-medium transition-colors disabled:opacity-50"
                     title="Place patrol units and generate optimal patrol routes through crime areas">
@@ -194,10 +250,11 @@
         <!-- Recalculate button -->
         <button @click="recalculate()"
                 :disabled="pipelineRunning || !wsConnected || !!nPatrolsError"
-                class="w-full py-2.5 rounded-lg font-semibold text-sm transition-colors
-                       bg-blue-600 hover:bg-blue-700 text-white
-                       disabled:opacity-50 disabled:cursor-not-allowed">
-          <span x-show="!pipelineRunning">Recalculate <span class="text-blue-200 text-xs font-normal">(Ctrl+Enter)</span></span>
+                class="w-full py-2.5 rounded-lg font-semibold text-sm transition-colors bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">
+          <span x-show="!pipelineRunning">
+            Recalculate
+            <span class="text-blue-200 text-xs font-normal">(Ctrl+Enter)</span>
+          </span>
           <span x-show="pipelineRunning" class="flex items-center justify-center gap-2">
             <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
             <span x-text="pipelineStageText">Running...</span>
@@ -212,34 +269,18 @@
           </template>
         </p>
 
-        <!-- Undo/Redo/Reset row -->
-        <div class="flex gap-2">
-          <button @click="undo()" :disabled="undoStack.length === 0"
-                  title="Undo last action (Ctrl+Z)"
-                  class="flex-1 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40">
-            Undo
-          </button>
-          <button @click="redo()" :disabled="redoStack.length === 0"
-                  title="Redo (Ctrl+Shift+Z)"
-                  class="flex-1 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40">
-            Redo
-          </button>
-          <button @click="confirmReset()"
-                  :disabled="pipelineRunning"
-                  class="flex-1 py-1.5 text-xs rounded border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40">
-            Reset
-          </button>
-        </div>
-
         <!-- Import Coordinates collapsible -->
         <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           <button @click="showImport = !showImport"
                   class="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
             <span>Import Coordinates</span>
-            <svg :class="showImport ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            <svg :class="showImport ? 'rotate-180' : ''"
+                 class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
           </button>
-          <div x-show="showImport" class="px-3 pb-3 space-y-2">
-            <p class="text-xs text-gray-400">One coordinate per line. Format: 14.7023, 121.0934</p>
+          <div x-show="showImport" class="px-3 pb-3 space-y-2 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-gray-400 pt-2">One coordinate per line. Format: 14.7023, 121.0934</p>
             <textarea x-model="importText" rows="5"
                       :disabled="pipelineRunning"
                       class="w-full text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 font-mono resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
@@ -253,37 +294,150 @@
           </div>
         </div>
 
-        <!-- Export button -->
-        <div x-show="pipelineComplete" class="relative" x-data="{ open: false }">
-          <button @click="open = !open"
-                  class="w-full py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center gap-1">
-            Export Results
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <!-- Session history panel (collapsible, requires auth) -->
+        <div x-show="currentUser"
+             class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <button @click="showSessionsPanel = !showSessionsPanel; if (showSessionsPanel) loadSessions()"
+                  class="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
+            <span>Saved Sessions</span>
+            <svg :class="showSessionsPanel ? 'rotate-180' : ''"
+                 class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
           </button>
-          <div x-show="open" @click.outside="open = false"
-               class="absolute bottom-full mb-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg overflow-hidden z-50">
-            <button @click="exportResults('pdf'); open = false"
-                    class="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-700">Export as PDF</button>
-            <button @click="exportResults('csv'); open = false"
-                    class="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-700">Export as CSV</button>
+          <div x-show="showSessionsPanel" class="border-t border-gray-200 dark:border-gray-700">
+            <div class="max-h-48 overflow-y-auto px-2 py-2 space-y-1">
+              <p x-show="sessions.length === 0"
+                 class="text-xs text-gray-400 text-center py-4">No saved sessions yet.</p>
+              <template x-for="s in sessions" :key="s.id">
+                <div class="flex items-center gap-1 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs">
+                  <div class="flex-1 min-w-0 cursor-pointer" @click="loadSession(s.id)">
+                    <p class="font-medium truncate"
+                       x-text="s.session_name || 'Untitled Session'"></p>
+                    <p class="text-gray-400 truncate"
+                       x-text="s.barangay_name + ' · ' + s.n_patrols + 'p · ' + s.deployment_mode"></p>
+                    <p class="text-gray-400"
+                       x-text="new Date(s.created_at).toLocaleDateString()"></p>
+                  </div>
+                  <button @click="deleteSession(s.id)"
+                          class="text-red-400 hover:text-red-600 flex-shrink-0 p-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
 
-      </div><!-- end main controls -->
+      </div><!-- end main controls (scrollable) -->
+
+      <!-- Bottom controls row (fixed at bottom of panel) -->
+      <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 px-3 py-2 flex items-center gap-1.5">
+
+        <!-- Undo -->
+        <button @click="undo()" :disabled="undoStack.length === 0"
+                title="Undo last action (Ctrl+Z)"
+                class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-gray-600 dark:text-gray-300">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+          </svg>
+        </button>
+
+        <!-- Redo -->
+        <button @click="redo()" :disabled="redoStack.length === 0"
+                title="Redo (Ctrl+Shift+Z)"
+                class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-gray-600 dark:text-gray-300">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/>
+          </svg>
+        </button>
+
+        <!-- Reset -->
+        <button @click="confirmReset()" :disabled="pipelineRunning"
+                title="Reset all incident coordinates and results"
+                class="p-1.5 rounded border border-red-300 dark:border-red-700 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-40">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
+
+        <div class="flex-1"></div>
+
+        <!-- Compare button -->
+        <button @click="showComparison = true"
+                title="Algorithm comparison mode"
+                class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+        </button>
+
+        <!-- Export dropdown -->
+        <div class="relative" x-data="{ exportOpen: false }">
+          <button @click="exportOpen = !exportOpen" :disabled="!pipelineComplete"
+                  title="Export results"
+                  class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+          </button>
+          <div x-show="exportOpen" @click.outside="exportOpen = false"
+               class="absolute bottom-full mb-1 right-0 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg overflow-hidden z-50">
+            <button @click="exportResults('pdf'); exportOpen = false"
+                    class="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+              Export as PDF
+            </button>
+            <button @click="exportResults('csv'); exportOpen = false"
+                    class="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+              Export as CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Settings gear -->
+        <button @click="showSettings = true" :disabled="pipelineRunning"
+                title="Settings"
+                class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-40">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+
+      </div><!-- end bottom controls row -->
+
     </div><!-- end control panel -->
+
   </div><!-- end main layout -->
 
-  <!-- Algorithm Trace Panel (slide-in from right) -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Algorithm trace panel (slide-in from right, overlaps map)               -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showTracePanel" x-cloak
        class="fixed top-0 right-80 h-full w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-20 flex flex-col shadow-2xl overflow-hidden">
+
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
       <h2 class="font-semibold text-sm">Algorithm Trace</h2>
-      <button @click="showTracePanel = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <button @click="showTracePanel = false"
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
       </button>
     </div>
+
     <div id="trace-content" class="flex-1 overflow-y-auto px-3 py-2 text-xs space-y-2 font-mono">
       <p class="text-gray-400" x-show="traceStages.length === 0">No pipeline run yet.</p>
+
       <template x-for="stage in traceStages" :key="stage.id">
         <div class="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
           <button @click="stage.expanded = !stage.expanded"
@@ -304,106 +458,181 @@
             <template x-if="stage.fullLog">
               <details class="mt-1">
                 <summary class="cursor-pointer text-blue-500 hover:text-blue-600">Full Log</summary>
-                <pre class="mt-1 text-gray-500 dark:text-gray-400 text-xs whitespace-pre-wrap overflow-x-auto" x-text="stage.fullLog"></pre>
+                <pre class="mt-1 text-gray-500 dark:text-gray-400 text-xs whitespace-pre-wrap overflow-x-auto"
+                     x-text="stage.fullLog"></pre>
               </details>
             </template>
           </div>
         </div>
       </template>
+
       <!-- Pipeline summary -->
-      <div x-show="pipelineSummary" class="border-t border-gray-300 dark:border-gray-600 pt-2 text-gray-600 dark:text-gray-400">
+      <div x-show="pipelineSummary"
+           class="border-t border-gray-300 dark:border-gray-600 pt-2 text-gray-600 dark:text-gray-400">
         <pre class="whitespace-pre-wrap" x-text="pipelineSummary"></pre>
       </div>
     </div>
   </div>
 
-  <!-- Trace panel toggle button -->
+  <!-- Trace panel toggle tab (right edge, overlaps map) -->
   <button @click="showTracePanel = !showTracePanel"
-          class="fixed top-1/2 -translate-y-1/2 right-80 z-30 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-l-lg px-1.5 py-4 shadow text-xs writing-vertical hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-    <span style="writing-mode: vertical-rl; text-orientation: mixed;">Trace</span>
+          class="fixed top-1/2 -translate-y-1/2 right-80 z-30 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-l-lg px-1.5 py-4 shadow hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+    <span style="writing-mode: vertical-rl; text-orientation: mixed; font-size: 11px;">Trace</span>
   </button>
 
-  <!-- Route playback bar -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Route playback controls bar (appears after roaming pipeline complete)    -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showPlayback" x-cloak
        class="fixed bottom-0 left-0 right-80 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-20 px-4 py-2 flex items-center gap-4 text-sm">
-    <span class="font-medium text-xs">Route Playback</span>
-    <select x-model="playbackPatrolIndex" class="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700">
+    <span class="font-medium text-xs flex-shrink-0">Route Playback</span>
+    <select x-model="playbackPatrolIndex"
+            class="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700">
       <template x-for="(r, i) in routes" :key="i">
-        <option :value="i" x-text="'Patrol ' + (i+1)"></option>
+        <option :value="i" x-text="'Patrol ' + (i + 1)"></option>
       </template>
     </select>
-    <button @click="playbackPlay()" class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">Play</button>
-    <button @click="playbackStop()" class="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Stop</button>
+    <button @click="playbackPlay()"
+            class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">
+      Play
+    </button>
+    <button @click="playbackStop()"
+            class="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+      Stop
+    </button>
     <input type="range" x-model="playbackSpeed" min="0.5" max="3" step="0.5" class="w-20" />
     <span class="text-xs text-gray-400" x-text="playbackSpeed + 'x'"></span>
     <button @click="showPlayback = false" class="ml-auto text-gray-400 hover:text-gray-600">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
     </button>
   </div>
 
-  <!-- Settings modal -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Settings modal (slide-in overlay from right)                             -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showSettings" x-cloak
        class="fixed inset-0 z-50 flex items-center justify-end bg-black/50"
        @click.self="showSettings = false">
     <div class="h-full w-96 bg-white dark:bg-gray-800 shadow-2xl flex flex-col overflow-hidden">
+
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <h2 class="font-semibold">Settings</h2>
-        <button @click="showSettings = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <button @click="showSettings = false"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
       </div>
+
       <div class="flex-1 overflow-y-auto px-4 py-4 space-y-5 text-sm">
 
+        <!-- Hill Climbing settings -->
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Hill Climbing</h3>
           <div class="space-y-2">
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Restarts</span><input type="number" x-model.number="settingsDraft.hillClimbing.restarts" min="1" max="30" class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" /></label>
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Max iterations</span><input type="number" x-model.number="settingsDraft.hillClimbing.maxIterations" min="50" max="2000" class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" /></label>
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Radius multiplier k</span><input type="number" x-model.number="settingsDraft.hillClimbing.radiusMultiplier" min="1" max="5" step="0.5" class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" /></label>
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Adaptive max restarts</span><input type="number" x-model.number="settingsDraft.hillClimbing.adaptiveMaxRestarts" min="5" max="50" class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" /></label>
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Synchronous mode</span>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Restarts</span>
+              <input type="number" x-model.number="settingsDraft.hillClimbing.restarts"
+                     min="1" max="30"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+            </label>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Max iterations</span>
+              <input type="number" x-model.number="settingsDraft.hillClimbing.maxIterations"
+                     min="50" max="2000"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+            </label>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Radius multiplier k</span>
+              <input type="number" x-model.number="settingsDraft.hillClimbing.radiusMultiplier"
+                     min="1" max="5" step="0.5"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+            </label>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Adaptive max restarts</span>
+              <input type="number" x-model.number="settingsDraft.hillClimbing.adaptiveMaxRestarts"
+                     min="5" max="50"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+            </label>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Synchronous mode</span>
               <button @click="settingsDraft.hillClimbing.synchronousMode = !settingsDraft.hillClimbing.synchronousMode"
                       :class="settingsDraft.hillClimbing.synchronousMode ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
                       class="relative w-10 h-5 rounded-full transition-colors">
-                <span :class="settingsDraft.hillClimbing.synchronousMode ? 'translate-x-5' : 'translate-x-0'" class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
+                <span :class="settingsDraft.hillClimbing.synchronousMode ? 'translate-x-5' : 'translate-x-0'"
+                      class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
               </button>
             </label>
           </div>
         </div>
 
+        <!-- Convex Hull settings -->
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Convex Hull</h3>
           <div class="space-y-2">
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Area threshold divisor</span><input type="number" x-model.number="settingsDraft.convexHull.areaThresholdDivisor" min="10" max="500" class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" /></label>
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Outlier multiplier</span><input type="number" x-model.number="settingsDraft.convexHull.outlierMultiplier" min="1" max="5" step="0.1" class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" /></label>
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Include outliers</span>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Area threshold divisor</span>
+              <input type="number" x-model.number="settingsDraft.convexHull.areaThresholdDivisor"
+                     min="10" max="500"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+            </label>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Outlier multiplier</span>
+              <input type="number" x-model.number="settingsDraft.convexHull.outlierMultiplier"
+                     min="1" max="5" step="0.1"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+            </label>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Include outliers</span>
               <button @click="settingsDraft.convexHull.includeOutliers = !settingsDraft.convexHull.includeOutliers"
                       :class="settingsDraft.convexHull.includeOutliers ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
                       class="relative w-10 h-5 rounded-full transition-colors">
-                <span :class="settingsDraft.convexHull.includeOutliers ? 'translate-x-5' : 'translate-x-0'" class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
+                <span :class="settingsDraft.convexHull.includeOutliers ? 'translate-x-5' : 'translate-x-0'"
+                      class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
               </button>
             </label>
           </div>
         </div>
 
+        <!-- TSP settings -->
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">TSP</h3>
           <div class="space-y-2">
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">Max nodes per zone</span><input type="number" x-model.number="settingsDraft.tsp.maxCrimeNodesPerZone" min="3" max="20" class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" /></label>
-            <label class="flex items-center justify-between"><span class="text-gray-600 dark:text-gray-400">NN fallback threshold</span><input type="number" x-model.number="settingsDraft.tsp.nearestNeighborFallbackThreshold" min="6" max="20" class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" /></label>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">Max nodes per zone</span>
+              <input type="number" x-model.number="settingsDraft.tsp.maxCrimeNodesPerZone"
+                     min="3" max="20"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+            </label>
+            <label class="flex items-center justify-between">
+              <span class="text-gray-600 dark:text-gray-400">NN fallback threshold</span>
+              <input type="number" x-model.number="settingsDraft.tsp.nearestNeighborFallbackThreshold"
+                     min="6" max="20"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+            </label>
           </div>
         </div>
 
+        <!-- Display settings -->
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Display</h3>
           <div class="space-y-2">
-            <template x-for="[key, label] in [['showZoneLines','Zone assignment lines'],['showRouteArrows','Route direction arrows'],['showOverlapColoring','Overlap coloring'],['showCoverageRadius','Patrol coverage radius']]" :key="key">
+            <template x-for="[key, label] in [
+              ['showZoneLines','Zone assignment lines'],
+              ['showRouteArrows','Route direction arrows'],
+              ['showOverlapColoring','Overlap coloring'],
+              ['showCoverageRadius','Patrol coverage radius']
+            ]" :key="key">
               <label class="flex items-center justify-between">
                 <span class="text-gray-600 dark:text-gray-400" x-text="label"></span>
                 <button @click="settingsDraft.display[key] = !settingsDraft.display[key]"
                         :class="settingsDraft.display[key] ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
                         class="relative w-10 h-5 rounded-full transition-colors">
-                  <span :class="settingsDraft.display[key] ? 'translate-x-5' : 'translate-x-0'" class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
+                  <span :class="settingsDraft.display[key] ? 'translate-x-5' : 'translate-x-0'"
+                        class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
                 </button>
               </label>
             </template>
@@ -412,33 +641,48 @@
               <button @click="settingsDraft.display.animationsEnabled = !settingsDraft.display.animationsEnabled"
                       :class="settingsDraft.display.animationsEnabled ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
                       class="relative w-10 h-5 rounded-full transition-colors">
-                <span :class="settingsDraft.display.animationsEnabled ? 'translate-x-5' : 'translate-x-0'" class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
+                <span :class="settingsDraft.display.animationsEnabled ? 'translate-x-5' : 'translate-x-0'"
+                      class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
               </button>
             </label>
           </div>
         </div>
 
-      </div>
+      </div><!-- end settings scrollable content -->
+
       <div class="flex gap-2 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <button @click="applySettings()" class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Apply</button>
-        <button @click="resetSettingsToDefaults()" class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">Defaults</button>
-        <button @click="showSettings = false" class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">Cancel</button>
+        <button @click="applySettings()"
+                class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+          Apply
+        </button>
+        <button @click="resetSettingsToDefaults()"
+                class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+          Defaults
+        </button>
+        <button @click="showSettings = false"
+                class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+          Cancel
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- Auth modal -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Auth modal (login / register)                                            -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showAuth" x-cloak
        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
        @click.self="showAuth = false">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-80 p-6">
-      <h2 class="font-semibold text-lg mb-4" x-text="authMode === 'login' ? 'Sign In' : 'Create Account'"></h2>
+      <h2 class="font-semibold text-lg mb-4"
+          x-text="authMode === 'login' ? 'Sign In' : 'Create Account'"></h2>
       <div class="space-y-3">
         <input type="text" x-model="authForm.username" placeholder="Username"
                class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input x-show="authMode === 'register'" type="text" x-model="authForm.displayName" placeholder="Display name"
+        <input x-show="authMode === 'register'"
+               type="text" x-model="authForm.displayName" placeholder="Display name"
                class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input type="password" x-model="authForm.password" placeholder="Password"
+        <input type="password" x-model="authForm.password" placeholder="Password (min 8 chars)"
                class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                @keydown.enter="submitAuth()" />
         <p x-show="authError" class="text-red-500 text-xs" x-text="authError"></p>
@@ -452,28 +696,41 @@
     </div>
   </div>
 
-  <!-- Session history modal -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Session history modal (full list overlay)                                -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showSessions" x-cloak
        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
        @click.self="showSessions = false">
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-[480px] max-h-[70vh] flex flex-col">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <h2 class="font-semibold">Saved Sessions</h2>
-        <button @click="showSessions = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <button @click="showSessions = false"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
       </div>
       <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-        <p x-show="sessions.length === 0" class="text-sm text-gray-400 text-center py-8">No saved sessions yet.</p>
+        <p x-show="sessions.length === 0"
+           class="text-sm text-gray-400 text-center py-8">No saved sessions yet.</p>
         <template x-for="s in sessions" :key="s.id">
           <div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
             <div class="flex-1 min-w-0 cursor-pointer" @click="loadSession(s.id)">
-              <p class="text-sm font-medium truncate" x-text="s.session_name || 'Untitled Session'"></p>
-              <p class="text-xs text-gray-400" x-text="s.barangay_name + ' · ' + s.n_patrols + ' patrols · ' + s.deployment_mode"></p>
-              <p class="text-xs text-gray-400" x-text="new Date(s.created_at).toLocaleString()"></p>
+              <p class="text-sm font-medium truncate"
+                 x-text="s.session_name || 'Untitled Session'"></p>
+              <p class="text-xs text-gray-400"
+                 x-text="s.barangay_name + ' · ' + s.n_patrols + ' patrols · ' + s.deployment_mode"></p>
+              <p class="text-xs text-gray-400"
+                 x-text="new Date(s.created_at).toLocaleString()"></p>
             </div>
-            <button @click="deleteSession(s.id)" class="ml-2 text-red-400 hover:text-red-600 flex-shrink-0">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            <button @click="deleteSession(s.id)"
+                    class="ml-2 text-red-400 hover:text-red-600 flex-shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
             </button>
           </div>
         </template>
@@ -481,10 +738,133 @@
     </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Algorithm comparison modal                                               -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <div x-show="showComparison" x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+       @click.self="showComparison = false">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-[640px] max-h-[80vh] flex flex-col">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <h2 class="font-semibold">Algorithm Comparison</h2>
+          <span x-show="comparisonModeActive"
+                class="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+            Active
+          </span>
+        </div>
+        <button @click="showComparison = false"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4">
+
+        <!-- Instructions when no runs stored -->
+        <template x-if="!comparisonRunA && !comparisonRunB">
+          <div class="text-center text-gray-400 dark:text-gray-500 py-10 text-sm">
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+            <p class="font-medium text-gray-600 dark:text-gray-400">No runs stored yet</p>
+            <p class="mt-1 text-xs">Run the pipeline, then click "Store as Run A". Adjust settings, run again, click "Store as Run B".</p>
+          </div>
+        </template>
+
+        <!-- Side-by-side comparison when at least one run stored -->
+        <div x-show="comparisonRunA || comparisonRunB" class="grid grid-cols-2 gap-4 text-sm">
+
+          <!-- Run A -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold text-gray-700 dark:text-gray-300">Run A</h3>
+              <button @click="showRunA = !showRunA"
+                      :class="showRunA ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200'"
+                      class="px-2 py-0.5 text-xs rounded transition-colors">
+                <span x-text="showRunA ? 'Visible' : 'Hidden'"></span>
+              </button>
+            </div>
+            <template x-if="comparisonRunA">
+              <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <p x-text="'Barangay: ' + (comparisonRunA.barangay || '—')"></p>
+                <p x-text="'Patrols: ' + (comparisonRunA.patrols?.length || 0)"></p>
+                <p x-text="'Mode: ' + (comparisonRunA.mode || '—')"></p>
+                <p x-text="'Min dist: ' + (comparisonRunA.minPairwiseDist ? Math.round(comparisonRunA.minPairwiseDist) + 'm' : '—')"></p>
+                <p x-text="'Runtime: ' + (comparisonRunA.totalRuntimeMs ? comparisonRunA.totalRuntimeMs + 'ms' : '—')"></p>
+              </div>
+            </template>
+            <p x-show="!comparisonRunA" class="text-xs text-gray-400">Not stored yet.</p>
+          </div>
+
+          <!-- Run B -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold text-gray-700 dark:text-gray-300">Run B</h3>
+              <button @click="showRunB = !showRunB"
+                      :class="showRunB ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200'"
+                      class="px-2 py-0.5 text-xs rounded transition-colors">
+                <span x-text="showRunB ? 'Visible' : 'Hidden'"></span>
+              </button>
+            </div>
+            <template x-if="comparisonRunB">
+              <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                <p x-text="'Barangay: ' + (comparisonRunB.barangay || '—')"></p>
+                <p x-text="'Patrols: ' + (comparisonRunB.patrols?.length || 0)"></p>
+                <p x-text="'Mode: ' + (comparisonRunB.mode || '—')"></p>
+                <p x-text="'Min dist: ' + (comparisonRunB.minPairwiseDist ? Math.round(comparisonRunB.minPairwiseDist) + 'm' : '—')"></p>
+                <p x-text="'Runtime: ' + (comparisonRunB.totalRuntimeMs ? comparisonRunB.totalRuntimeMs + 'ms' : '—')"></p>
+              </div>
+            </template>
+            <p x-show="!comparisonRunB" class="text-xs text-gray-400">Not stored yet.</p>
+          </div>
+
+        </div>
+      </div><!-- end comparison content -->
+
+      <div class="flex gap-2 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <button @click="storeComparisonRunA()" :disabled="!pipelineComplete"
+                class="flex-1 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+          Store as Run A
+        </button>
+        <button @click="storeComparisonRunB()" :disabled="!pipelineComplete"
+                class="flex-1 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+          Store as Run B
+        </button>
+        <button @click="exitComparisonMode()"
+                class="py-2 px-3 text-xs border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30">
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Scripts — load order: GSAP, Leaflet, plugins (blocking), then           -->
+  <!--            ui.js + main.js (modules, deferred), then Alpine.js (defer)  -->
+  <!-- ──────────────────────────────────────────────────────────────────────── -->
+
+  <!-- GSAP — animations framework -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js" defer></script>
+
+  <!-- Leaflet JS — map rendering -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet.markercluster — patrol marker clustering at low zoom -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- Leaflet.polylineDecorator — route direction arrows -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
+
+  <!-- App modules — loaded before Alpine.js so alpine:init listener is registered first -->
+  <script type="module" src="/js/ui.js"></script>
   <script type="module" src="/js/main.js"></script>
+
+  <!-- Alpine.js — initializes last, dispatches alpine:init which ui.js handles -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+
 </body>
 </html>
