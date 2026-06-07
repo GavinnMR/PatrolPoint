@@ -421,6 +421,11 @@ function handlePipelineComplete(data) {
         summaryLines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         ui.setPipelineSummary(summaryLines.join('\n'));
 
+        // Auto-scroll trace panel after summary is written — must fire after setPipelineSummary
+        if (typeof ui.scrollTracePanelToBottom === 'function') {
+            ui.scrollTracePanelToBottom();
+        }
+
         // Auto-prompt session save if user is logged in
         if (window.authToken) {
             setTimeout(() => ui.promptSaveSession(), 300);
