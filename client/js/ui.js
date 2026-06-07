@@ -3,6 +3,18 @@
 // Implements all interactive features from SPEC.md Sections 20 and 23.
 // Map rendering lives in map.js (Part 9). WebSocket lives in websocket-client.js (Part 8).
 
+// Module-level Haversine used by importCoordinates() outlier detection.
+// Parameters always lat1, lng1, lat2, lng2 — lat before lng, never swapped.
+function _haversine(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('patrolPointApp', () => ({
 
@@ -259,6 +271,9 @@ document.addEventListener('alpine:init', () => {
                 this.showBanner('At least 2 incident coordinates are needed. Please plot more points.', 'error');
                 return;
             }
+            // Clear any banner from a previous run before starting the new one
+            this.clearBanner();
+
             if (typeof sendComputeRequest === 'function') {
                 sendComputeRequest(this.P, this.nPatrols, this.deploymentMode, this.activeConfig, this.selectedBarangay);
             } else {
@@ -510,7 +525,7 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
-            // Check each point against Commonwealth bounding box derived from nodeMap extents
+            // Check each point against barangay bounding box derived from nodeMap extents
             const warnings = [];
             const nodeIds = Object.keys(window.nodeMap || {});
             if (nodeIds.length > 0) {
@@ -550,6 +565,25 @@ document.addEventListener('alpine:init', () => {
                 lng: v.lng
             }));
             const newCounter = prevCounter + valid.length;
+
+            // Outlier detection — runs immediately after parsing, before markers are plotted.
+            // Flags points whose Haversine distance from centroid exceeds multiplier × average.
+            let outlierCount = 0;
+            if (newP.length >= 3) {
+                const mult = (this.activeConfig.convexHull && this.activeConfig.convexHull.outlierMultiplier) || 2.5;
+                const centLat = newP.reduce((s, p) => s + p.lat, 0) / newP.length;
+                const centLng = newP.reduce((s, p) => s + p.lng, 0) / newP.length;
+                const dists = newP.map(p => _haversine(centLat, centLng, p.lat, p.lng));
+                const avg = dists.reduce((s, d) => s + d, 0) / dists.length;
+                const threshold = mult * avg;
+                newP.forEach((p, i) => { p.isOutlier = dists[i] > threshold; });
+                outlierCount = newP.filter(p => p.isOutlier).length;
+                if (outlierCount > 0) {
+                    warnings.push(
+                        `${outlierCount} point${outlierCount !== 1 ? 's' : ''} flagged as potential outlier${outlierCount !== 1 ? 's' : ''} (orange markers).`
+                    );
+                }
+            }
 
             // Push undo action before modifying state
             this._pushUndo({
