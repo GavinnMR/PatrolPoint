@@ -1,14 +1,12 @@
 // PatrolPoint V2 — ui.js
 // Alpine.js global component patrolPointApp().
-// All reactive data and method stubs for the control panel, modals, and trace panel.
-// Implemented progressively across Parts 7–11. Stubs console.log for now.
+// Implements all interactive features from SPEC.md Sections 20 and 23.
+// Map rendering lives in map.js (Part 9). WebSocket lives in websocket-client.js (Part 8).
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('patrolPointApp', () => ({
 
         // ── WebSocket connection state ────────────────────────────────────────
-        // wsConnected defaults true in Session 1 so the layout is visible.
-        // Part 8 will set it false initially and true on connection.
         wsConnected:   true,
         wsStatusText:  'Connecting to server…',
 
@@ -47,7 +45,7 @@ document.addEventListener('alpine:init', () => {
         showComparison:    false,
         showImport:        false,
         showPlayback:      false,
-        showSessionsPanel: false,  // collapsible inside control panel
+        showSessionsPanel: false,
 
         // ── Import coordinates ────────────────────────────────────────────────
         importText:    '',
@@ -61,7 +59,7 @@ document.addEventListener('alpine:init', () => {
         sessions:    [],     // list from GET /api/sessions
 
         // ── Undo / redo stacks ────────────────────────────────────────────────
-        undoStack: [],   // {type, data} — length exposed for button :disabled binding
+        undoStack: [],   // {type, data, timestamp} — length exposed for :disabled binding
         redoStack: [],
 
         // ── Display preferences ───────────────────────────────────────────────
@@ -71,7 +69,7 @@ document.addEventListener('alpine:init', () => {
 
         // ── Algorithm comparison mode ─────────────────────────────────────────
         comparisonModeActive: false,
-        comparisonRunA:       null,   // stored pipeline result object
+        comparisonRunA:       null,
         comparisonRunB:       null,
         showRunA:             true,
         showRunB:             true,
@@ -81,7 +79,34 @@ document.addEventListener('alpine:init', () => {
         playbackPatrolIndex: 0,
         playbackSpeed:       1,
 
-        // ── Settings draft (mirrors CONFIG sent to backend) ───────────────────
+        // ── Active config (currently applied, sent to backend on compute) ─────
+        activeConfig: {
+            hillClimbing: {
+                restarts:               10,
+                maxIterations:          500,
+                radiusMultiplier:       2,
+                adaptiveMaxRestarts:    30,
+                synchronousMode:        false
+            },
+            convexHull: {
+                areaThresholdDivisor:   100,
+                outlierMultiplier:      2.5,
+                includeOutliers:        false
+            },
+            tsp: {
+                maxCrimeNodesPerZone:                10,
+                nearestNeighborFallbackThreshold:    12
+            },
+            display: {
+                showZoneLines:          true,
+                showRouteArrows:        true,
+                showOverlapColoring:    true,
+                showCoverageRadius:     false,
+                animationsEnabled:      true
+            }
+        },
+
+        // ── Settings draft (editable copy shown in modal) ─────────────────────
         settingsDraft: {
             hillClimbing: {
                 restarts:               10,
@@ -110,13 +135,12 @@ document.addEventListener('alpine:init', () => {
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
         init() {
-            // Sync display preferences from localStorage
+            // Load persisted display preferences
             this.darkMode = localStorage.getItem('patrolpoint-dark-mode') === 'true';
             this.animationsEnabled = localStorage.getItem('patrolpoint-animations') !== 'false';
             this.settingsDraft.display.animationsEnabled = this.animationsEnabled;
+            this.activeConfig.display.animationsEnabled = this.animationsEnabled;
 
-            // Apply dark mode immediately (main.js DOMContentLoaded also does this,
-            // but Alpine init can fire slightly after — belt-and-suspenders)
             if (this.darkMode) {
                 document.documentElement.classList.add('dark');
             }
@@ -128,7 +152,7 @@ document.addEventListener('alpine:init', () => {
                 this._restoreSession(savedToken);
             }
 
-            // Global keyboard shortcuts (only when textarea/input not focused)
+            // Global keyboard shortcuts — only when textarea/input not focused
             window.addEventListener('keydown', (e) => {
                 const tag = e.target.tagName;
                 if (tag === 'TEXTAREA' || tag === 'INPUT') return;
@@ -155,9 +179,45 @@ document.addEventListener('alpine:init', () => {
                 }
             });
 
-            // Wire map and WebSocket (stubs until Parts 8–9)
+            // Expose Alpine component instance globally so map.js can call methods
+            window.uiApp = this;
+
             if (typeof initMap === 'function')       initMap(this);
             if (typeof initWebSocket === 'function') initWebSocket(this);
+        },
+
+        // ── Crime node management (public — called by map.js click/drag handlers) ──
+
+        // Called by map.js when user clicks map to add an incident.
+        addCrimeNode(lat, lng) {
+            window.crimeIdCounter++;
+            const crimeId = 'CRIME-' + String(window.crimeIdCounter).padStart(3, '0');
+            const point = { crimeId, lat, lng };
+            window.P.push(point);
+            this.P = [...window.P];
+            this._pushUndo({ type: 'add_crime', data: { crimeId, lat, lng }, timestamp: Date.now() });
+            if (typeof plotCrimeMarker === 'function') plotCrimeMarker(point);
+            return crimeId;
+        },
+
+        // Called by map.js when user clicks an existing marker to remove it.
+        removeCrimeNode(crimeId) {
+            const point = window.P.find(p => p.crimeId === crimeId);
+            if (!point) return;
+            window.P = window.P.filter(p => p.crimeId !== crimeId);
+            this.P = [...window.P];
+            this._pushUndo({ type: 'remove_crime', data: { crimeId, lat: point.lat, lng: point.lng }, timestamp: Date.now() });
+            if (typeof removeCrimeMarker === 'function') removeCrimeMarker(crimeId);
+        },
+
+        // Called by map.js after a drag completes with validated new position.
+        dragCrimeNode(crimeId, oldLat, oldLng, newLat, newLng) {
+            const point = window.P.find(p => p.crimeId === crimeId);
+            if (!point) return;
+            point.lat = newLat;
+            point.lng = newLng;
+            this.P = [...window.P];
+            this._pushUndo({ type: 'drag_crime', data: { crimeId, oldLat, oldLng, newLat, newLng }, timestamp: Date.now() });
         },
 
         // ── Auth helpers ──────────────────────────────────────────────────────
@@ -199,9 +259,8 @@ document.addEventListener('alpine:init', () => {
                 this.showBanner('At least 2 incident coordinates are needed. Please plot more points.', 'error');
                 return;
             }
-            // WebSocket compute request (wired in Part 8)
             if (typeof sendComputeRequest === 'function') {
-                sendComputeRequest(this.P, this.nPatrols, this.deploymentMode, this.settingsDraft, this.selectedBarangay);
+                sendComputeRequest(this.P, this.nPatrols, this.deploymentMode, this.activeConfig, this.selectedBarangay);
             } else {
                 console.log('[ui.js] recalculate() — sendComputeRequest not yet implemented (Part 8)');
             }
@@ -227,7 +286,6 @@ document.addEventListener('alpine:init', () => {
             document.documentElement.classList.toggle('dark', this.darkMode);
             localStorage.setItem('patrolpoint-dark-mode', this.darkMode);
             window.darkMode = this.darkMode;
-            // Map tile layer switch wired in Part 9
             if (typeof onDarkModeChange === 'function') onDarkModeChange(this.darkMode);
         },
 
@@ -269,9 +327,12 @@ document.addEventListener('alpine:init', () => {
         confirmReset() {
             if (!confirm('Reset will clear all incident coordinates and results. Continue?')) return;
 
-            // Push to undo stack before clearing (so reset can be undone)
             if (this.P.length > 0) {
-                this._pushUndo({ type: 'reset', data: { previousP: [...this.P] } });
+                this._pushUndo({
+                    type: 'reset',
+                    data: { previousP: [...this.P], previousCounter: window.crimeIdCounter },
+                    timestamp: Date.now()
+                });
             }
 
             this.P = [];
@@ -296,7 +357,7 @@ document.addEventListener('alpine:init', () => {
             this.undoStack.push(action);
             window.undoStack = this.undoStack;
             if (this.undoStack.length > 50) this.undoStack.shift();
-            // Any new action clears the redo stack
+            // Any new user action invalidates the redo stack
             this.redoStack = [];
             window.redoStack = [];
         },
@@ -307,11 +368,7 @@ document.addEventListener('alpine:init', () => {
             this.redoStack.push(action);
             window.undoStack = this.undoStack;
             window.redoStack = this.redoStack;
-            if (typeof applyUndo === 'function') {
-                applyUndo(action, this);
-            } else {
-                console.log('[ui.js] undo() — applyUndo not yet implemented (Part 9)');
-            }
+            this._applyAction(action, true);
         },
 
         redo() {
@@ -320,10 +377,108 @@ document.addEventListener('alpine:init', () => {
             this.undoStack.push(action);
             window.undoStack = this.undoStack;
             window.redoStack = this.redoStack;
-            if (typeof applyRedo === 'function') {
-                applyRedo(action, this);
-            } else {
-                console.log('[ui.js] redo() — applyRedo not yet implemented (Part 9)');
+            this._applyAction(action, false);
+        },
+
+        // inverse=true → undo (reverse the action); inverse=false → redo (re-apply it)
+        _applyAction(action, inverse) {
+            switch (action.type) {
+
+                case 'add_crime':
+                    if (inverse) {
+                        // Undo: remove the added point
+                        window.P = window.P.filter(p => p.crimeId !== action.data.crimeId);
+                        this.P = [...window.P];
+                        if (typeof removeCrimeMarker === 'function') removeCrimeMarker(action.data.crimeId);
+                    } else {
+                        // Redo: add the point back
+                        const pt = { crimeId: action.data.crimeId, lat: action.data.lat, lng: action.data.lng };
+                        window.P.push(pt);
+                        this.P = [...window.P];
+                        if (typeof plotCrimeMarker === 'function') plotCrimeMarker(pt);
+                    }
+                    break;
+
+                case 'remove_crime':
+                    if (inverse) {
+                        // Undo: restore the removed point
+                        const pt = { crimeId: action.data.crimeId, lat: action.data.lat, lng: action.data.lng };
+                        window.P.push(pt);
+                        this.P = [...window.P];
+                        if (typeof plotCrimeMarker === 'function') plotCrimeMarker(pt);
+                    } else {
+                        // Redo: remove the point again
+                        window.P = window.P.filter(p => p.crimeId !== action.data.crimeId);
+                        this.P = [...window.P];
+                        if (typeof removeCrimeMarker === 'function') removeCrimeMarker(action.data.crimeId);
+                    }
+                    break;
+
+                case 'drag_crime': {
+                    const pt = window.P.find(p => p.crimeId === action.data.crimeId);
+                    if (!pt) break;
+                    if (inverse) {
+                        pt.lat = action.data.oldLat;
+                        pt.lng = action.data.oldLng;
+                        if (typeof moveCrimeMarker === 'function') moveCrimeMarker(action.data.crimeId, action.data.oldLat, action.data.oldLng);
+                    } else {
+                        pt.lat = action.data.newLat;
+                        pt.lng = action.data.newLng;
+                        if (typeof moveCrimeMarker === 'function') moveCrimeMarker(action.data.crimeId, action.data.newLat, action.data.newLng);
+                    }
+                    this.P = [...window.P];
+                    break;
+                }
+
+                case 'bulk_import':
+                    if (inverse) {
+                        // Undo: restore the previous set of points
+                        window.P = [...action.data.previousP];
+                        this.P = [...window.P];
+                        if (action.data.previousCounter !== undefined) {
+                            window.crimeIdCounter = action.data.previousCounter;
+                        }
+                        if (typeof restoreCrimeMarkers === 'function') {
+                            restoreCrimeMarkers(window.P);
+                        } else {
+                            console.log('[ui.js] undo bulk_import — restoreCrimeMarkers not yet implemented (Part 9)');
+                        }
+                    } else {
+                        // Redo: re-apply the import
+                        if (action.data.newP) {
+                            window.P = [...action.data.newP];
+                            this.P = [...window.P];
+                            if (action.data.newCounter !== undefined) {
+                                window.crimeIdCounter = action.data.newCounter;
+                            }
+                            if (typeof restoreCrimeMarkers === 'function') {
+                                restoreCrimeMarkers(window.P);
+                            }
+                        }
+                    }
+                    break;
+
+                case 'reset':
+                    if (inverse) {
+                        // Undo: restore the cleared points
+                        window.P = [...action.data.previousP];
+                        this.P = [...window.P];
+                        if (action.data.previousCounter !== undefined) {
+                            window.crimeIdCounter = action.data.previousCounter;
+                        }
+                        if (typeof restoreCrimeMarkers === 'function') {
+                            restoreCrimeMarkers(window.P);
+                        } else {
+                            console.log('[ui.js] undo reset — restoreCrimeMarkers not yet implemented (Part 9)');
+                        }
+                    } else {
+                        // Redo: clear again
+                        window.P = [];
+                        this.P = [];
+                        window.crimeIdCounter = 0;
+                        if (typeof clearAllMapResults === 'function') clearAllMapResults();
+                    }
+                    break;
             }
         },
 
@@ -355,6 +510,29 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
+            // Check each point against Commonwealth bounding box derived from nodeMap extents
+            const warnings = [];
+            const nodeIds = Object.keys(window.nodeMap || {});
+            if (nodeIds.length > 0) {
+                let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+                for (const id of nodeIds) {
+                    const n = window.nodeMap[id];
+                    if (n.lat < minLat) minLat = n.lat;
+                    if (n.lat > maxLat) maxLat = n.lat;
+                    if (n.lng < minLng) minLng = n.lng;
+                    if (n.lng > maxLng) maxLng = n.lng;
+                }
+                const outsideCount = valid.filter(
+                    p => p.lat < minLat || p.lat > maxLat || p.lng < minLng || p.lng > maxLng
+                ).length;
+                if (outsideCount > 0) {
+                    warnings.push(
+                        `${outsideCount} coordinate${outsideCount !== 1 ? 's' : ''} fall outside Barangay ${this.selectedBarangay}. ` +
+                        'These points may produce no valid patrol positions.'
+                    );
+                }
+            }
+
             const replacingCount = this.P.length;
             if (replacingCount > 0) {
                 const ok = confirm(
@@ -363,13 +541,44 @@ document.addEventListener('alpine:init', () => {
                 if (!ok) return;
             }
 
-            if (typeof importCrimeNodes === 'function') {
-                importCrimeNodes(valid, this);
+            // Build new points with unique IDs (IDs continue from current counter)
+            const prevCounter = window.crimeIdCounter;
+            const prevP = [...this.P];
+            const newP = valid.map((v, i) => ({
+                crimeId: 'CRIME-' + String(prevCounter + i + 1).padStart(3, '0'),
+                lat: v.lat,
+                lng: v.lng
+            }));
+            const newCounter = prevCounter + valid.length;
+
+            // Push undo action before modifying state
+            this._pushUndo({
+                type: 'bulk_import',
+                data: { previousP: prevP, previousCounter: prevCounter, newP, newCounter },
+                timestamp: Date.now()
+            });
+
+            // Clear existing markers then plot new ones
+            if (typeof clearCrimeMarkers === 'function') {
+                clearCrimeMarkers();
+            }
+
+            window.crimeIdCounter = newCounter;
+            window.P = newP;
+            this.P = [...window.P];
+
+            if (typeof restoreCrimeMarkers === 'function') {
+                restoreCrimeMarkers(window.P);
             } else {
-                console.log('[ui.js] importCoordinates() — importCrimeNodes not yet implemented (Part 9)');
+                console.log('[ui.js] importCoordinates() — restoreCrimeMarkers not yet implemented (Part 9)');
             }
 
             this.importText = '';
+
+            if (warnings.length > 0) {
+                this.showBanner(warnings[0], 'warning', warnings);
+            }
+
             const skippedMsg = skipped ? `, ${skipped} line${skipped !== 1 ? 's' : ''} skipped` : '';
             this.importMessage = `${valid.length} point${valid.length !== 1 ? 's' : ''} imported successfully${skippedMsg}.`;
             setTimeout(() => { this.importMessage = ''; }, 3000);
@@ -377,16 +586,23 @@ document.addEventListener('alpine:init', () => {
 
         // ── Settings ──────────────────────────────────────────────────────────
 
+        // Always sync settingsDraft from activeConfig so modal shows current values.
+        openSettings() {
+            this.settingsDraft = JSON.parse(JSON.stringify(this.activeConfig));
+            this.showSettings = true;
+        },
+
         applySettings() {
-            // Sync animation preference back to reactive state and localStorage
-            this.animationsEnabled = this.settingsDraft.display.animationsEnabled;
+            // Commit draft to active config
+            this.activeConfig = JSON.parse(JSON.stringify(this.settingsDraft));
+
+            // Sync animation preference to reactive state and localStorage
+            this.animationsEnabled = this.activeConfig.display.animationsEnabled;
             window.animationsEnabled = this.animationsEnabled;
             localStorage.setItem('patrolpoint-animations', this.animationsEnabled);
 
             if (typeof applyConfig === 'function') {
-                applyConfig(this.settingsDraft);
-            } else {
-                console.log('[ui.js] applySettings() — applyConfig not yet implemented (Part 8)');
+                applyConfig(this.activeConfig);
             }
             this.showSettings = false;
         },
@@ -419,6 +635,12 @@ document.addEventListener('alpine:init', () => {
             };
         },
 
+        // ── Print ─────────────────────────────────────────────────────────────
+
+        printView() {
+            window.print();
+        },
+
         // ── Auth ──────────────────────────────────────────────────────────────
 
         async submitAuth() {
@@ -443,7 +665,7 @@ document.addEventListener('alpine:init', () => {
                     this.showAuth = false;
                     this.loadSessions();
                 } else {
-                    // Successful registration — switch to login view
+                    // Registration succeeded — switch to login tab
                     this.authMode = 'login';
                     this.authError = '';
                     this.authForm.password = '';
@@ -503,6 +725,19 @@ document.addEventListener('alpine:init', () => {
             } catch (_) { /* silently ignore */ }
         },
 
+        promptSaveSession() {
+            if (!window.authToken) {
+                this.showBanner('Sign in to save sessions.', 'warning');
+                return;
+            }
+            if (!window.pipelineComplete) {
+                this.showBanner('Run the pipeline first before saving.', 'warning');
+                return;
+            }
+            const name = window.prompt('Session name (leave blank for "Untitled Session"):') ?? '';
+            this.saveCurrentSession(name.trim() || 'Untitled Session');
+        },
+
         async saveCurrentSession(name) {
             if (!window.authToken || !window.pipelineComplete) return;
             try {
@@ -512,25 +747,29 @@ document.addEventListener('alpine:init', () => {
                     n_patrols:       this.nPatrols,
                     deployment_mode: this.deploymentMode,
                     incidents:       window.P,
-                    config:          this.settingsDraft,
+                    config:          this.activeConfig,
                     results: {
                         hull:    window.currentHull,
                         patrols: window.S_star,
                         zones:   window.zones,
                         routes:  window.routes
                     },
-                    trace:           this.traceStages,
+                    trace:            this.traceStages,
                     total_runtime_ms: null
                 };
                 const res = await fetch('/api/sessions', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${window.authToken}`
+                        Authorization:  `Bearer ${window.authToken}`
                     },
                     body: JSON.stringify(body)
                 });
-                if (res.ok) await this.loadSessions();
+                if (res.ok) {
+                    await this.loadSessions();
+                    this.showBanner('Session saved.', 'warning');
+                    setTimeout(() => this.clearBanner(), 2000);
+                }
             } catch (_) { /* silently ignore */ }
         },
 
@@ -599,9 +838,9 @@ document.addEventListener('alpine:init', () => {
                 barangay:        this.selectedBarangay,
                 patrols:         window.S_star ? [...window.S_star] : [],
                 mode:            this.deploymentMode,
-                minPairwiseDist: null,   // filled by websocket-client in Part 8
+                minPairwiseDist: null,
                 totalRuntimeMs:  null,
-                config:          JSON.parse(JSON.stringify(this.settingsDraft))
+                config:          JSON.parse(JSON.stringify(this.activeConfig))
             };
             this.comparisonModeActive = true;
             window.comparisonResultA = this.comparisonRunA;
@@ -617,7 +856,7 @@ document.addEventListener('alpine:init', () => {
                 mode:            this.deploymentMode,
                 minPairwiseDist: null,
                 totalRuntimeMs:  null,
-                config:          JSON.parse(JSON.stringify(this.settingsDraft))
+                config:          JSON.parse(JSON.stringify(this.activeConfig))
             };
             window.comparisonResultB = this.comparisonRunB;
             if (typeof renderComparisonOverlay === 'function') renderComparisonOverlay('B', this.comparisonRunB);
@@ -665,7 +904,6 @@ document.addEventListener('alpine:init', () => {
 
         setPipelineSummary(text) {
             this.pipelineSummary = text;
-            // Auto-scroll trace panel to bottom
             this.$nextTick(() => {
                 const el = document.getElementById('trace-content');
                 if (el) el.scrollTop = el.scrollHeight;

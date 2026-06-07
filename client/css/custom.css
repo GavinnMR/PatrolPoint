@@ -91,8 +91,37 @@
 
 /* Print styles */
 @media print {
-    .fixed, button, #trace-content,
-    [x-show="showTracePanel"],
-    [x-show="showSettings"] { display: none !important; }
-    #map { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+    /* Hide control panel, trace panel, overlays, all buttons */
+    .no-print,
+    .w-80,          /* control panel */
+    .w-96,          /* trace panel */
+    .fixed,         /* all fixed overlays (modals, loading, playback bar) */
+    #minimap,
+    #coord-display { display: none !important; }
+
+    /* Map fills the entire printed page */
+    .flex-1 { flex: none !important; }
+    #map {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 0 !important;
+    }
+
+    /* Print header above map */
+    body::before {
+        content: "PatrolPoint — Patrol Deployment Plan   " attr(data-print-timestamp);
+        display: block;
+        font-family: sans-serif;
+        font-size: 11px;
+        padding: 6px 12px;
+        background: #1e293b;
+        color: #fff;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+    }
 }
