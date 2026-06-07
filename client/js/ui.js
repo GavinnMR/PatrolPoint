@@ -67,6 +67,7 @@ document.addEventListener('alpine:init', () => {
         authMode: 'login',   // 'login' | 'register'
         authForm: { username: '', password: '', displayName: '' },
         authError:   '',
+        authSuccess: '',     // green message shown after successful registration
         currentUser: null,   // { id, username, displayName, barangay }
         sessions:    [],     // list from GET /api/sessions
 
@@ -241,8 +242,9 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    this.currentUser = data;
-                    window.currentUser = data;
+                    // GET /me returns { user: { userId, username, barangay } }
+                    this.currentUser = data.user ?? data;
+                    window.currentUser = this.currentUser;
                 }
             } catch (_) { /* silently ignore — token may be expired */ }
         },
@@ -696,13 +698,15 @@ document.addEventListener('alpine:init', () => {
                     this.currentUser = data.user;
                     window.currentUser = data.user;
                     localStorage.setItem('patrolpoint-token', data.token);
+                    this.authSuccess = '';
                     this.showAuth = false;
                     this.loadSessions();
                 } else {
-                    // Registration succeeded — switch to login tab
+                    // Registration succeeded — switch to login tab and show success message
                     this.authMode = 'login';
                     this.authError = '';
                     this.authForm.password = '';
+                    this.authSuccess = 'Account created successfully. Please sign in.';
                 }
             } catch (_) {
                 this.authError = 'Connection error. Is the server running?';
