@@ -11,8 +11,9 @@ export function validateIncidents(incidents) {
         if (!inc || typeof inc !== 'object') {
             throw new Error(`Incident ${i + 1}: each element must be an object with lat and lng.`);
         }
-        if (typeof inc.lat !== 'number' || typeof inc.lng !== 'number') {
-            throw new Error(`Incident ${i + 1}: lat and lng must be numbers.`);
+        if (typeof inc.lat !== 'number' || typeof inc.lng !== 'number' ||
+            !Number.isFinite(inc.lat) || !Number.isFinite(inc.lng)) {
+            throw new Error(`Incident ${i + 1}: lat and lng must be finite numbers.`);
         }
         if (inc.lat < -90 || inc.lat > 90) {
             throw new Error(`Incident ${i + 1}: lat must be between -90 and 90.`);

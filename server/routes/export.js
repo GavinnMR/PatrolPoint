@@ -51,7 +51,15 @@ router.post('/pdf', async (req, res) => {
             routeByPatrol[r.patrolId] = r;
         }
 
-        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+        const doc = new PDFDocument({
+            margin: 50,
+            size: 'A4',
+            info: {
+                Title: 'PatrolPoint Deployment Plan',
+                Author: 'PatrolPoint System',
+                Subject: `Patrol Deployment — ${barangay_name}`
+            }
+        });
         const buffers = [];
         doc.on('data', chunk => buffers.push(chunk));
         doc.on('end', () => {
