@@ -19,13 +19,23 @@ const __dirname = path.dirname(__filename);
 
 // ── Startup DB migration — run schema.sql on every boot ───────────────────────
 // schema.sql uses CREATE TABLE IF NOT EXISTS — safe to run repeatedly.
+// pg does not support multiple statements in one query() call, so split on ';'
+// and execute each non-empty statement individually.
 // Runs before the server accepts connections so tables exist for all requests.
 async function runMigration() {
     try {
         const schemaPath = path.join(__dirname, 'db', 'schema.sql');
-        const schema = fs.readFileSync(schemaPath, 'utf8');
-        await pool.query(schema);
-        console.log('DB migration complete');
+        const schema     = fs.readFileSync(schemaPath, 'utf8');
+        const statements = schema.split(';').map(s => s.trim()).filter(Boolean);
+        const client     = await pool.connect();
+        try {
+            for (const stmt of statements) {
+                await client.query(stmt);
+            }
+            console.log(`DB migration complete — ${statements.length} statements executed`);
+        } finally {
+            client.release();
+        }
     } catch (err) {
         // Non-fatal: log and continue. The server can still serve requests
         // that don't require auth or sessions. Road network falls back to Overpass.
