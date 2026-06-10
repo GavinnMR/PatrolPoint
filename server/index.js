@@ -61,9 +61,23 @@ app.use(express.static(path.join(__dirname, '..', 'client')));
 // Rate limiter — applied to all /api routes only
 app.use('/api', apiLimiter);
 
-// Health check
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', version: '2.0' });
+// Health check — includes DB reachability so we can diagnose Render connectivity
+app.get('/health', async (req, res) => {
+    let dbStatus = 'ok';
+    let dbError  = null;
+    try {
+        await pool.query('SELECT 1');
+    } catch (err) {
+        dbStatus = 'error';
+        dbError  = err.message;
+    }
+    res.json({
+        status: dbStatus === 'ok' ? 'ok' : 'degraded',
+        version: '2.0',
+        db: dbStatus,
+        dbError: dbError || undefined,
+        dbUrl: process.env.DATABASE_URL ? 'set' : 'NOT SET'
+    });
 });
 
 // Routes
