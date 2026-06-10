@@ -52,7 +52,7 @@
   <div class="flex h-screen">
 
     <!-- ── Map container ──────────────────────────────────────────────────── -->
-    <div class="flex-1 relative">
+    <div class="map-container flex-1 relative">
       <div id="map" class="w-full h-full z-0"></div>
 
       <!-- Map overlays -->
@@ -119,7 +119,17 @@
     </div><!-- end map container -->
 
     <!-- ── Control panel (320px, right side) ─────────────────────────────── -->
-    <div class="w-80 flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col z-10 no-print">
+    <div class="control-panel w-80 flex-shrink-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col z-10 no-print"
+         :style="isMobile ? 'position:fixed;bottom:0;left:0;right:0;width:100%;height:' + mobileSheetHeight + 'vh;border-left:none;border-top:1px solid rgba(156,163,175,0.5);z-index:30;' : ''">
+
+      <!-- Drag handle (mobile only) -->
+      <div x-show="isMobile" x-cloak
+           class="drag-handle flex-shrink-0 flex justify-center items-center py-2 select-none"
+           @touchstart.passive="onDragStart($event)"
+           @touchmove.passive="onDragMove($event)"
+           @touchend.passive="onDragEnd()">
+        <div class="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+      </div>
 
       <!-- Header: title + dark mode toggle -->
       <div class="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
@@ -327,8 +337,15 @@
           </button>
           <div x-show="showSessionsPanel" class="border-t border-gray-200 dark:border-gray-700">
             <div class="max-h-48 overflow-y-auto px-2 py-2 space-y-1">
-              <p x-show="sessions.length === 0"
-                 class="text-xs text-gray-400 text-center py-4">No saved sessions yet.</p>
+              <div x-show="sessionsLoading" class="flex items-center justify-center py-4 gap-1.5 text-xs text-gray-400">
+                <div class="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                <span>Loading...</span>
+              </div>
+              <p x-show="!sessionsLoading && sessionsError"
+                 class="text-xs text-red-500 text-center py-2" x-text="sessionsError"></p>
+              <p x-show="!sessionsLoading && !sessionsError && sessions.length === 0"
+                 class="text-xs text-gray-400 text-center py-4">No saved deployments yet.</p>
+              <div x-show="!sessionsLoading && !sessionsError">
               <template x-for="s in sessions" :key="s.id">
                 <div class="flex items-center gap-1 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs">
                   <div class="flex-1 min-w-0 cursor-pointer" @click="loadSession(s.id)">
@@ -348,6 +365,7 @@
                   </button>
                 </div>
               </template>
+              </div>
             </div>
           </div>
         </div>
@@ -425,9 +443,11 @@
 
         <!-- Compare -->
         <div class="relative" x-data="{ show: false }">
-          <button @click="showComparison = true"
+          <button @click="comparisonModeActive ? exitComparisonMode() : (pipelineComplete && (showComparison = true))"
+                  :disabled="!pipelineComplete && !comparisonModeActive"
+                  :class="comparisonModeActive ? 'border-blue-400 text-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300'"
                   @mouseenter="show = true" @mouseleave="show = false"
-                  class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                  class="p-1.5 rounded border hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -509,7 +529,8 @@
   <!-- Algorithm trace panel (slide-in from right, overlaps map)               -->
   <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showTracePanel" x-cloak
-       class="fixed top-0 right-80 h-full w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-20 flex flex-col shadow-2xl overflow-hidden">
+       class="trace-panel fixed h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-20 flex flex-col shadow-2xl overflow-hidden"
+       :class="isMobile ? 'inset-0 w-full' : 'top-0 right-80 w-96'">
 
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
       <h2 class="font-semibold text-sm">Algorithm Trace</h2>
@@ -541,6 +562,20 @@
           </button>
           <div x-show="stage.expanded" class="px-3 py-2 space-y-1 bg-white dark:bg-gray-800">
             <p class="text-gray-600 dark:text-gray-300 whitespace-pre-wrap" x-text="stage.summary"></p>
+            <!-- Confidence indicator — shown only for Stage 2 when confidence data is available -->
+            <div x-show="stage.id === 2 && stage.confidence !== null" class="flex items-center gap-2 pt-1">
+              <span class="text-gray-500">Confidence:</span>
+              <span :class="{
+                'font-medium text-green-600 dark:text-green-400': stage.confidence >= 80,
+                'font-medium text-yellow-600 dark:text-yellow-400': stage.confidence >= 50 && stage.confidence < 80,
+                'font-medium text-red-600 dark:text-red-400': stage.confidence < 50
+              }" x-text="Math.round(stage.confidence || 0) + '%'"></span>
+              <span :class="{
+                'text-green-600 dark:text-green-400': stage.confidence >= 80,
+                'text-yellow-600 dark:text-yellow-400': stage.confidence >= 50 && stage.confidence < 80,
+                'text-red-600 dark:text-red-400': stage.confidence < 50
+              }" x-text="(stage.confidence >= 80) ? 'High confidence' : (stage.confidence >= 50) ? 'Medium confidence' : 'Low confidence — consider increasing restarts'"></span>
+            </div>
             <template x-if="stage.fullLog">
               <details class="mt-1">
                 <summary class="cursor-pointer text-blue-500 hover:text-blue-600">Full Log</summary>
@@ -557,6 +592,51 @@
            class="border-t border-gray-300 dark:border-gray-600 pt-2 text-gray-600 dark:text-gray-400">
         <pre class="whitespace-pre-wrap" x-text="pipelineSummary"></pre>
       </div>
+
+      <!-- Verification report -->
+      <template x-if="verificationReport">
+        <div class="mt-2 border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
+          <div class="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 flex items-center gap-2">
+            <span :class="verificationReport.overallPass
+              ? 'w-2 h-2 rounded-full bg-green-500 flex-shrink-0'
+              : 'w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0'"></span>
+            <span class="font-semibold text-xs"
+                  x-text="'Verification — ' + (verificationReport.overallPass ? 'All checks passed' : verificationReport.failureCount + ' issue(s) found')"></span>
+          </div>
+          <div class="px-3 py-2 space-y-1">
+            <!-- Convex Hull check -->
+            <div class="flex items-start gap-2 text-xs">
+              <span :class="verificationReport.convexHull?.pass
+                ? 'w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-0.5'
+                : 'w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-0.5'"></span>
+              <span class="text-gray-600 dark:text-gray-400" x-text="'Hull: ' + (verificationReport.convexHull?.message || '')"></span>
+            </div>
+            <!-- Patrol Positions check -->
+            <div class="flex items-start gap-2 text-xs">
+              <span :class="verificationReport.patrolPositions?.pass
+                ? 'w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-0.5'
+                : 'w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-0.5'"></span>
+              <span class="text-gray-600 dark:text-gray-400" x-text="'Positions: ' + (verificationReport.patrolPositions?.message || '')"></span>
+            </div>
+            <!-- Zone Assignment check -->
+            <div class="flex items-start gap-2 text-xs">
+              <span :class="verificationReport.zoneAssignment?.pass
+                ? 'w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-0.5'
+                : 'w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-0.5'"></span>
+              <span class="text-gray-600 dark:text-gray-400" x-text="'Zones: ' + (verificationReport.zoneAssignment?.message || '')"></span>
+            </div>
+            <!-- TSP Routes per patrol -->
+            <template x-for="r in (verificationReport.tspRoutes || [])" :key="r.patrolId">
+              <div class="flex items-start gap-2 text-xs">
+                <span :class="r.pass
+                  ? 'w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-0.5'
+                  : 'w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-0.5'"></span>
+                <span class="text-gray-600 dark:text-gray-400" x-text="'Route ' + r.patrolId + ': ' + (r.message || '')"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 
@@ -599,9 +679,10 @@
   <!-- Settings modal (slide-in overlay from right)                             -->
   <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showSettings" x-cloak
-       class="fixed inset-0 z-50 flex items-center justify-end bg-black/50"
+       class="settings-panel fixed inset-0 z-50 flex items-center justify-end bg-black/50"
        @click.self="showSettings = false">
-    <div class="h-full w-96 bg-white dark:bg-gray-800 shadow-2xl flex flex-col overflow-hidden">
+    <div :class="isMobile ? 'w-full h-full' : 'h-full w-96'"
+         class="bg-white dark:bg-gray-800 shadow-2xl flex flex-col overflow-hidden">
 
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <h2 class="font-semibold">Settings</h2>
@@ -792,35 +873,52 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-[480px] max-h-[70vh] flex flex-col">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <h2 class="font-semibold">Saved Sessions</h2>
-        <button @click="showSessions = false"
-                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
+        <div class="flex items-center gap-2">
+          <button @click="promptSaveSession()" :disabled="!pipelineComplete"
+                  class="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-40">
+            Save Current
+          </button>
+          <button @click="showSessions = false"
+                  class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-        <p x-show="sessions.length === 0"
-           class="text-sm text-gray-400 text-center py-8">No saved sessions yet.</p>
-        <template x-for="s in sessions" :key="s.id">
-          <div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-            <div class="flex-1 min-w-0 cursor-pointer" @click="loadSession(s.id)">
-              <p class="text-sm font-medium truncate"
-                 x-text="s.session_name || 'Untitled Session'"></p>
-              <p class="text-xs text-gray-400"
-                 x-text="s.barangay_name + ' · ' + s.n_patrols + ' patrols · ' + s.deployment_mode"></p>
-              <p class="text-xs text-gray-400"
-                 x-text="new Date(s.created_at).toLocaleString()"></p>
+        <!-- Loading state -->
+        <div x-show="sessionsLoading" class="flex items-center justify-center py-8 gap-2 text-sm text-gray-400">
+          <div class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+          <span>Loading sessions...</span>
+        </div>
+        <!-- Error state -->
+        <p x-show="!sessionsLoading && sessionsError"
+           class="text-sm text-red-500 text-center py-4" x-text="sessionsError"></p>
+        <!-- Empty state -->
+        <p x-show="!sessionsLoading && !sessionsError && sessions.length === 0"
+           class="text-sm text-gray-400 text-center py-8">No saved deployments yet. Run the pipeline and save your first deployment.</p>
+        <div x-show="!sessionsLoading && !sessionsError" class="space-y-2">
+          <template x-for="s in sessions" :key="s.id">
+            <div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <div class="flex-1 min-w-0 cursor-pointer" @click="loadSession(s.id)">
+                <p class="text-sm font-medium truncate"
+                   x-text="s.session_name || 'Untitled Session'"></p>
+                <p class="text-xs text-gray-400"
+                   x-text="s.barangay_name + ' · ' + s.n_patrols + ' patrols · ' + s.deployment_mode"></p>
+                <p class="text-xs text-gray-400"
+                   x-text="new Date(s.created_at).toLocaleString()"></p>
+              </div>
+              <button @click="deleteSession(s.id)"
+                      class="ml-2 text-red-400 hover:text-red-600 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
             </div>
-            <button @click="deleteSession(s.id)"
-                    class="ml-2 text-red-400 hover:text-red-600 flex-shrink-0">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-              </svg>
-            </button>
-          </div>
-        </template>
+          </template>
+        </div>
       </div>
     </div>
   </div>

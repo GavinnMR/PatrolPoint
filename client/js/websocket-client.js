@@ -11,9 +11,12 @@ let lastPongTimestamp = null;
 let initialized       = false; // guard against double-init from main.js and ui.js
 
 // Pipeline warning/state tracking across message handlers
-let pipelineWarnings  = [];    // warnings accumulated per pipeline run for banner consolidation
-let _emptyZoneCount   = 0;     // set by stage 3 handler, used in pipeline_complete summary
-let _overlapEdgeCount = 0;     // set by stage 4 handler, used in pipeline_complete summary
+let pipelineWarnings      = [];    // warnings accumulated per pipeline run for banner consolidation
+let _emptyZoneCount       = 0;     // set by stage 3 handler, used in pipeline_complete summary
+let _overlapEdgeCount     = 0;     // set by stage 4 handler, used in pipeline_complete summary
+let _lastMinPairwiseDist  = null;  // set by stage 2 result, used in comparison capture
+let _lastConfidence       = null;  // set by stage 2 result, used for confidence badge
+let _lastTotalRuntimeMs   = null;  // set by pipeline_complete, used in comparison capture
 
 const MAX_RECONNECT   = 5;
 const RECONNECT_DELAY = 3000;  // ms between reconnect attempts
@@ -225,9 +228,12 @@ function handlePipelineStart(data) {
     window.pipelineRunning  = true;
 
     // Reset per-run tracking
-    pipelineWarnings  = [];
-    _emptyZoneCount   = 0;
-    _overlapEdgeCount = 0;
+    pipelineWarnings     = [];
+    _emptyZoneCount      = 0;
+    _overlapEdgeCount    = 0;
+    _lastMinPairwiseDist = null;
+    _lastConfidence      = null;
+    _lastTotalRuntimeMs  = null;
 
     const ui = window.uiApp;
     if (ui) {
@@ -287,6 +293,14 @@ function handleStageComplete(data) {
     if (stage === 3) _emptyZoneCount   = result.emptyZones?.length ?? 0;
     if (stage === 4) _overlapEdgeCount = result.overlapEdges?.length ?? 0;
 
+    // Stage 2: capture confidence + min pairwise dist for comparison mode and badge
+    if (stage === 2) {
+        _lastMinPairwiseDist        = result.bestMinPairwiseDist ?? null;
+        _lastConfidence             = result.confidence ?? null;
+        window._lastMinPairwiseDist = _lastMinPairwiseDist;
+        window._pipelineConfidence  = _lastConfidence;
+    }
+
     const ui = window.uiApp;
     if (ui) {
         // Preserve 'warning' status if already set by a preceding warning message for this stage.
@@ -298,12 +312,17 @@ function handleStageComplete(data) {
         const serverLog   = trace?.log || '';
         const combinedLog = [existLog, serverLog].filter(Boolean).join('\n');
 
-        ui.updateTraceStage(stage, {
+        const stageUpdate = {
             status:    existStatus === 'warning' ? 'warning' : 'success',
             summary:   buildTraceSummary(stage, result, runtimeMs),
             fullLog:   combinedLog,
             runtimeMs: Math.round(runtimeMs)
-        });
+        };
+        // Attach confidence to stage 2 for color-coded display in trace panel
+        if (stage === 2 && _lastConfidence !== null) {
+            stageUpdate.confidence = _lastConfidence;
+        }
+        ui.updateTraceStage(stage, stageUpdate);
     }
 
     // Branch per stage number and call correct placeholder
@@ -377,12 +396,14 @@ function handlePipelineComplete(data) {
     );
 
     // Store all results in main.js globals
-    window.currentHull      = hull;
-    window.S_star           = patrols;
-    window.zones            = zones;
-    window.routes           = routes;
-    window.pipelineComplete = true;
-    window.pipelineRunning  = false;
+    window.currentHull       = hull;
+    window.S_star            = patrols;
+    window.zones             = zones;
+    window.routes            = routes;
+    window.pipelineComplete  = true;
+    window.pipelineRunning   = false;
+    _lastTotalRuntimeMs      = totalRuntimeMs;
+    window._lastTotalRuntimeMs = totalRuntimeMs;
 
     const ui = window.uiApp;
     if (ui) {
@@ -424,6 +445,38 @@ function handlePipelineComplete(data) {
         // Auto-scroll trace panel after summary is written — must fire after setPipelineSummary
         if (typeof ui.scrollTracePanelToBottom === 'function') {
             ui.scrollTracePanelToBottom();
+        }
+
+        // Verification report — store on Alpine component and optionally banner if failed
+        ui.verificationReport = verificationReport || null;
+        if (verificationReport && !verificationReport.overallPass && verificationReport.failureCount > 0) {
+            const vMsg = 'Algorithm verification detected issues. Results may be suboptimal. Check the trace panel for details.';
+            pipelineWarnings.push(vMsg);
+            ui.showBanner(pipelineWarnings[0], 'warning', [...pipelineWarnings]);
+        }
+
+        // Comparison mode: auto-store current result as Run B when Run A already exists
+        if (window.comparisonModeActive && ui.comparisonRunA) {
+            const totalCircuitDist = (routes || []).reduce((s, r) => s + (r.circuitDistanceM || 0), 0);
+            const stationaryCount  = (zones  || []).filter(z => !z || z.length === 0).length;
+            const runB = {
+                barangay:        ui.selectedBarangay,
+                patrols:         patrols ? [...patrols] : [],
+                hull:            hull    ? [...hull]    : [],
+                zones:           zones   ? [...zones]   : [],
+                routes:          routes  ? [...routes]  : [],
+                mode:            ui.deploymentMode,
+                minPairwiseDist: _lastMinPairwiseDist,
+                totalCircuitDist,
+                stationaryCount,
+                totalRuntimeMs,
+                config:          JSON.parse(JSON.stringify(ui.activeConfig))
+            };
+            ui.comparisonRunB        = runB;
+            window.comparisonResultB = runB;
+            if (typeof window.renderComparisonResults === 'function') {
+                window.renderComparisonResults(ui.comparisonRunA, runB);
+            }
         }
 
         // Auto-prompt session save if user is logged in

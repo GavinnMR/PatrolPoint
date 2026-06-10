@@ -64,8 +64,9 @@ router.post('/pdf', async (req, res) => {
         doc.on('data', chunk => buffers.push(chunk));
         doc.on('end', () => {
             const pdf = Buffer.concat(buffers);
+            const tsStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
             res.set('Content-Type', 'application/pdf');
-            res.set('Content-Disposition', 'attachment; filename="PatrolPoint-Deployment-Plan.pdf"');
+            res.set('Content-Disposition', `attachment; filename="patrolpoint-deployment-${tsStr}.pdf"`);
             res.send(pdf);
         });
 
@@ -208,8 +209,9 @@ router.post('/csv', async (req, res) => {
         }
 
         const csv = lines.join('\n');
+        const tsStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         res.set('Content-Type', 'text/csv');
-        res.set('Content-Disposition', 'attachment; filename="PatrolPoint-Deployment.csv"');
+        res.set('Content-Disposition', `attachment; filename="patrolpoint-deployment-${tsStr}.csv"`);
         res.send(csv);
     } catch (err) {
         console.error('CSV export error:', err);

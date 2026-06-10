@@ -38,6 +38,10 @@ let osmGraphLayers          = [];
 
 let _lastRoutes = null;              // stored for zoom-level redraw
 
+// Comparison overlay layers
+let comparisonLayersA = [];   // Leaflet layers for Run A
+let comparisonLayersB = [];   // Leaflet layers for Run B
+
 // ── Utility: ray casting point-in-polygon ─────────────────────────────────────
 function pointInHull(lat, lng, hull) {
     if (!hull || hull.length < 3) return true;
@@ -494,10 +498,15 @@ function updatePatrolMarkerStyle(patrolId, style) {
     entry.marker.setIcon(icon);
 }
 
-function _roamingIcon(color, num) {
+function _roamingIcon(color, num, confidence) {
+    let badge = '';
+    if (confidence !== undefined && confidence !== null) {
+        const badgeColor = confidence >= 80 ? '#22c55e' : confidence >= 50 ? '#eab308' : '#ef4444';
+        badge = `<div class="patrol-confidence-badge" style="background:${badgeColor};" title="Hill Climbing confidence: ${Math.round(confidence)}%"></div>`;
+    }
     return L.divIcon({
         className: '',
-        html: `<div class="patrol-marker-roaming" style="background:${color};width:24px;height:24px;">${num}</div>`,
+        html: `<div class="patrol-marker-roaming" style="background:${color};width:24px;height:24px;">${num}${badge}</div>`,
         iconSize:   [24, 24],
         iconAnchor: [12, 12]
     });
@@ -817,6 +826,136 @@ function clearAllMapResults() {
     _lastRoutes            = null;
 }
 
+// ── Algorithm comparison overlay ──────────────────────────────────────────────
+
+function _comparisonRunBIcon(color, num) {
+    return L.divIcon({
+        className: '',
+        html: `<div class="patrol-marker-comparison-b" style="border-color:${color};color:${color};width:24px;height:24px;">${num}</div>`,
+        iconSize:   [24, 24],
+        iconAnchor: [12, 12]
+    });
+}
+
+function _renderComparisonRun(layers, run, isRunB) {
+    if (!run) return;
+
+    const opacity = isRunB ? 0.6 : 1.0;
+
+    // Patrol markers
+    (run.patrols || []).forEach((patrol, idx) => {
+        const color = patrol.color || PATROL_COLORS[idx % PATROL_COLORS.length];
+        const num   = idx + 1;
+        const icon  = isRunB ? _comparisonRunBIcon(color, num) : _roamingIcon(color, num);
+        const marker = L.marker([patrol.lat, patrol.lng], {
+            icon,
+            interactive: false,
+            opacity,
+            zIndexOffset: isRunB ? 450 : 400
+        }).addTo(map);
+        layers.push(marker);
+    });
+
+    // Route lines
+    (run.routes || []).forEach((route, idx) => {
+        const color = (run.patrols && run.patrols[idx])
+            ? (run.patrols[idx].color || PATROL_COLORS[idx % PATROL_COLORS.length])
+            : PATROL_COLORS[idx % PATROL_COLORS.length];
+        const dashArray = isRunB ? '8 6' : null;
+
+        for (const seg of (route.pathSegments || [])) {
+            const latlngs = seg.map(n => [n.lat, n.lng]);
+            if (latlngs.length < 2) continue;
+            const line = L.polyline(latlngs, {
+                color,
+                weight:    isRunB ? 2 : 3,
+                opacity,
+                dashArray,
+                interactive: false
+            }).addTo(map);
+            layers.push(line);
+        }
+    });
+}
+
+function renderComparisonResults(runA, runB) {
+    clearComparisonOverlay();
+    if (runA) _renderComparisonRun(comparisonLayersA, runA, false);
+    if (runB) _renderComparisonRun(comparisonLayersB, runB, true);
+}
+
+function showComparisonRunA(visible) {
+    comparisonLayersA.forEach(l => visible ? l.addTo(map) : map.removeLayer(l));
+}
+
+function showComparisonRunB(visible) {
+    comparisonLayersB.forEach(l => visible ? l.addTo(map) : map.removeLayer(l));
+}
+
+function clearComparisonOverlay() {
+    comparisonLayersA.forEach(l => map.removeLayer(l));
+    comparisonLayersB.forEach(l => map.removeLayer(l));
+    comparisonLayersA = [];
+    comparisonLayersB = [];
+}
+
+// ── Session result rendering ───────────────────────────────────────────────────
+
+function renderSessionResults(session, ui) {
+    if (!session || !session.results) return;
+    const { hull, patrols, zones, routes } = session.results;
+
+    // Reset to a clean state first (keep crime markers)
+    if (hullPolygon) { map.removeLayer(hullPolygon); hullPolygon = null; }
+    patrolClusterGroup.clearLayers();
+    Object.values(patrolMarkerMap).forEach(entry => {
+        if (entry.coverageCircle) map.removeLayer(entry.coverageCircle);
+    });
+    patrolMarkerMap      = {};
+    window.patrolMarkers = {};
+    _clearRoutePolylines();
+    clearZoneLines();
+
+    // Hull
+    if (hull && hull.length >= 3) {
+        renderHull(hull);
+        window.currentHull = hull;
+    }
+
+    // Patrols + zones + routes
+    if (patrols && patrols.length > 0) {
+        renderPatrolMarkers(patrols);
+        window.S_star = patrols;
+
+        if (zones) {
+            window.zones = zones;
+            const mode = session.deployment_mode || 'stationary';
+            if (mode === 'roaming' && routes && routes.length > 0) {
+                renderRoutes(routes);
+                renderOverlapOverlay(routes);
+                window.routes = routes;
+            } else {
+                renderZoneLines(zones, patrols);
+            }
+
+            // Mark stationary patrols
+            patrols.forEach((patrol, idx) => {
+                const zone = zones[idx];
+                if (!zone || zone.length === 0) {
+                    updatePatrolMarkerStyle(patrol.id || `p${idx}`, 'stationary');
+                }
+            });
+        }
+    }
+
+    window.pipelineComplete = true;
+    if (ui) {
+        ui.pipelineComplete = true;
+        ui.deploymentMode   = session.deployment_mode || 'stationary';
+        ui.nPatrols         = session.n_patrols;
+    }
+}
+
 // ── Barangay network switch ────────────────────────────────────────────────────
 function loadBarangayNetwork(barangay) {
     window.currentBarangay = barangay;
@@ -856,6 +995,12 @@ window.clearAllMapResults         = clearAllMapResults;
 
 window.computeOffsetPolyline      = computeOffsetPolyline;
 window.getZoomOffset              = getZoomOffset;
+
+window.renderComparisonResults    = renderComparisonResults;
+window.showComparisonRunA         = showComparisonRunA;
+window.showComparisonRunB         = showComparisonRunB;
+window.clearComparisonOverlay     = clearComparisonOverlay;
+window.renderSessionResults       = renderSessionResults;
 
 // Alias used by ui.js bulk-import: clears visual markers without touching P array
 window.clearCrimeMarkers = function () {

@@ -89,18 +89,81 @@
 #trace-content::-webkit-scrollbar-track { background: transparent; }
 #trace-content::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
 
+/* Patrol comparison (Run B — hollow marker) */
+.patrol-marker-comparison-b {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    background: transparent;
+    border: 2px dashed;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    cursor: default;
+}
+
+/* Confidence badge on roaming patrol marker */
+.patrol-confidence-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid #fff;
+    pointer-events: none;
+}
+.patrol-marker-roaming { position: relative; }
+
+/* Mobile bottom sheet — touch targets */
+@media (max-width: 767px) {
+    /* Minimum 44px touch targets on interactive controls */
+    .control-panel button,
+    .control-panel select,
+    .control-panel input[type="number"] {
+        min-height: 44px;
+    }
+
+    /* Drag handle affordance */
+    .drag-handle {
+        touch-action: none;
+        user-select: none;
+    }
+
+    /* Trace panel full-screen override */
+    .trace-panel {
+        top: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Settings panel full-screen override */
+    .settings-panel > div {
+        width: 100% !important;
+    }
+
+    /* Map fills screen (control panel overlays on top as fixed sheet) */
+    .map-container {
+        height: 100vh;
+    }
+}
+
 /* Print styles */
 @media print {
-    /* Hide control panel, trace panel, overlays, all buttons */
+    /* Hide non-content elements using semantic class names */
     .no-print,
-    .w-80,          /* control panel */
-    .w-96,          /* trace panel */
-    .fixed,         /* all fixed overlays (modals, loading, playback bar) */
+    .control-panel,
+    .trace-panel,
+    .settings-panel,
     #minimap,
     #coord-display { display: none !important; }
 
     /* Map fills the entire printed page */
-    .flex-1 { flex: none !important; }
+    .map-container {
+        flex: none !important;
+        width: 100vw !important;
+    }
     #map {
         position: fixed !important;
         inset: 0 !important;
@@ -109,7 +172,7 @@
         z-index: 0 !important;
     }
 
-    /* Print header above map */
+    /* Print header above map using timestamp from body attribute */
     body::before {
         content: "PatrolPoint — Patrol Deployment Plan   " attr(data-print-timestamp);
         display: block;

@@ -69,7 +69,9 @@ document.addEventListener('alpine:init', () => {
         authError:   '',
         authSuccess: '',     // green message shown after successful registration
         currentUser: null,   // { id, username, displayName, barangay }
-        sessions:    [],     // list from GET /api/sessions
+        sessions:        [],     // list from GET /api/sessions
+        sessionsLoading: false,
+        sessionsError:   '',
 
         // ── Undo / redo stacks ────────────────────────────────────────────────
         undoStack: [],   // {type, data, timestamp} — length exposed for :disabled binding
@@ -87,10 +89,19 @@ document.addEventListener('alpine:init', () => {
         showRunA:             true,
         showRunB:             true,
 
+        // ── Verification report ───────────────────────────────────────────────
+        verificationReport: null,
+
         // ── Route playback ────────────────────────────────────────────────────
         routePlaybackActive: false,
         playbackPatrolIndex: 0,
         playbackSpeed:       1,
+
+        // ── Mobile bottom sheet ───────────────────────────────────────────────
+        mobileSheetHeight: 40,   // percent of viewport height — 40% collapsed, 80% expanded
+        isMobile:          false,
+        _dragStartY:       0,
+        _dragStartHeight:  40,
 
         // ── Active config (currently applied, sent to backend on compute) ─────
         activeConfig: {
@@ -190,6 +201,20 @@ document.addEventListener('alpine:init', () => {
                     e.preventDefault();
                     e.returnValue = 'You have unsaved patrol deployment data. Leave anyway?';
                 }
+            });
+
+            // Mobile detection — check on init and on resize
+            this.isMobile = window.innerWidth < 768;
+            window.addEventListener('resize', () => {
+                this.isMobile = window.innerWidth < 768;
+            });
+
+            // Watch showRunA/showRunB toggles to show/hide comparison layers
+            this.$watch('showRunA', (val) => {
+                if (typeof showComparisonRunA === 'function') showComparisonRunA(val);
+            });
+            this.$watch('showRunB', (val) => {
+                if (typeof showComparisonRunB === 'function') showComparisonRunB(val);
             });
 
             // Expose Alpine component instance globally so map.js can call methods
@@ -674,6 +699,12 @@ document.addEventListener('alpine:init', () => {
         // ── Print ─────────────────────────────────────────────────────────────
 
         printView() {
+            const ts = new Date().toLocaleString('en-PH', {
+                month: 'long', day: 'numeric', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: false,
+                timeZone: 'Asia/Manila'
+            });
+            document.body.setAttribute('data-print-timestamp', `Generated: ${ts}`);
             window.print();
         },
 
@@ -726,12 +757,22 @@ document.addEventListener('alpine:init', () => {
 
         async loadSessions() {
             if (!window.authToken) return;
+            this.sessionsLoading = true;
+            this.sessionsError   = '';
             try {
                 const res = await fetch('/api/sessions', {
                     headers: { Authorization: `Bearer ${window.authToken}` }
                 });
-                if (res.ok) this.sessions = await res.json();
-            } catch (_) { /* silently ignore */ }
+                if (res.ok) {
+                    this.sessions = await res.json();
+                } else {
+                    this.sessionsError = 'Failed to load sessions. Please try again.';
+                }
+            } catch (_) {
+                this.sessionsError = 'Connection error. Please check your connection.';
+            } finally {
+                this.sessionsLoading = false;
+            }
         },
 
         async loadSession(id) {
@@ -842,7 +883,8 @@ document.addEventListener('alpine:init', () => {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `patrolpoint-deployment.${format}`;
+                const tsStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                a.download = `patrolpoint-deployment-${tsStr}.${format}`;
                 a.click();
                 URL.revokeObjectURL(url);
             } catch (_) {
@@ -868,42 +910,89 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // ── Mobile bottom sheet drag ──────────────────────────────────────────
+
+        onDragStart(e) {
+            const touch = e.touches && e.touches[0];
+            if (!touch) return;
+            this._dragStartY      = touch.clientY;
+            this._dragStartHeight = this.mobileSheetHeight;
+        },
+
+        onDragMove(e) {
+            const touch = e.touches && e.touches[0];
+            if (!touch || this._dragStartY === 0) return;
+            const deltaY   = this._dragStartY - touch.clientY;
+            const deltaPct = (deltaY / window.innerHeight) * 100;
+            this.mobileSheetHeight = Math.min(80, Math.max(20, this._dragStartHeight + deltaPct));
+        },
+
+        onDragEnd() {
+            if (this._dragStartY === 0) return;
+            this.mobileSheetHeight = this.mobileSheetHeight > 55 ? 80 : 40;
+            this._dragStartY = 0;
+        },
+
         // ── Algorithm comparison mode ─────────────────────────────────────────
+
+        enterComparisonMode() {
+            this.comparisonModeActive = true;
+            window.comparisonModeActive = true;
+            this.showComparison = true;
+        },
 
         storeComparisonRunA() {
             if (!window.pipelineComplete) return;
+            const totalCircuitDist = (window.routes || []).reduce((s, r) => s + (r.circuitDistanceM || 0), 0);
+            const stationaryCount  = (window.zones  || []).filter(z => !z || z.length === 0).length;
             this.comparisonRunA = {
                 barangay:        this.selectedBarangay,
-                patrols:         window.S_star ? [...window.S_star] : [],
+                patrols:         window.S_star  ? [...window.S_star]     : [],
+                hull:            window.currentHull ? [...window.currentHull] : [],
+                zones:           window.zones   ? [...window.zones]      : [],
+                routes:          window.routes  ? [...window.routes]     : [],
                 mode:            this.deploymentMode,
-                minPairwiseDist: null,
-                totalRuntimeMs:  null,
+                minPairwiseDist: window._lastMinPairwiseDist ?? null,
+                totalCircuitDist,
+                stationaryCount,
+                totalRuntimeMs:  window._lastTotalRuntimeMs  ?? null,
                 config:          JSON.parse(JSON.stringify(this.activeConfig))
             };
-            this.comparisonModeActive = true;
             window.comparisonResultA = this.comparisonRunA;
-            window.comparisonModeActive = true;
-            if (typeof renderComparisonOverlay === 'function') renderComparisonOverlay('A', this.comparisonRunA);
+            this.enterComparisonMode();
+            if (typeof renderComparisonResults === 'function' && this.comparisonRunB) {
+                renderComparisonResults(this.comparisonRunA, this.comparisonRunB);
+            }
         },
 
         storeComparisonRunB() {
             if (!window.pipelineComplete) return;
+            const totalCircuitDist = (window.routes || []).reduce((s, r) => s + (r.circuitDistanceM || 0), 0);
+            const stationaryCount  = (window.zones  || []).filter(z => !z || z.length === 0).length;
             this.comparisonRunB = {
                 barangay:        this.selectedBarangay,
-                patrols:         window.S_star ? [...window.S_star] : [],
+                patrols:         window.S_star  ? [...window.S_star]     : [],
+                hull:            window.currentHull ? [...window.currentHull] : [],
+                zones:           window.zones   ? [...window.zones]      : [],
+                routes:          window.routes  ? [...window.routes]     : [],
                 mode:            this.deploymentMode,
-                minPairwiseDist: null,
-                totalRuntimeMs:  null,
+                minPairwiseDist: window._lastMinPairwiseDist ?? null,
+                totalCircuitDist,
+                stationaryCount,
+                totalRuntimeMs:  window._lastTotalRuntimeMs  ?? null,
                 config:          JSON.parse(JSON.stringify(this.activeConfig))
             };
             window.comparisonResultB = this.comparisonRunB;
-            if (typeof renderComparisonOverlay === 'function') renderComparisonOverlay('B', this.comparisonRunB);
+            if (typeof renderComparisonResults === 'function' && this.comparisonRunA) {
+                renderComparisonResults(this.comparisonRunA, this.comparisonRunB);
+            }
         },
 
         exitComparisonMode() {
             this.comparisonRunA = null;
             this.comparisonRunB = null;
             this.comparisonModeActive = false;
+            this.showComparison = false;
             this.showRunA = true;
             this.showRunB = true;
             window.comparisonResultA = null;
@@ -915,29 +1004,32 @@ document.addEventListener('alpine:init', () => {
         // ── Trace panel helpers (called by websocket-client.js) ───────────────
 
         initTracePanel() {
-            this.traceStages = [];
-            this.pipelineSummary = '';
+            this.traceStages       = [];
+            this.pipelineSummary   = '';
+            this.verificationReport = null;
         },
 
         addTraceStage(id, name) {
             this.traceStages.push({
                 id,
                 name,
-                status:    'running',
-                summary:   '',
-                fullLog:   '',
-                expanded:  true,
-                runtimeMs: null
+                status:     'running',
+                summary:    '',
+                fullLog:    '',
+                expanded:   true,
+                runtimeMs:  null,
+                confidence: null
             });
         },
 
-        updateTraceStage(id, { status, summary, fullLog, runtimeMs }) {
+        updateTraceStage(id, { status, summary, fullLog, runtimeMs, confidence }) {
             const stage = this.traceStages.find(s => s.id === id);
             if (!stage) return;
-            if (status    !== undefined) stage.status    = status;
-            if (summary   !== undefined) stage.summary   = summary;
-            if (fullLog   !== undefined) stage.fullLog   = fullLog;
-            if (runtimeMs !== undefined) stage.runtimeMs = runtimeMs;
+            if (status     !== undefined) stage.status     = status;
+            if (summary    !== undefined) stage.summary    = summary;
+            if (fullLog    !== undefined) stage.fullLog    = fullLog;
+            if (runtimeMs  !== undefined) stage.runtimeMs  = runtimeMs;
+            if (confidence !== undefined) stage.confidence = confidence;
         },
 
         setPipelineSummary(text) {
