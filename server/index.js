@@ -5,15 +5,33 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import authRouter from './routes/auth.js';
 import networkRouter from './routes/network.js';
 import sessionsRouter from './routes/sessions.js';
 import exportRouter from './routes/export.js';
 import { apiLimiter } from './middleware/rateLimit.js';
 import { handlePipelineConnection } from './websocket/pipelineSocket.js';
+import pool from './db/client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ── Startup DB migration — run schema.sql on every boot ───────────────────────
+// schema.sql uses CREATE TABLE IF NOT EXISTS — safe to run repeatedly.
+// Runs before the server accepts connections so tables exist for all requests.
+async function runMigration() {
+    try {
+        const schemaPath = path.join(__dirname, 'db', 'schema.sql');
+        const schema = fs.readFileSync(schemaPath, 'utf8');
+        await pool.query(schema);
+        console.log('DB migration complete');
+    } catch (err) {
+        // Non-fatal: log and continue. The server can still serve requests
+        // that don't require auth or sessions. Road network falls back to Overpass.
+        console.error('DB migration failed (non-fatal):', err.message);
+    }
+}
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -55,7 +73,9 @@ wss.on('connection', (ws, req) => {
 });
 
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-    console.log(`PatrolPoint V2 server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+runMigration().then(() => {
+    httpServer.listen(PORT, () => {
+        console.log(`PatrolPoint V2 server running on port ${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
 });

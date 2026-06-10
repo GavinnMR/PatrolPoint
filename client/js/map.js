@@ -17,6 +17,7 @@ const PATROL_COLORS = window.PATROL_COLORS || [
 ];
 
 // ── Module-level state ─────────────────────────────────────────────────────────
+let mapInitialized   = false;   // guard: initMap called from both main.js and Alpine init()
 let map              = null;
 let minimapInstance  = null;
 let minimapViewport  = null;
@@ -58,6 +59,9 @@ function pointInHull(lat, lng, hull) {
 
 // ── Map initialization ─────────────────────────────────────────────────────────
 function initMap(ui) {
+    if (mapInitialized) return;
+    mapInitialized = true;
+
     map = L.map('map', {
         center: MAP_CENTER,
         zoom:   MAP_ZOOM,
