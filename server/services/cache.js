@@ -1,13 +1,87 @@
+import { readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
+import { join, dirname } from 'path';
 import { getRoadNetwork, saveRoadNetwork } from '../db/queries.js';
 import { fetchBarangayData } from './overpass.js';
 import { processOverpassResponse } from './networkProcessor.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const BARANGAY_BBOXES = {
     'Commonwealth': { south: 14.69, west: 121.08, north: 14.72, east: 121.11 }
 };
 
+// Local pre-built network files — keyed by barangay name
+const LOCAL_NETWORK_FILES = {
+    'Commonwealth': join(__dirname, '../../data/road_network.json')
+};
+
 // Module-level in-memory cache — persists across requests for the lifetime of the process
 const networkCache = {};
+
+// Build processed network object from the pre-built road_network.json format.
+// road_network.json stores nodes as an array; the cache expects a nodeMap object.
+async function buildNetworkFromLocalFile(barangayName) {
+    const filePath = LOCAL_NETWORK_FILES[barangayName];
+    if (!filePath) return null;
+
+    let raw;
+    try {
+        raw = JSON.parse(await readFile(filePath, 'utf8'));
+    } catch (err) {
+        console.warn(`Local network file not readable for "${barangayName}": ${err.message}`);
+        return null;
+    }
+
+    // Convert nodes array → nodeMap object keyed by id
+    const nodes = {};
+    for (const n of raw.nodes) nodes[n.id] = n;
+
+    // Build adjacencyList and degree map from edges
+    const adjacencyList = {};
+    const degree = {};
+    for (const id in nodes) { adjacencyList[id] = []; degree[id] = 0; }
+
+    for (const edge of raw.edges) {
+        adjacencyList[edge.from].push({ neighborId: edge.to, weight: edge.weight });
+        adjacencyList[edge.to].push({ neighborId: edge.from, weight: edge.weight });
+        degree[edge.from] = (degree[edge.from] || 0) + 1;
+        degree[edge.to]   = (degree[edge.to]   || 0) + 1;
+    }
+
+    // Intersection nodes — degree >= 3
+    const intersectionNodeIds = Object.keys(degree).filter(id => degree[id] >= 3);
+
+    // Bounding box from node coordinates
+    let minLat = Infinity, maxLat = -Infinity;
+    let minLng = Infinity, maxLng = -Infinity;
+    for (const id in nodes) {
+        const { lat, lng } = nodes[id];
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+    }
+
+    const nodeCount         = Object.keys(nodes).length;
+    const edgeCount         = raw.edges.length;
+    const intersectionCount = intersectionNodeIds.length;
+
+    console.log(`Local file processed: ${nodeCount} nodes, ${edgeCount} edges, ${intersectionCount} intersection nodes`);
+
+    return {
+        nodes,
+        edges: raw.edges,
+        adjacencyList,
+        intersectionNodeIds,
+        boundary: [],
+        osmRelationId: null,
+        nodeCount,
+        edgeCount,
+        intersectionCount,
+        bbox: { south: minLat, west: minLng, north: maxLat, east: maxLng }
+    };
+}
 
 export async function getOrFetchNetwork(barangayName) {
     // 1. In-memory hit — fastest path, no DB round-trip
@@ -17,13 +91,11 @@ export async function getOrFetchNetwork(barangayName) {
     }
 
     // 2. Database hit — warm start after server restart
-    // Catch DB errors (host unreachable, pool timeout, etc.) and fall through to Overpass
-    // so the service stays available even when the database is temporarily down.
     let dbRecord = null;
     try {
         dbRecord = await getRoadNetwork(barangayName);
     } catch (dbErr) {
-        console.warn(`Database unavailable for "${barangayName}" (${dbErr.message}) — falling back to Overpass API`);
+        console.warn(`Database unavailable for "${barangayName}" (${dbErr.message}) — will try local file then Overpass`);
     }
     if (dbRecord) {
         console.log(`Network cache hit (database): ${barangayName}`);
@@ -47,7 +119,37 @@ export async function getOrFetchNetwork(barangayName) {
         return { ...data, fromCache: true };
     }
 
-    // 3. Cold start — fetch from Overpass, process, cache in DB and memory
+    // 3. Local file fallback — uses pre-built road_network.json, no external requests
+    console.log(`Trying local network file for "${barangayName}"...`);
+    const localData = await buildNetworkFromLocalFile(barangayName);
+    if (localData) {
+        console.log(`Loaded "${barangayName}" from local file — seeding database for next startup`);
+        networkCache[barangayName] = localData;
+
+        // Seed DB in the background so future startups hit cache level 2 instead
+        saveRoadNetwork({
+            barangay_name: barangayName,
+            city: 'Quezon City',
+            osm_relation_id: localData.osmRelationId,
+            nodes: localData.nodes,
+            edges: localData.edges,
+            boundary: localData.boundary,
+            adjacency_list: localData.adjacencyList,
+            intersection_node_ids: localData.intersectionNodeIds,
+            node_count: localData.nodeCount,
+            edge_count: localData.edgeCount,
+            intersection_count: localData.intersectionCount,
+            bbox_south: localData.bbox.south,
+            bbox_west: localData.bbox.west,
+            bbox_north: localData.bbox.north,
+            bbox_east: localData.bbox.east
+        }).then(() => console.log(`Network seeded to database: ${barangayName}`))
+          .catch(err => console.warn(`DB seed failed for "${barangayName}" (non-fatal): ${err.message}`));
+
+        return { ...localData, fromCache: false };
+    }
+
+    // 4. Cold start — fetch from Overpass as last resort
     console.log(`Network cache miss: ${barangayName} — fetching from Overpass`);
     const bbox = BARANGAY_BBOXES[barangayName];
     if (!bbox) {
@@ -78,10 +180,8 @@ export async function getOrFetchNetwork(barangayName) {
         console.log(`Network cached to database: ${barangayName}`);
     } catch (dbErr) {
         console.error(`Failed to cache network to database for ${barangayName}:`, dbErr.message);
-        // Non-fatal — in-memory cache still serves this request and subsequent ones
     }
 
     networkCache[barangayName] = processed;
-
     return { ...processed, fromCache: false };
 }
