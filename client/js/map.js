@@ -7,7 +7,7 @@ import { replacePlaceholder } from './websocket-client.js';
 // ── Constants ──────────────────────────────────────────────────────────────────
 const MAP_CENTER  = [14.7028, 121.0944];
 const MAP_ZOOM    = 15;
-const MAP_MIN_ZOOM = 14;
+const MAP_MIN_ZOOM = 10;
 const MAP_MAX_ZOOM = 18; // BUG FIX: V1 used 19, OSM tiles unavailable there
 
 const PATROL_COLORS = window.PATROL_COLORS || [
