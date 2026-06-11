@@ -142,6 +142,12 @@ function initMap(ui) {
     });
     map.addLayer(patrolClusterGroup);
 
+    // Load Commonwealth boundary from bundled data file and render darkening mask
+    fetch('./data/commonwealth_boundary.json')
+        .then(r => r.json())
+        .then(boundary => renderBarangayBoundary(boundary))
+        .catch(err => console.warn('[map.js] Could not load commonwealth_boundary.json:', err.message));
+
     // Wire WebSocket placeholder callbacks
     replacePlaceholder('onConnected', () => {
         console.log('[map.js] WS connected');
