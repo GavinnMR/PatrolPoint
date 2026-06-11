@@ -19,8 +19,6 @@ const PATROL_COLORS = window.PATROL_COLORS || [
 // ── Module-level state ─────────────────────────────────────────────────────────
 let mapInitialized   = false;   // guard: initMap called from both main.js and Alpine init()
 let map              = null;
-let minimapInstance  = null;
-let minimapViewport  = null;
 let lightTileLayer   = null;
 let darkTileLayer    = null;
 let currentTileLayer = null;
@@ -127,12 +125,10 @@ function initMap(ui) {
         if (ui) ui.addCrimeNode(lat, lng);
     });
 
-    // Zoom end: redraw offset routes and minimap viewport
+    // Zoom end: redraw offset routes
     map.on('zoomend', () => {
         if (_lastRoutes) _redrawRoutesAtCurrentZoom();
-        _updateMinimapViewport();
     });
-    map.on('moveend', _updateMinimapViewport);
 
     // Patrol cluster group — disabled at zoom >= 14 (clustering only below min zoom)
     patrolClusterGroup = L.markerClusterGroup({
@@ -145,9 +141,6 @@ function initMap(ui) {
         })
     });
     map.addLayer(patrolClusterGroup);
-
-    // Initialise minimap
-    _initMinimap();
 
     // Wire WebSocket placeholder callbacks
     replacePlaceholder('onConnected', () => {
@@ -204,45 +197,6 @@ function initMap(ui) {
     replacePlaceholder('onPipelineComplete', (_data) => {
         // All rendering already handled in per-stage handlers
     });
-}
-
-// ── Minimap ────────────────────────────────────────────────────────────────────
-function _initMinimap() {
-    const container = document.getElementById('minimap');
-    if (!container) return;
-
-    minimapInstance = L.map('minimap', {
-        center: MAP_CENTER,
-        zoom: 13,
-        zoomControl:        false,
-        attributionControl: false,
-        dragging:           false,
-        touchZoom:          false,
-        doubleClickZoom:    false,
-        scrollWheelZoom:    false,
-        boxZoom:            false,
-        keyboard:           false
-    });
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 })
-        .addTo(minimapInstance);
-
-    minimapViewport = L.rectangle(map.getBounds(), {
-        color: '#3b82f6',
-        weight: 1.5,
-        fill: true,
-        fillColor: '#3b82f6',
-        fillOpacity: 0.1,
-        interactive: false
-    }).addTo(minimapInstance);
-
-    // Prevent minimap clicks from reaching main map
-    L.DomEvent.disableClickPropagation(container);
-    L.DomEvent.disableScrollPropagation(container);
-}
-
-function _updateMinimapViewport() {
-    if (minimapViewport && map) minimapViewport.setBounds(map.getBounds());
 }
 
 // ── Barangay boundary darkening ────────────────────────────────────────────────
