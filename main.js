@@ -91,12 +91,9 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
 }
 
 // ── LEAFLET MAP ───────────────────────────────────────────────
-const MAP_CENTER = [14.7028, 121.0944];
-const MAP_ZOOM   = 15;
-
 const map = L.map('map', {
-    center: MAP_CENTER,
-    zoom:   MAP_ZOOM,
+    center: [14.7025, 121.0821],  // fallback until boundary loads
+    zoom:   15,
     minZoom: 14,
     maxZoom: 19
 });
@@ -107,6 +104,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 window.addEventListener('resize', () => map.invalidateSize());
 
+// boundaryBounds is set once the boundary file loads; Reset View uses it.
+let boundaryBounds = null;
+
 // Reset View button
 const ResetViewControl = L.Control.extend({
     options: { position: 'topright' },
@@ -115,7 +115,9 @@ const ResetViewControl = L.Control.extend({
         btn.textContent = 'Reset View';
         L.DomEvent.on(btn, 'click', (e) => {
             L.DomEvent.stopPropagation(e);
-            map.setView(MAP_CENTER, MAP_ZOOM);
+            if (boundaryBounds) {
+                map.fitBounds(boundaryBounds, { padding: [24, 24] });
+            }
         });
         return btn;
     }
@@ -123,30 +125,26 @@ const ResetViewControl = L.Control.extend({
 map.addControl(new ResetViewControl());
 
 // ── COMMONWEALTH ADMINISTRATIVE BOUNDARY ──────────────────────
-// Approximate boundary polygon of Barangay Commonwealth, Quezon City
-const COMMONWEALTH_BOUNDARY = {
-    type: 'Feature',
-    geometry: {
-        type: 'Polygon',
-        coordinates: [[
-            [121.0830, 14.6940],
-            [121.0830, 14.7160],
-            [121.1070, 14.7160],
-            [121.1070, 14.6940],
-            [121.0830, 14.6940]
-        ]]
-    }
-};
-
-L.geoJSON(COMMONWEALTH_BOUNDARY, {
-    style: {
-        color: '#888888',
-        weight: 1.5,
-        dashArray: '4 6',
-        fill: false,
-        opacity: 0.7
-    }
-}).addTo(map);
+// Loaded dynamically from data/commonwealth_boundary.json so that
+// the boundary, initial view, and Reset View are all derived from
+// the same source — swap the file to target a different barangay.
+fetch('./data/commonwealth_boundary.json')
+    .then(r => r.json())
+    .then(pts => {
+        const latlngs = pts.map(p => [p.lat, p.lng]);
+        const layer = L.polygon(latlngs, {
+            color: '#888888',
+            weight: 1.5,
+            dashArray: '4 6',
+            fill: false,
+            opacity: 0.7
+        }).addTo(map);
+        boundaryBounds = layer.getBounds();
+        map.fitBounds(boundaryBounds, { padding: [24, 24] });
+    })
+    .catch(() => {
+        console.warn('commonwealth_boundary.json not found — Reset View will not work.');
+    });
 
 
 // ── MAP CLICK HANDLER (stub — crime node plotting in Step 2) ──
