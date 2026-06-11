@@ -148,26 +148,6 @@ L.geoJSON(COMMONWEALTH_BOUNDARY, {
     }
 }).addTo(map);
 
-// ── MAP LEGEND ────────────────────────────────────────────────
-const Legend = L.Control.extend({
-    options: { position: 'bottomleft' },
-    onAdd() {
-        const div = L.DomUtil.create('div', 'map-legend');
-        div.innerHTML = `
-            <h4>Legend</h4>
-            <div class="legend-row"><span class="legend-dot crime"></span>Crime incident</div>
-            <div class="legend-row"><span class="legend-dot outlier"></span>Potential outlier</div>
-            <div class="legend-row"><span class="legend-dot filled"></span>Roaming patrol</div>
-            <div class="legend-row"><span class="legend-dot hollow"></span>Stationary patrol</div>
-            <div class="legend-row"><span class="legend-line zone"></span>Zone assignment</div>
-            <div class="legend-row"><span class="legend-line route"></span>Patrol route</div>
-            <div class="legend-row"><span class="legend-line overlap-2"></span>Route overlap ×2</div>
-            <div class="legend-row"><span class="legend-line overlap-3"></span>Route overlap ×3+</div>
-        `;
-        return div;
-    }
-});
-map.addControl(new Legend());
 
 // ── MAP CLICK HANDLER (stub — crime node plotting in Step 2) ──
 map.on('click', onMapClick);
@@ -1206,12 +1186,10 @@ function openSettings() {
     document.getElementById('cfg-show-overlap').checked    = CONFIG.display.showOverlapColoring;
     document.getElementById('cfg-include-outliers').checked = CONFIG.convexHull_includeOutliers;
     settingsModal.classList.add('open');
-    document.body.classList.add('settings-open');
 }
 
 function closeSettings() {
     settingsModal.classList.remove('open');
-    document.body.classList.remove('settings-open');
 }
 
 document.getElementById('settings-btn').addEventListener('click', openSettings);
