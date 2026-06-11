@@ -32,9 +32,7 @@ document.addEventListener('alpine:init', () => {
 
         get barangayFiltered() {
             const q = this.barangayQuery.toLowerCase();
-            return this.barangayOptions
-                .filter(b => b.toLowerCase().includes(q))
-                .slice(0, 60);
+            return this.barangayOptions.filter(b => b.toLowerCase().includes(q));
         },
 
         selectBarangay(b) {
@@ -249,6 +247,7 @@ document.addEventListener('alpine:init', () => {
             fetch('/data/barangays/manifest.json')
                 .then(r => r.json())
                 .then(manifest => {
+                    window.barangayManifest = manifest;
                     const names = Object.keys(manifest).sort((a, b) => a.localeCompare(b));
                     this.barangayOptions = names;
                     if (!names.includes(this.selectedBarangay)) {

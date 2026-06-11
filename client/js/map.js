@@ -34,6 +34,8 @@ let overlapOverlayLines     = [];
 let nearestHighlightMarkers = [];
 let crimeMarkerMap          = {};    // crimeId → Leaflet marker
 let osmGraphLayers          = [];
+let boundaryBounds          = null;  // L.LatLngBounds — set when boundary renders, used by Reset View
+let osmNetworkCache         = null;  // {nodeMap, adjacencyList, intersectionNodeIds} — fetched on demand for OSM Graph
 
 let _lastRoutes = null;              // stored for zoom-level redraw
 
@@ -230,6 +232,11 @@ function renderBarangayBoundary(boundaryPolygon) {
     ).addTo(map);
 
     window.barangayMask = barangayMask;
+
+    // Store bounds and fit map — works for any barangay, no hardcoded coordinates needed
+    boundaryBounds = L.latLngBounds(boundaryPolygon.map(v => [v.lat, v.lng]));
+    map.invalidateSize();
+    map.fitBounds(boundaryBounds, { padding: [24, 24] });
 }
 
 // ── Dark mode ──────────────────────────────────────────────────────────────────
@@ -242,52 +249,83 @@ function onDarkModeChange(isDark) {
 }
 
 // ── OSM graph-only mode ────────────────────────────────────────────────────────
-function toggleOsmGraphMode(active) {
+// V2 does not send nodeMap to the client (server-side compute architecture), so we
+// fetch the road network file directly here for rendering purposes only.
+async function toggleOsmGraphMode(active) {
     osmGraphLayers.forEach(l => map.removeLayer(l));
     osmGraphLayers = [];
     window.osmGraphLayers = osmGraphLayers;
 
-    if (active) {
-        if (currentTileLayer) map.removeLayer(currentTileLayer);
+    if (!active) {
+        if (currentTileLayer) currentTileLayer.addTo(map);
+        return;
+    }
 
-        const nm  = window.nodeMap       || {};
-        const adj = window.adjacencyList || {};
-        const drawn = new Set();
-
-        for (const nodeId of Object.keys(adj)) {
-            const from = nm[nodeId];
-            if (!from) continue;
-            for (const edge of adj[nodeId]) {
-                const key = [nodeId, edge.neighborId].sort().join('|');
-                if (drawn.has(key)) continue;
-                drawn.add(key);
-                const to = nm[edge.neighborId];
-                if (!to) continue;
-                const line = L.polyline(
-                    [[from.lat, from.lng],[to.lat, to.lng]],
-                    { color: '#6b7280', weight: 1, opacity: 0.5, interactive: false }
-                ).addTo(map);
-                osmGraphLayers.push(line);
-            }
+    // Build local network cache if not already loaded.
+    // Fetches the current barangay's preprocessed JSON from data/barangays/.
+    if (!osmNetworkCache) {
+        try {
+            const barangay = window.currentBarangay || 'Commonwealth';
+            const manifest = window.barangayManifest;
+            const slug     = manifest?.[barangay]?.slug || 'commonwealth';
+            const data = await fetch(`./data/barangays/${slug}.json`).then(r => r.json());
+            const localNodeMap = {};
+            const localAdj     = {};
+            data.nodes.forEach(n => { localNodeMap[n.id] = n; });
+            data.edges.forEach(e => {
+                (localAdj[e.from] = localAdj[e.from] || []).push({ neighborId: e.to });
+                (localAdj[e.to]   = localAdj[e.to]   || []).push({ neighborId: e.from });
+            });
+            const localIntersections = Object.keys(localAdj).filter(id => localAdj[id].length >= 3);
+            osmNetworkCache = { nodeMap: localNodeMap, adjacencyList: localAdj, intersectionNodeIds: localIntersections };
+        } catch (err) {
+            console.warn('[map.js] OSM Graph: could not load road network —', err.message);
+            return; // leave tile layer intact rather than blanking the map
         }
+    }
 
-        for (const nodeId of (window.intersectionNodeIds || [])) {
-            const node = nm[nodeId];
-            if (!node) continue;
-            const dot = L.circleMarker([node.lat, node.lng], {
+    // Data confirmed — safe to swap out tile layer
+    if (currentTileLayer) map.removeLayer(currentTileLayer);
+
+    const { nodeMap: nm, adjacencyList: adj, intersectionNodeIds: intersections } = osmNetworkCache;
+    const drawn = new Set();
+
+    for (const nodeId of Object.keys(adj)) {
+        const from = nm[nodeId];
+        if (!from) continue;
+        for (const edge of adj[nodeId]) {
+            const key = [nodeId, edge.neighborId].sort().join('|');
+            if (drawn.has(key)) continue;
+            drawn.add(key);
+            const to = nm[edge.neighborId];
+            if (!to) continue;
+            osmGraphLayers.push(
+                L.polyline([[from.lat, from.lng], [to.lat, to.lng]],
+                    { color: '#6b7280', weight: 1, opacity: 0.5, interactive: false }
+                ).addTo(map)
+            );
+        }
+    }
+
+    for (const nodeId of intersections) {
+        const node = nm[nodeId];
+        if (!node) continue;
+        osmGraphLayers.push(
+            L.circleMarker([node.lat, node.lng], {
                 radius: 2, color: '#3b82f6', fillColor: '#3b82f6',
                 fillOpacity: 0.8, weight: 0, interactive: false
-            }).addTo(map);
-            osmGraphLayers.push(dot);
-        }
-    } else {
-        currentTileLayer.addTo(map);
+            }).addTo(map)
+        );
     }
 }
 
 // ── Reset view ─────────────────────────────────────────────────────────────────
 function mapResetView() {
-    if (map) map.setView(MAP_CENTER, MAP_ZOOM);
+    if (!map) return;
+    map.invalidateSize();
+    if (boundaryBounds) {
+        map.fitBounds(boundaryBounds, { padding: [24, 24] });
+    }
 }
 
 // ── Crime node markers ─────────────────────────────────────────────────────────
@@ -924,10 +962,13 @@ function renderSessionResults(session, ui) {
 // ── Barangay network switch ────────────────────────────────────────────────────
 function loadBarangayNetwork(barangay) {
     window.currentBarangay = barangay;
-    // Remove old boundary layers — new ones arrive via onNetworkLoaded after compute
     if (barangayMask)    { map.removeLayer(barangayMask);    barangayMask    = null; }
     if (barangayOutline) { map.removeLayer(barangayOutline); barangayOutline = null; }
     window.barangayMask = null;
+    // Clear OSM graph cache so next toggle fetches the new barangay's network
+    osmNetworkCache = null;
+    // If OSM graph is currently active, redraw it for the new barangay
+    if (window.osmGraphMode) toggleOsmGraphMode(true);
     console.log(`[map.js] Barangay switched to: ${barangay}`);
 }
 
