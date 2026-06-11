@@ -72,14 +72,11 @@
         </button>
       </div>
 
-<!-- Live coordinate display -->
-      <div id="coord-display"
-           class="absolute bottom-10 left-3 z-[1000] bg-white/80 dark:bg-gray-800/80 text-xs px-2 py-1 rounded font-mono hidden">
-        Lat: -- &nbsp; Lng: --
-      </div>
+<!-- Bottom-left row: legend toggle + coordinate display -->
+      <div class="absolute bottom-3 left-3 z-[1000] flex items-center gap-2">
 
-      <!-- Map legend (bottom-left, collapsible) -->
-      <div class="absolute bottom-3 left-3 z-[1000]" x-data="{ open: false }">
+      <!-- Map legend (collapsible) -->
+      <div x-data="{ open: false }" class="relative">
         <button @click="open = !open"
                 class="bg-white/90 dark:bg-gray-800/90 text-xs px-2 py-1 rounded shadow border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,6 +139,14 @@
           </div>
         </div>
       </div>
+
+      <!-- Live coordinate display (to the right of legend button) -->
+      <div id="coord-display"
+           class="bg-white/80 dark:bg-gray-800/80 text-xs px-2 py-1 rounded font-mono hidden">
+        Lat: -- &nbsp; Lng: --
+      </div>
+
+      </div><!-- end bottom-left row -->
 
     </div><!-- end map container -->
 
