@@ -72,10 +72,75 @@
         </button>
       </div>
 
-<!-- Live coordinate display (bottom-left, above legend) -->
+<!-- Live coordinate display -->
       <div id="coord-display"
-           class="absolute bottom-8 left-3 z-[1000] bg-white/80 dark:bg-gray-800/80 text-xs px-2 py-1 rounded font-mono hidden">
+           class="absolute bottom-10 left-3 z-[1000] bg-white/80 dark:bg-gray-800/80 text-xs px-2 py-1 rounded font-mono hidden">
         Lat: -- &nbsp; Lng: --
+      </div>
+
+      <!-- Map legend (bottom-left, collapsible) -->
+      <div class="absolute bottom-3 left-3 z-[1000]" x-data="{ open: false }">
+        <button @click="open = !open"
+                class="bg-white/90 dark:bg-gray-800/90 text-xs px-2 py-1 rounded shadow border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          Legend
+        </button>
+        <div x-show="open" x-cloak
+             class="absolute bottom-full mb-1 left-0 bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-3 text-xs text-gray-600 dark:text-gray-300 space-y-2 min-w-max">
+          <!-- Crime incident -->
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow flex-shrink-0"></div>
+            <span>Crime incident</span>
+          </div>
+          <!-- Danger zone hull -->
+          <div class="flex items-center gap-2">
+            <svg class="w-8 h-3 flex-shrink-0" viewBox="0 0 32 12">
+              <rect x="1" y="4" width="30" height="4" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="5 3"/>
+            </svg>
+            <span>Danger zone</span>
+          </div>
+          <!-- Roaming patrol -->
+          <div class="flex items-center gap-2">
+            <div class="w-5 h-5 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style="background:#3498db;font-size:9px">1</div>
+            <span>Roaming patrol</span>
+          </div>
+          <!-- Stationary patrol -->
+          <div class="flex items-center gap-2">
+            <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center font-bold flex-shrink-0" style="border-color:#3498db;color:#3498db;font-size:8px">S</div>
+            <span>Stationary patrol</span>
+          </div>
+          <!-- Zone assignment line -->
+          <div class="flex items-center gap-2">
+            <svg class="w-8 h-3 flex-shrink-0" viewBox="0 0 32 12">
+              <line x1="0" y1="6" x2="32" y2="6" stroke="#3498db" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"/>
+            </svg>
+            <span>Zone assignment</span>
+          </div>
+          <!-- Patrol route -->
+          <div class="flex items-center gap-2">
+            <svg class="w-8 h-3 flex-shrink-0" viewBox="0 0 32 12">
+              <line x1="0" y1="6" x2="26" y2="6" stroke="#3498db" stroke-width="2.5"/>
+              <polygon points="22,3 29,6 22,9" fill="#3498db"/>
+            </svg>
+            <span>Patrol route</span>
+          </div>
+          <!-- Overlap 2 patrols -->
+          <div class="flex items-center gap-2">
+            <svg class="w-8 h-3 flex-shrink-0" viewBox="0 0 32 12">
+              <line x1="0" y1="6" x2="32" y2="6" stroke="rgba(255,165,0,0.85)" stroke-width="3.5"/>
+            </svg>
+            <span>Overlap (2 patrols)</span>
+          </div>
+          <!-- Overlap 3+ patrols -->
+          <div class="flex items-center gap-2">
+            <svg class="w-8 h-3 flex-shrink-0" viewBox="0 0 32 12">
+              <line x1="0" y1="6" x2="32" y2="6" stroke="rgba(255,0,0,0.85)" stroke-width="3.5"/>
+            </svg>
+            <span>Overlap (3+ patrols)</span>
+          </div>
+        </div>
       </div>
 
     </div><!-- end map container -->
