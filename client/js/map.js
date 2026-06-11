@@ -198,16 +198,6 @@ function initMap(ui) {
         // All rendering already handled in per-stage handlers
     });
 
-    // Render darkening mask immediately using hardcoded Commonwealth boundary so it
-    // appears on page load without waiting for the server to send the real polygon.
-    // renderBarangayBoundary upgrades it when onNetworkLoaded fires with real OSM data.
-    const COMMONWEALTH_APPROX = [
-        { lat: 14.6940, lng: 121.0830 },
-        { lat: 14.7160, lng: 121.0830 },
-        { lat: 14.7160, lng: 121.1070 },
-        { lat: 14.6940, lng: 121.1070 }
-    ];
-    renderBarangayBoundary(COMMONWEALTH_APPROX);
 }
 
 // ── Barangay boundary darkening ────────────────────────────────────────────────
