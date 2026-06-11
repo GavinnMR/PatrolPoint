@@ -28,6 +28,12 @@ import { validateIncidents, validateN, validateMode, validateConfig, validateBar
 import { getOrFetchNetwork } from '../services/cache.js';
 import { runPipeline } from '../services/pipeline.js';
 
+// ── Global concurrent pipeline cap ────────────────────────────────────────────
+// Prevents CPU saturation when many users hit Recalculate simultaneously.
+// Requests beyond the cap are rejected immediately with a friendly message.
+let activePipelines          = 0;
+const MAX_CONCURRENT_PIPELINES = 3;
+
 // ── Compute rate limiter (per IP, WebSocket) ──────────────────────────────────
 // 20 compute requests per 5 minutes per IP. Tracked in a module-level Map so it
 // persists across connections from the same IP.
@@ -166,9 +172,25 @@ async function handleInit(ws, data) {
 async function handleCompute(ws, data, clientIp) {
     ws.pipelineRunning = true;
     ws.cancelled       = false; // reset on each new compute request
+    let countedActive  = false; // tracks whether we incremented activePipelines
 
     try {
-        // 1. Rate limit check (WebSocket compute — sends error message, not HTTP 429)
+        // 1. Global concurrency cap — reject immediately if server is at capacity
+        if (activePipelines >= MAX_CONCURRENT_PIPELINES) {
+            pushToClient(ws, {
+                type: 'error',
+                data: {
+                    message: `Server is busy — too many users running at once (max ${MAX_CONCURRENT_PIPELINES} concurrent). Try again in a moment, or run it locally: clone the repo and run DEMO_MODE=true npm start.`,
+                    fatal: true
+                }
+            });
+            return;
+        }
+
+        activePipelines++;
+        countedActive = true;
+
+        // 2. Rate limit check (WebSocket compute — sends error message, not HTTP 429)
         if (!checkComputeRateLimit(clientIp)) {
             pushToClient(ws, {
                 type: 'error',
@@ -258,6 +280,7 @@ async function handleCompute(ws, data, clientIp) {
             }
         });
     } finally {
+        if (countedActive) activePipelines--;
         ws.pipelineRunning = false;
     }
 }
