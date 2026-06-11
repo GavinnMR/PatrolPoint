@@ -441,6 +441,17 @@ html, body {
   background: #e74c3c;
 }
 
+/* ── Legend repositioning when settings modal is open ── */
+
+.leaflet-bottom.leaflet-left {
+  transition: transform 0.2s ease;
+}
+
+/* Shift legend to sit left of the centered settings panel */
+body.settings-open .leaflet-bottom.leaflet-left {
+  transform: translateX(max(0px, calc(50vw - 390px)));
+}
+
 /* ── Reset view button on map ── */
 
 .reset-view-btn {

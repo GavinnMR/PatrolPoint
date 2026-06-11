@@ -1206,10 +1206,12 @@ function openSettings() {
     document.getElementById('cfg-show-overlap').checked    = CONFIG.display.showOverlapColoring;
     document.getElementById('cfg-include-outliers').checked = CONFIG.convexHull_includeOutliers;
     settingsModal.classList.add('open');
+    document.body.classList.add('settings-open');
 }
 
 function closeSettings() {
     settingsModal.classList.remove('open');
+    document.body.classList.remove('settings-open');
 }
 
 document.getElementById('settings-btn').addEventListener('click', openSettings);
