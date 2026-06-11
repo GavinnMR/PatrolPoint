@@ -17,6 +17,9 @@ import pool from './db/client.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+if (DEMO_MODE) console.log('PatrolPoint running in DEMO_MODE — auth, sessions, and export disabled');
+
 // ── Startup DB migration — run schema.sql on every boot ───────────────────────
 // schema.sql uses CREATE TABLE IF NOT EXISTS — safe to run repeatedly.
 // pg does not support multiple statements in one query() call, so split on ';'
@@ -61,6 +64,11 @@ app.use(express.static(path.join(__dirname, '..', 'client')));
 // Rate limiter — applied to all /api routes only
 app.use('/api', apiLimiter);
 
+// Config endpoint — tells the client whether demo mode is active
+app.get('/api/config', (req, res) => {
+    res.json({ demoMode: DEMO_MODE });
+});
+
 // Health check — includes DB reachability so we can diagnose Render connectivity
 app.get('/health', async (req, res) => {
     let dbStatus = 'ok';
@@ -80,11 +88,12 @@ app.get('/health', async (req, res) => {
     });
 });
 
-// Routes
-app.use('/api/auth', authRouter);
-app.use('/api/network', networkRouter);
-app.use('/api/sessions', sessionsRouter);
-app.use('/api/export', exportRouter);
+// Routes — auth/sessions/export disabled in demo mode
+const demoDisabled = (_, res) => res.status(503).json({ error: 'This feature is disabled in demo mode.' });
+app.use('/api/auth',     DEMO_MODE ? demoDisabled : authRouter);
+app.use('/api/network',  networkRouter);
+app.use('/api/sessions', DEMO_MODE ? demoDisabled : sessionsRouter);
+app.use('/api/export',   DEMO_MODE ? demoDisabled : exportRouter);
 
 // Catch-all: serve frontend for any non-API GET
 app.get(/^(?!\/api).*/, (req, res) => {
@@ -97,7 +106,7 @@ wss.on('connection', (ws, req) => {
 });
 
 const PORT = process.env.PORT || 3000;
-runMigration().then(() => {
+(DEMO_MODE ? Promise.resolve() : runMigration()).then(() => {
     httpServer.listen(PORT, () => {
         console.log(`PatrolPoint V2 server running on port ${PORT}`);
         console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);

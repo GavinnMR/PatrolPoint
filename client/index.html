@@ -152,8 +152,15 @@
           <span x-text="networkInfo"></span>
         </div>
 
-        <!-- Auth section -->
-        <div class="flex items-center justify-between text-xs">
+        <!-- Demo mode banner -->
+        <div x-show="demoMode" x-cloak
+             class="text-xs bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 rounded p-2 text-center">
+          Demo mode — plot incidents, run the algorithm, explore results.
+          Save, export, and login are disabled.
+        </div>
+
+        <!-- Auth section — hidden in demo mode -->
+        <div x-show="!demoMode" class="flex items-center justify-between text-xs">
           <template x-if="!currentUser">
             <button @click="showAuth = true"
                     class="text-blue-500 hover:text-blue-600 font-medium">
@@ -387,8 +394,8 @@
 
         <div class="flex-1"></div>
 
-        <!-- Save session -->
-        <div class="relative" x-data="{ show: false }">
+        <!-- Save session — hidden in demo mode -->
+        <div x-show="!demoMode" class="relative" x-data="{ show: false }">
           <button @click="promptSaveSession()" :disabled="!pipelineComplete"
                   @mouseenter="show = true" @mouseleave="show = false"
                   class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40">
@@ -437,8 +444,8 @@
           </div>
         </div>
 
-        <!-- Export dropdown -->
-        <div class="relative" x-data="{ exportOpen: false, show: false }">
+        <!-- Export dropdown — hidden in demo mode -->
+        <div x-show="!demoMode" class="relative" x-data="{ exportOpen: false, show: false }">
           <button @click="exportOpen = !exportOpen" :disabled="!pipelineComplete"
                   @mouseenter="show = true" @mouseleave="show = false; exportOpen = false"
                   class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40">

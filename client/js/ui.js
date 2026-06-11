@@ -97,6 +97,9 @@ document.addEventListener('alpine:init', () => {
         playbackPatrolIndex: 0,
         playbackSpeed:       1,
 
+        // ── Demo mode ─────────────────────────────────────────────────────────
+        demoMode: false,
+
         // ── Mobile bottom sheet ───────────────────────────────────────────────
         mobileSheetHeight: 40,   // percent of viewport height — 40% collapsed, 80% expanded
         isMobile:          false,
@@ -219,6 +222,12 @@ document.addEventListener('alpine:init', () => {
 
             // Expose Alpine component instance globally so map.js can call methods
             window.uiApp = this;
+
+            // Fetch server config — sets demoMode flag before map/WS init
+            fetch('/api/config')
+                .then(r => r.json())
+                .then(cfg => { this.demoMode = cfg.demoMode === true; })
+                .catch(() => {});
 
             if (typeof initMap === 'function')       initMap(this);
             if (typeof initWebSocket === 'function') initWebSocket(this);
