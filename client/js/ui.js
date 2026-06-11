@@ -23,10 +23,26 @@ document.addEventListener('alpine:init', () => {
         wsStatusText:  'Connecting to server…',
 
         // ── Barangay ─────────────────────────────────────────────────────────
-        selectedBarangay: 'Commonwealth',
-        barangayOptions:  ['Commonwealth'],
-        networkInfo:      '',    // e.g. "3613 nodes · 3971 edges · cached"
-        nMax:             null,  // soft cap = floor(sqrt(intersectionCount))
+        selectedBarangay:     'Commonwealth',
+        barangayOptions:      ['Commonwealth'],
+        barangayQuery:        'Commonwealth',   // combobox input text
+        barangayDropdownOpen: false,
+        networkInfo:          '',    // e.g. "3613 nodes · 3971 edges · cached"
+        nMax:                 null,  // soft cap = floor(sqrt(intersectionCount))
+
+        get barangayFiltered() {
+            const q = this.barangayQuery.toLowerCase();
+            return this.barangayOptions
+                .filter(b => b.toLowerCase().includes(q))
+                .slice(0, 60);
+        },
+
+        selectBarangay(b) {
+            this.selectedBarangay = b;
+            this.barangayQuery    = b;
+            this.barangayDropdownOpen = false;
+            this.onBarangayChange();
+        },
 
         // ── Inputs ───────────────────────────────────────────────────────────
         nPatrols:        3,
@@ -238,6 +254,7 @@ document.addEventListener('alpine:init', () => {
                     if (!names.includes(this.selectedBarangay)) {
                         this.selectedBarangay = names[0] || 'Commonwealth';
                     }
+                    this.barangayQuery = this.selectedBarangay;
                 })
                 .catch(() => { /* keep default ['Commonwealth'] */ });
 
