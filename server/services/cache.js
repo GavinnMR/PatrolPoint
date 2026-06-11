@@ -83,7 +83,7 @@ async function buildNetworkFromLocalFile(barangayName) {
         edges: raw.edges,
         adjacencyList,
         intersectionNodeIds,
-        boundary: [],
+        boundary: raw.boundary || [],
         osmRelationId: null,
         nodeCount,
         edgeCount,

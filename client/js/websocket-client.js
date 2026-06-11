@@ -75,6 +75,12 @@ function clearPingInterval() {
     }
 }
 
+export function sendInitRequest(barangay) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'init', data: { barangay } }));
+    }
+}
+
 export function sendPing() {
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'ping' }));
@@ -187,8 +193,9 @@ function handleConnected() {
     onConnected();
 
     // Request boundary polygon immediately so the darkening mask renders on open
+    const initialBarangay = window.uiApp?.selectedBarangay || 'Commonwealth';
     if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'init', data: { barangay: 'Commonwealth' } }));
+        ws.send(JSON.stringify({ type: 'init', data: { barangay: initialBarangay } }));
     }
 }
 
@@ -592,3 +599,4 @@ export function initWebSocket() {
 // map.js uses the named exports directly via import.
 window.initWebSocket      = initWebSocket;
 window.sendComputeRequest = sendComputeRequest;
+window.sendInitRequest    = sendInitRequest;

@@ -194,16 +194,34 @@
       <!-- Main controls (scrollable) -->
       <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
 
-        <!-- Barangay selector -->
-        <div>
+        <!-- Barangay selector (searchable combobox) -->
+        <div x-data="{
+               query: selectedBarangay,
+               open: false,
+               get filtered() {
+                 const q = this.query.toLowerCase();
+                 return barangayOptions.filter(b => b.toLowerCase().includes(q)).slice(0, 60);
+               },
+               select(b) { selectedBarangay = b; query = b; open = false; onBarangayChange(); },
+               onBlur() { setTimeout(() => { open = false; query = selectedBarangay; }, 150); }
+             }" class="relative">
           <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Barangay</label>
-          <select x-model="selectedBarangay" @change="onBarangayChange()"
-                  :disabled="pipelineRunning"
-                  class="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
-            <template x-for="b in barangayOptions" :key="b">
-              <option :value="b" x-text="b"></option>
+          <input x-model="query"
+                 @focus="open = true" @input="open = true" @blur="onBlur()"
+                 @keydown.enter.prevent="if (filtered.length) select(filtered[0])"
+                 @keydown.escape="open = false; query = selectedBarangay"
+                 :disabled="pipelineRunning"
+                 placeholder="Search barangay…"
+                 class="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" />
+          <div x-show="open && filtered.length > 0" x-cloak
+               class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+            <template x-for="b in filtered" :key="b">
+              <div @mousedown.prevent="select(b)"
+                   :class="selectedBarangay === b ? 'bg-blue-50 dark:bg-gray-600 font-medium' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                   class="px-3 py-1.5 text-sm cursor-pointer"
+                   x-text="b"></div>
             </template>
-          </select>
+          </div>
         </div>
 
         <!-- Network info -->

@@ -19,7 +19,7 @@ import math
 import os
 import re
 import geopandas as gpd
-from shapely.geometry import LineString, MultiLineString, GeometryCollection
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, GeometryCollection
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 
@@ -50,6 +50,18 @@ def name_to_slug(name):
     s = re.sub(r"[^a-z0-9\s]", '', s)
     s = re.sub(r'\s+', '-', s.strip())
     return s
+
+
+def extract_boundary_coords(geom):
+    """Extract exterior ring of a polygon geometry as [{lat, lng}, ...].
+    For MultiPolygon, uses the largest polygon by area."""
+    if isinstance(geom, MultiPolygon):
+        geom = max(geom.geoms, key=lambda g: g.area)
+    if not hasattr(geom, 'exterior'):
+        return []
+    # GeoJSON coords are (lng, lat) — swap to {lat, lng}; drop duplicate closing vertex
+    return [{"lat": round(lat, 7), "lng": round(lng, 7)}
+            for lng, lat in list(geom.exterior.coords)[:-1]]
 
 
 def extract_linestrings(geom):
@@ -190,9 +202,11 @@ def main():
             "east":  round(max(lngs), 7)
         }
 
+        boundary = extract_boundary_coords(polygon)
+
         out_path = os.path.join(OUTPUT_DIR, f"{slug}.json")
         with open(out_path, 'w') as f:
-            json.dump({"nodes": nodes, "edges": edges}, f)
+            json.dump({"nodes": nodes, "edges": edges, "boundary": boundary}, f)
 
         manifest[name] = {"slug": slug, "bbox": bbox}
         print(f"  [{idx}/{len(admin)}] ✓  {name}: {len(nodes)} nodes, {len(edges)} edges → {slug}.json")

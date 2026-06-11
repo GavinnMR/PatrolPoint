@@ -229,6 +229,18 @@ document.addEventListener('alpine:init', () => {
                 .then(cfg => { this.demoMode = cfg.demoMode === true; })
                 .catch(() => {});
 
+            // Populate barangay dropdown from manifest
+            fetch('/data/barangays/manifest.json')
+                .then(r => r.json())
+                .then(manifest => {
+                    const names = Object.keys(manifest).sort((a, b) => a.localeCompare(b));
+                    this.barangayOptions = names;
+                    if (!names.includes(this.selectedBarangay)) {
+                        this.selectedBarangay = names[0] || 'Commonwealth';
+                    }
+                })
+                .catch(() => { /* keep default ['Commonwealth'] */ });
+
             if (typeof initMap === 'function')       initMap(this);
             if (typeof initWebSocket === 'function') initWebSocket(this);
         },
@@ -365,11 +377,30 @@ document.addEventListener('alpine:init', () => {
         // ── Barangay selection ────────────────────────────────────────────────
 
         onBarangayChange() {
-            window.currentBarangay = this.selectedBarangay;
-            if (typeof loadBarangayNetwork === 'function') {
-                loadBarangayNetwork(this.selectedBarangay);
-            } else {
-                console.log('[ui.js] onBarangayChange() — loadBarangayNetwork not yet implemented (Part 8)');
+            const barangay = this.selectedBarangay;
+            window.currentBarangay = barangay;
+
+            // Clear all crime nodes and pipeline state for the new barangay
+            this.P = [];
+            window.P = [];
+            window.crimeIdCounter = 0;
+            this.undoStack = [];
+            this.redoStack = [];
+            window.undoStack = [];
+            window.redoStack = [];
+            this.pipelineComplete = false;
+            window.pipelineComplete = false;
+            this.clearBanner();
+            this.traceStages = [];
+            this.pipelineSummary = '';
+            this.networkInfo = '';
+
+            if (typeof clearAllMapResults === 'function') clearAllMapResults();
+            if (typeof loadBarangayNetwork === 'function') loadBarangayNetwork(barangay);
+
+            // Request new network from server — responds with network_loaded (boundary + metadata)
+            if (typeof sendInitRequest === 'function') {
+                sendInitRequest(barangay);
             }
         },
 
