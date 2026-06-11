@@ -31,6 +31,10 @@ ROADS_FILE = os.path.join(SOURCE_DIR, 'roads.geojson')
 # Padded Quezon City bounding box: (minLng, minLat, maxLng, maxLat)
 QC_BBOX = (121.00, 14.57, 121.22, 14.82)
 
+# Max nodes per barangay — filters out region-level admin areas (Metro Manila, districts, etc.)
+# Real QC barangays top out around 10k nodes; anything above this is a non-barangay admin boundary.
+MAX_NODES = 15000
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def haversine(lat1, lng1, lat2, lng2):
@@ -189,6 +193,11 @@ def main():
 
         if not nodes or not edges:
             print(f"  [{idx}/{len(admin)}] ⚠  {name} — no road segments extracted, skipped")
+            skipped.append(name)
+            continue
+
+        if len(nodes) > MAX_NODES:
+            print(f"  [{idx}/{len(admin)}] ⚠  {name} — {len(nodes)} nodes exceeds MAX_NODES ({MAX_NODES}), skipped (region-level area)")
             skipped.append(name)
             continue
 
