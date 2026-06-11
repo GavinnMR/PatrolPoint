@@ -152,13 +152,6 @@
           <span x-text="networkInfo"></span>
         </div>
 
-        <!-- Demo mode banner -->
-        <div x-show="demoMode" x-cloak
-             class="text-xs bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 rounded p-2 text-center">
-          Demo mode — plot incidents, run the algorithm, explore results.
-          Save, export, and login are disabled.
-        </div>
-
         <!-- Auth section — hidden in demo mode -->
         <div x-show="!demoMode" class="flex items-center justify-between text-xs">
           <template x-if="!currentUser">
