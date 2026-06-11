@@ -57,7 +57,7 @@
 
       <!-- Map overlays -->
 
-      <!-- Reset View + OSM Graph toggle (top-left, offset to not cover Leaflet zoom controls) -->
+      <!-- Reset View + Road Graph toggle (top-left, offset to not cover Leaflet zoom controls) -->
       <div class="absolute top-3 left-12 z-[1000] flex flex-col gap-2">
         <button @click="resetView()"
                 class="bg-white dark:bg-gray-800 text-sm px-3 py-1.5 rounded shadow hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200">
@@ -68,7 +68,7 @@
                   ? 'bg-blue-500 text-white border-blue-500'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600'"
                 class="text-sm px-3 py-1.5 rounded shadow border">
-          OSM Graph
+          Road Graph
         </button>
       </div>
 
@@ -178,17 +178,30 @@
            :class="bannerType === 'error'
              ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200'
              : 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'"
-           class="mx-3 mt-3 p-3 rounded-lg border text-xs flex-shrink-0">
-        <template x-if="bannerList.length > 1">
+           class="mx-3 mt-3 rounded-lg border text-xs flex-shrink-0">
+        <!-- Banner header — always visible -->
+        <div class="flex items-start justify-between gap-2 px-3 py-2">
+          <p class="flex-1" x-text="bannerList.length > 1 && bannerCollapsed
+            ? bannerList[0] + (bannerList.length > 1 ? ' (+' + (bannerList.length - 1) + ' more)' : '')
+            : bannerMessage">
+          </p>
+          <button x-show="bannerList.length > 1"
+                  @click="bannerCollapsed = !bannerCollapsed"
+                  class="flex-shrink-0 opacity-60 hover:opacity-100 mt-0.5">
+            <svg :class="bannerCollapsed ? '' : 'rotate-180'"
+                 class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+        </div>
+        <!-- Expanded list -->
+        <div x-show="!bannerCollapsed && bannerList.length > 1" class="px-3 pb-2">
           <ul class="list-disc list-inside space-y-1">
             <template x-for="msg in bannerList" :key="msg">
               <li x-text="msg"></li>
             </template>
           </ul>
-        </template>
-        <template x-if="bannerList.length <= 1">
-          <p x-text="bannerMessage"></p>
-        </template>
+        </div>
       </div>
 
       <!-- Main controls (scrollable) -->

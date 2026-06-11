@@ -96,15 +96,39 @@ class MinHeap {
     }
 }
 
+// ── Hull exterior check ───────────────────────────────────────────────────────
+// Ray casting point-in-polygon test. Hull vertices are [{lat, lng}] in CCW order.
+// Casts a ray rightward (increasing lng) and counts edge crossings.
+function pointInHull(lat, lng, hull) {
+    let inside = false;
+    const n = hull.length;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = hull[i].lng, yi = hull[i].lat;
+        const xj = hull[j].lng, yj = hull[j].lat;
+        if (((yi > lat) !== (yj > lat)) &&
+            (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
 // ── Core Dijkstra ─────────────────────────────────────────────────────────────
 // Single-source shortest path traversing the FULL road network — all nodes and
 // edges, including non-intersection intermediate nodes. Restricting to
 // intersection nodes only would produce incorrect paths through buildings.
 //
+// nodeMap:         optional { nodeId → {lat, lng} } — required when hull penalty is active
+// hull:            optional [{lat, lng}] hull polygon — edges whose midpoint falls outside
+//                  are penalized by exteriorPenalty to discourage exterior routing
+// exteriorPenalty: multiplier applied to exterior-edge weights (default 1 = no penalty)
+//
 // Returns:
 //   distances — { nodeId: distanceInMeters } — Infinity for unreachable nodes
 //   parents   — { nodeId: parentNodeId }     — null for source and unreachable nodes
-function dijkstra(sourceId, adjacencyList) {
+function dijkstra(sourceId, adjacencyList, nodeMap = null, hull = null, exteriorPenalty = 1) {
+    const penaltyActive = exteriorPenalty > 1 && hull && hull.length >= 3 && nodeMap;
+
     const distances = {};
     const parents = {};
 
@@ -130,7 +154,19 @@ function dijkstra(sourceId, adjacencyList) {
         if (!neighbors) continue;
 
         for (const { neighborId, weight } of neighbors) {
-            const newDist = currentDist + weight;
+            let w = weight;
+            if (penaltyActive) {
+                const nA = nodeMap[current];
+                const nB = nodeMap[neighborId];
+                if (nA && nB) {
+                    const midLat = (nA.lat + nB.lat) / 2;
+                    const midLng = (nA.lng + nB.lng) / 2;
+                    if (!pointInHull(midLat, midLng, hull)) {
+                        w *= exteriorPenalty;
+                    }
+                }
+            }
+            const newDist = currentDist + w;
             if (newDist < (distances[neighborId] ?? Infinity)) {
                 distances[neighborId] = newDist;
                 parents[neighborId] = current;

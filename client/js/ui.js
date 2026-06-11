@@ -58,6 +58,7 @@ document.addEventListener('alpine:init', () => {
         bannerMessage: '',
         bannerType:    'warning',   // 'warning' | 'error'
         bannerList:    [],          // multiple warnings consolidated into one banner
+        bannerCollapsed: false,
 
         // ── Algorithm trace panel ─────────────────────────────────────────────
         showTracePanel:  false,
@@ -351,11 +352,13 @@ document.addEventListener('alpine:init', () => {
             this.bannerMessage = message;
             this.bannerType = type;
             this.bannerList = list.length ? list : [message];
+            this.bannerCollapsed = false;
         },
 
         clearBanner() {
             this.bannerMessage = '';
             this.bannerList = [];
+            this.bannerCollapsed = false;
         },
 
         // ── Dark mode ─────────────────────────────────────────────────────────

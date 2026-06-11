@@ -127,9 +127,9 @@ function initMap(ui) {
         if (ui) ui.addCrimeNode(lat, lng);
     });
 
-    // Zoom end: redraw offset routes
+    // Zoom end: re-render overlap overlay (no offset redraw needed)
     map.on('zoomend', () => {
-        if (_lastRoutes) _redrawRoutesAtCurrentZoom();
+        if (_lastRoutes) renderOverlapOverlay(_lastRoutes);
     });
 
     // Patrol cluster group — disabled at zoom >= 14 (clustering only below min zoom)
@@ -580,105 +580,38 @@ function renderCoverageRadius(patrols) {
     });
 }
 
-// ── Parallel offset line rendering ─────────────────────────────────────────────
-
-// computeOffsetPolyline — shifts a polyline perpendicularly by offsetMeters * direction (+1 or -1).
-// For each consecutive segment A→B, the perpendicular is computed and both endpoints are shifted.
-function computeOffsetPolyline(coordinates, offsetMeters, direction) {
-    if (!coordinates || coordinates.length < 2) return coordinates || [];
-
-    const offsetDeg = offsetMeters / 111000;
-    const result    = [];
-
-    for (let i = 0; i < coordinates.length - 1; i++) {
-        const A = coordinates[i];
-        const B = coordinates[i + 1];
-
-        const dirLat = B.lat - A.lat;
-        const dirLng = B.lng - A.lng;
-
-        // Perpendicular (rotate 90 degrees CCW)
-        let perpLat = -dirLng;
-        let perpLng =  dirLat;
-
-        const len = Math.sqrt(perpLat * perpLat + perpLng * perpLng);
-        if (len === 0) {
-            if (i === 0) result.push({ lat: A.lat, lng: A.lng });
-            result.push({ lat: B.lat, lng: B.lng });
-            continue;
-        }
-        perpLat /= len;
-        perpLng /= len;
-
-        const shiftedA = {
-            lat: A.lat + perpLat * offsetDeg * direction,
-            lng: A.lng + perpLng * offsetDeg * direction
-        };
-        const shiftedB = {
-            lat: B.lat + perpLat * offsetDeg * direction,
-            lng: B.lng + perpLng * offsetDeg * direction
-        };
-
-        if (i === 0) result.push(shiftedA);
-        result.push(shiftedB);
-    }
-
-    return result;
-}
-
-// getZoomOffset — offset in meters for parallel lines at each zoom level
-function getZoomOffset(zoom) {
-    if (zoom <= 14) return 3;
-    if (zoom === 15) return 5;
-    if (zoom === 16) return 8;
-    if (zoom === 17) return 11;
-    return 15; // zoom >= 18
-}
+// ── Route rendering ────────────────────────────────────────────────────────────
 
 function renderRoutes(routes) {
     _clearRoutePolylines();
     _lastRoutes = routes;
     window.patrolRoutes = routePolylines;
 
-    const zoom      = map.getZoom();
-    const offsetM   = getZoomOffset(zoom);
     const showArrows = window.uiApp?.activeConfig?.display?.showRouteArrows !== false;
 
     routes.forEach((route, idx) => {
         const patrolId = route.patrolId || `p${idx}`;
-        // Color from S_star globals, or fall back to index-based palette
         let color = PATROL_COLORS[idx % PATROL_COLORS.length];
         if (window.S_star && window.S_star[idx] && window.S_star[idx].color) {
             color = window.S_star[idx].color;
         }
 
-        routePolylines[patrolId] = { outbound: [], return: [], decorators: [] };
+        routePolylines[patrolId] = { lines: [], decorators: [] };
 
         if (!route.pathSegments || route.pathSegments.length === 0) return;
 
         route.pathSegments.forEach((seg) => {
             if (!seg || seg.length < 2) return;
 
-            // Outbound: solid, +offset
-            const outCoords = computeOffsetPolyline(seg, offsetM, +1);
-            const outLine   = L.polyline(
-                outCoords.map(c => [c.lat, c.lng]),
-                { color, weight: 3, opacity: 0.9, interactive: false }
+            const line = L.polyline(
+                seg.map(c => [c.lat, c.lng]),
+                { color, weight: 4, opacity: 0.9, interactive: false }
             ).addTo(map);
-            routePolylines[patrolId].outbound.push(outLine);
+            routePolylines[patrolId].lines.push(line);
 
-            // Return: dashed, -offset
-            const retCoords = computeOffsetPolyline(seg, offsetM, -1);
-            const retLine   = L.polyline(
-                retCoords.map(c => [c.lat, c.lng]),
-                { color, weight: 2, opacity: 0.65, dashArray: '8 4', interactive: false }
-            ).addTo(map);
-            routePolylines[patrolId].return.push(retLine);
-
-            // Direction arrows via Leaflet.polylineDecorator
             if (showArrows && typeof L.polylineDecorator !== 'undefined') {
                 try {
-                    const dec = L.polylineDecorator(outLine, {
+                    const dec = L.polylineDecorator(line, {
                         patterns: [{
                             offset: '15%',
                             repeat: '30%',
@@ -697,15 +630,9 @@ function renderRoutes(routes) {
     });
 }
 
-function _redrawRoutesAtCurrentZoom() {
-    if (!_lastRoutes) return;
-    renderRoutes(_lastRoutes);
-    renderOverlapOverlay(_lastRoutes);
-}
-
 function _clearRoutePolylines() {
     Object.values(routePolylines).forEach(entry => {
-        [...(entry.outbound || []), ...(entry.return || []), ...(entry.decorators || [])]
+        [...(entry.lines || []), ...(entry.decorators || [])]
             .forEach(l => map.removeLayer(l));
     });
     routePolylines      = {};
@@ -999,8 +926,6 @@ window.renderNearestHighlights    = renderNearestHighlights;
 window.clearNearestHighlights     = clearNearestHighlights;
 window.clearAllMapResults         = clearAllMapResults;
 
-window.computeOffsetPolyline      = computeOffsetPolyline;
-window.getZoomOffset              = getZoomOffset;
 
 window.renderComparisonResults    = renderComparisonResults;
 window.showComparisonRunA         = showComparisonRunA;
