@@ -1,0 +1,3224 @@
+{
+  "White Plains": {
+    "slug": "white-plains",
+    "bbox": {
+      "south": 14.6018471,
+      "west": 121.0687628,
+      "north": 14.6108187,
+      "east": 121.0759294
+    }
+  },
+  "Capri": {
+    "slug": "capri",
+    "bbox": {
+      "south": 14.7150051,
+      "west": 121.0267453,
+      "north": 14.7182184,
+      "east": 121.0301475
+    }
+  },
+  "San Bartolome": {
+    "slug": "san-bartolome",
+    "bbox": {
+      "south": 14.6986497,
+      "west": 121.017995,
+      "north": 14.7162143,
+      "east": 121.047952
+    }
+  },
+  "Project 2": {
+    "slug": "project-2",
+    "bbox": {
+      "south": 14.6286968,
+      "west": 121.0558167,
+      "north": 14.6363779,
+      "east": 121.0641754
+    }
+  },
+  "West Crame": {
+    "slug": "west-crame",
+    "bbox": {
+      "south": 14.6038865,
+      "west": 121.0457618,
+      "north": 14.6096889,
+      "east": 121.0517298
+    }
+  },
+  "Harapin ang Bukas": {
+    "slug": "harapin-ang-bukas",
+    "bbox": {
+      "south": 14.5894797,
+      "west": 121.0258027,
+      "north": 14.5922371,
+      "east": 121.0296286
+    }
+  },
+  "Burol": {
+    "slug": "burol",
+    "bbox": {
+      "south": 14.5888276,
+      "west": 121.0269051,
+      "north": 14.5906871,
+      "east": 121.0285089
+    }
+  },
+  "Botocan": {
+    "slug": "botocan",
+    "bbox": {
+      "south": 14.6352503,
+      "west": 121.0612753,
+      "north": 14.6371548,
+      "east": 121.0638753
+    }
+  },
+  "Blue Ridge A": {
+    "slug": "blue-ridge-a",
+    "bbox": {
+      "south": 14.6144867,
+      "west": 121.0705966,
+      "north": 14.6236743,
+      "east": 121.0761358
+    }
+  },
+  "Damar": {
+    "slug": "damar",
+    "bbox": {
+      "south": 14.6448132,
+      "west": 120.997914,
+      "north": 14.649251,
+      "east": 121.0030492
+    }
+  },
+  "Barangay 155": {
+    "slug": "barangay-155",
+    "bbox": {
+      "south": 14.6672571,
+      "west": 120.9983484,
+      "north": 14.6694855,
+      "east": 121.0003377
+    }
+  },
+  "Damayang Lagi": {
+    "slug": "damayang-lagi",
+    "bbox": {
+      "south": 14.6098974,
+      "west": 121.016254,
+      "north": 14.6217205,
+      "east": 121.0291109
+    }
+  },
+  "Muntingdilaw": {
+    "slug": "muntingdilaw",
+    "bbox": {
+      "south": 14.5933406,
+      "west": 121.1160915,
+      "north": 14.6089922,
+      "east": 121.1457405
+    }
+  },
+  "Beverly Hills": {
+    "slug": "beverly-hills",
+    "bbox": {
+      "south": 14.5809586,
+      "west": 121.1568646,
+      "north": 14.5868553,
+      "east": 121.1620261
+    }
+  },
+  "Saint Ignatius": {
+    "slug": "saint-ignatius",
+    "bbox": {
+      "south": 14.6108143,
+      "west": 121.0699324,
+      "north": 14.6152053,
+      "east": 121.0756694
+    }
+  },
+  "Quirino 2-A": {
+    "slug": "quirino-2a",
+    "bbox": {
+      "south": 14.6286968,
+      "west": 121.0558167,
+      "north": 14.6330549,
+      "east": 121.062192
+    }
+  },
+  "San Miguel": {
+    "slug": "san-miguel",
+    "bbox": {
+      "south": 14.5686882,
+      "west": 121.0813055,
+      "north": 14.5747466,
+      "east": 121.1007351
+    }
+  },
+  "Barangay 873": {
+    "slug": "barangay-873",
+    "bbox": {
+      "south": 14.5788757,
+      "west": 121.0108244,
+      "north": 14.5805677,
+      "east": 121.0125889
+    }
+  },
+  "Barangay 876": {
+    "slug": "barangay-876",
+    "bbox": {
+      "south": 14.5801913,
+      "west": 121.0106425,
+      "north": 14.5821749,
+      "east": 121.0122686
+    }
+  },
+  "Barangay 884": {
+    "slug": "barangay-884",
+    "bbox": {
+      "south": 14.579455,
+      "west": 121.0133239,
+      "north": 14.5819245,
+      "east": 121.0160899
+    }
+  },
+  "Barangay 156": {
+    "slug": "barangay-156",
+    "bbox": {
+      "south": 14.6653721,
+      "west": 121.0003579,
+      "north": 14.6680085,
+      "east": 121.0022246
+    }
+  },
+  "Barangay 164": {
+    "slug": "barangay-164",
+    "bbox": {
+      "south": 14.6852672,
+      "west": 121.0135208,
+      "north": 14.6919676,
+      "east": 121.022243
+    }
+  },
+  "Villa Maria Clara": {
+    "slug": "villa-maria-clara",
+    "bbox": {
+      "south": 14.6148251,
+      "west": 121.067139,
+      "north": 14.6185756,
+      "east": 121.070467
+    }
+  },
+  "Libis": {
+    "slug": "libis",
+    "bbox": {
+      "south": 14.6148331,
+      "west": 121.0732535,
+      "north": 14.6177645,
+      "east": 121.0778714
+    }
+  },
+  "Blue Ridge B": {
+    "slug": "blue-ridge-b",
+    "bbox": {
+      "south": 14.6159334,
+      "west": 121.0728082,
+      "north": 14.6201382,
+      "east": 121.0782067
+    }
+  },
+  "Salapan": {
+    "slug": "salapan",
+    "bbox": {
+      "south": 14.6088371,
+      "west": 121.0217044,
+      "north": 14.6136497,
+      "east": 121.0281357
+    }
+  },
+  "Zone 13": {
+    "slug": "zone-13",
+    "bbox": {
+      "south": 14.6642992,
+      "west": 120.9983484,
+      "north": 14.6694855,
+      "east": 121.0003547
+    }
+  },
+  "Batasan Hills": {
+    "slug": "batasan-hills",
+    "bbox": {
+      "south": 14.668436,
+      "west": 121.0829198,
+      "north": 14.6965989,
+      "east": 121.1118644
+    }
+  },
+  "Barangay 159": {
+    "slug": "barangay-159",
+    "bbox": {
+      "south": 14.6710575,
+      "west": 121.0042094,
+      "north": 14.6813472,
+      "east": 121.014895
+    }
+  },
+  "Barangay 158": {
+    "slug": "barangay-158",
+    "bbox": {
+      "south": 14.667334,
+      "west": 121.0006011,
+      "north": 14.6756054,
+      "east": 121.0058387
+    }
+  },
+  "Bayanihan": {
+    "slug": "bayanihan",
+    "bbox": {
+      "south": 14.6137985,
+      "west": 121.0670939,
+      "north": 14.6177834,
+      "east": 121.071325
+    }
+  },
+  "Santa Monica": {
+    "slug": "santa-monica",
+    "bbox": {
+      "south": 14.7090826,
+      "west": 121.039333,
+      "north": 14.7281705,
+      "east": 121.0534316
+    }
+  },
+  "Fairview": {
+    "slug": "fairview",
+    "bbox": {
+      "south": 14.6929853,
+      "west": 121.0579864,
+      "north": 14.7114123,
+      "east": 121.0826959
+    }
+  },
+  "North Fairview": {
+    "slug": "north-fairview",
+    "bbox": {
+      "south": 14.7045942,
+      "west": 121.05338,
+      "north": 14.7231868,
+      "east": 121.0670981
+    }
+  },
+  "Mabini-J. Rizal": {
+    "slug": "mabinij-rizal",
+    "bbox": {
+      "south": 14.5807108,
+      "west": 121.0201258,
+      "north": 14.5888557,
+      "east": 121.024357
+    }
+  },
+  "Santa Mesa": {
+    "slug": "santa-mesa",
+    "bbox": {
+      "south": 14.5884539,
+      "west": 120.9993798,
+      "north": 14.6044388,
+      "east": 121.0261504
+    }
+  },
+  "Balong-Bato": {
+    "slug": "balongbato",
+    "bbox": {
+      "south": 14.606066,
+      "west": 121.0219464,
+      "north": 14.6111335,
+      "east": 121.0296184
+    }
+  },
+  "Krus na Ligas": {
+    "slug": "krus-na-ligas",
+    "bbox": {
+      "south": 14.637066,
+      "west": 121.0611532,
+      "north": 14.6476832,
+      "east": 121.0646545
+    }
+  },
+  "Maytunas": {
+    "slug": "maytunas",
+    "bbox": {
+      "south": 14.5932835,
+      "west": 121.0296812,
+      "north": 14.5971636,
+      "east": 121.0380301
+    }
+  },
+  "Singkamas": {
+    "slug": "singkamas",
+    "bbox": {
+      "south": 14.569534,
+      "west": 121.0082514,
+      "north": 14.575024,
+      "east": 121.0131646
+    }
+  },
+  "Barangay 879": {
+    "slug": "barangay-879",
+    "bbox": {
+      "south": 14.5805677,
+      "west": 121.0115657,
+      "north": 14.5834513,
+      "east": 121.0134332
+    }
+  },
+  "Vergara": {
+    "slug": "vergara",
+    "bbox": {
+      "south": 14.5748775,
+      "west": 121.0219047,
+      "north": 14.5794773,
+      "east": 121.0271599
+    }
+  },
+  "Old Zañiga": {
+    "slug": "old-zaniga",
+    "bbox": {
+      "south": 14.5772979,
+      "west": 121.0231107,
+      "north": 14.5854965,
+      "east": 121.0289481
+    }
+  },
+  "Namayan": {
+    "slug": "namayan",
+    "bbox": {
+      "south": 14.577811,
+      "west": 121.0175364,
+      "north": 14.5830422,
+      "east": 121.0264359
+    }
+  },
+  "Poblacion": {
+    "slug": "poblacion",
+    "bbox": {
+      "south": 14.5682632,
+      "west": 121.024589,
+      "north": 14.5728878,
+      "east": 121.031811
+    }
+  },
+  "San Jose": {
+    "slug": "san-jose",
+    "bbox": {
+      "south": 14.5765161,
+      "west": 121.0270388,
+      "north": 14.5865627,
+      "east": 121.0328972
+    }
+  },
+  "Hagdang Bato Itaas": {
+    "slug": "hagdang-bato-itaas",
+    "bbox": {
+      "south": 14.585748,
+      "west": 121.0279139,
+      "north": 14.5907941,
+      "east": 121.0330028
+    }
+  },
+  "New Zañiga": {
+    "slug": "new-zaniga",
+    "bbox": {
+      "south": 14.5807099,
+      "west": 121.0272445,
+      "north": 14.5870161,
+      "east": 121.0319433
+    }
+  },
+  "Barangay 567": {
+    "slug": "barangay-567",
+    "bbox": {
+      "south": 14.6060056,
+      "west": 121.0037305,
+      "north": 14.6094825,
+      "east": 121.0077525
+    }
+  },
+  "Barangay 565": {
+    "slug": "barangay-565",
+    "bbox": {
+      "south": 14.606507,
+      "west": 121.0039619,
+      "north": 14.6099282,
+      "east": 121.0080922
+    }
+  },
+  "Barangay 564": {
+    "slug": "barangay-564",
+    "bbox": {
+      "south": 14.6078444,
+      "west": 121.0042266,
+      "north": 14.6102692,
+      "east": 121.0071812
+    }
+  },
+  "Barangay 563": {
+    "slug": "barangay-563",
+    "bbox": {
+      "south": 14.6081311,
+      "west": 121.0044175,
+      "north": 14.6104842,
+      "east": 121.0073947
+    }
+  },
+  "Barangay 562": {
+    "slug": "barangay-562",
+    "bbox": {
+      "south": 14.6083942,
+      "west": 121.004686,
+      "north": 14.6108816,
+      "east": 121.0077267
+    }
+  },
+  "Barangay 566": {
+    "slug": "barangay-566",
+    "bbox": {
+      "south": 14.6069493,
+      "west": 121.0069484,
+      "north": 14.6090754,
+      "east": 121.0091049
+    }
+  },
+  "Barangay 561": {
+    "slug": "barangay-561",
+    "bbox": {
+      "south": 14.6088031,
+      "west": 121.0050347,
+      "north": 14.6113095,
+      "east": 121.0080642
+    }
+  },
+  "Barangay 559": {
+    "slug": "barangay-559",
+    "bbox": {
+      "south": 14.6092188,
+      "west": 121.0053707,
+      "north": 14.6115393,
+      "east": 121.0082779
+    }
+  },
+  "Barangay 568": {
+    "slug": "barangay-568",
+    "bbox": {
+      "south": 14.6081973,
+      "west": 121.0079478,
+      "north": 14.6100288,
+      "east": 121.0098697
+    }
+  },
+  "Barangay 558": {
+    "slug": "barangay-558",
+    "bbox": {
+      "south": 14.6094821,
+      "west": 121.0056051,
+      "north": 14.611747,
+      "east": 121.0085118
+    }
+  },
+  "Barangay 557": {
+    "slug": "barangay-557",
+    "bbox": {
+      "south": 14.6097702,
+      "west": 121.0059528,
+      "north": 14.6119182,
+      "east": 121.0087218
+    }
+  },
+  "Barangay 560": {
+    "slug": "barangay-560",
+    "bbox": {
+      "south": 14.6091381,
+      "west": 121.0087218,
+      "north": 14.6107331,
+      "east": 121.0104299
+    }
+  },
+  "Santo Niño": {
+    "slug": "santo-nino",
+    "bbox": {
+      "south": 14.6334907,
+      "west": 121.0920702,
+      "north": 14.64482,
+      "east": 121.1096858
+    }
+  },
+  "Pasong Tamo": {
+    "slug": "pasong-tamo",
+    "bbox": {
+      "south": 14.6692287,
+      "west": 121.0433741,
+      "north": 14.6933679,
+      "east": 121.0695232
+    }
+  },
+  "Barangay 154": {
+    "slug": "barangay-154",
+    "bbox": {
+      "south": 14.6649538,
+      "west": 120.9992562,
+      "north": 14.6675892,
+      "east": 121.0003547
+    }
+  },
+  "Pag-asa": {
+    "slug": "pagasa",
+    "bbox": {
+      "south": 14.5876137,
+      "west": 121.0227224,
+      "north": 14.5922371,
+      "east": 121.0269586
+    }
+  },
+  "Quirino 3-A": {
+    "slug": "quirino-3a",
+    "bbox": {
+      "south": 14.6275955,
+      "west": 121.0622748,
+      "north": 14.6297193,
+      "east": 121.0651845
+    }
+  },
+  "Project 3": {
+    "slug": "project-3",
+    "bbox": {
+      "south": 14.6275955,
+      "west": 121.0622368,
+      "north": 14.6338984,
+      "east": 121.0711171
+    }
+  },
+  "Balong Bato": {
+    "slug": "balong-bato",
+    "bbox": {
+      "south": 14.6593091,
+      "west": 120.9994138,
+      "north": 14.667334,
+      "east": 121.005312
+    }
+  },
+  "Barangay 161": {
+    "slug": "barangay-161",
+    "bbox": {
+      "south": 14.6706877,
+      "west": 120.9979006,
+      "north": 14.6783108,
+      "east": 121.0042435
+    }
+  },
+  "Kaligayahan": {
+    "slug": "kaligayahan",
+    "bbox": {
+      "south": 14.7255904,
+      "west": 121.0376404,
+      "north": 14.7422036,
+      "east": 121.0531742
+    }
+  },
+  "San Agustin": {
+    "slug": "san-agustin",
+    "bbox": {
+      "south": 14.7239208,
+      "west": 121.0305595,
+      "north": 14.7401224,
+      "east": 121.0394078
+    }
+  },
+  "BF Homes Caloocan": {
+    "slug": "bf-homes-caloocan",
+    "bbox": {
+      "south": 14.7288789,
+      "west": 121.0188148,
+      "north": 14.7363341,
+      "east": 121.0303614
+    }
+  },
+  "Barangay 556": {
+    "slug": "barangay-556",
+    "bbox": {
+      "south": 14.6100288,
+      "west": 121.0062459,
+      "north": 14.6121601,
+      "east": 121.0089508
+    }
+  },
+  "Barangay 555": {
+    "slug": "barangay-555",
+    "bbox": {
+      "south": 14.6103109,
+      "west": 121.0065607,
+      "north": 14.6125167,
+      "east": 121.0092936
+    }
+  },
+  "San Isidro": {
+    "slug": "san-isidro",
+    "bbox": {
+      "south": 14.5692944,
+      "west": 121.1237528,
+      "north": 14.5913987,
+      "east": 121.1541563
+    }
+  },
+  "Santa Lucia": {
+    "slug": "santa-lucia",
+    "bbox": {
+      "south": 14.7022208,
+      "west": 121.0462458,
+      "north": 14.709984,
+      "east": 121.0569173
+    }
+  },
+  "Barangay 163": {
+    "slug": "barangay-163",
+    "bbox": {
+      "south": 14.6806545,
+      "west": 121.0102613,
+      "north": 14.6858436,
+      "east": 121.0191463
+    }
+  },
+  "Unang Sigaw": {
+    "slug": "unang-sigaw",
+    "bbox": {
+      "south": 14.6573463,
+      "west": 120.9991301,
+      "north": 14.6630247,
+      "east": 121.0037183
+    }
+  },
+  "Tatalon": {
+    "slug": "tatalon",
+    "bbox": {
+      "south": 14.6184641,
+      "west": 121.0080737,
+      "north": 14.6297168,
+      "east": 121.0198582
+    }
+  },
+  "Project 4": {
+    "slug": "project-4",
+    "bbox": {
+      "south": 14.6137985,
+      "west": 121.0619882,
+      "north": 14.6298695,
+      "east": 121.0782067
+    }
+  },
+  "Santol": {
+    "slug": "santol",
+    "bbox": {
+      "south": 14.6045458,
+      "west": 121.01205,
+      "north": 14.6153332,
+      "east": 121.0186666
+    }
+  },
+  "Sampaloc": {
+    "slug": "sampaloc",
+    "bbox": {
+      "south": 14.6010777,
+      "west": 120.9956442,
+      "north": 14.618924,
+      "east": 121.0174466
+    }
+  },
+  "Fourth District": {
+    "slug": "fourth-district",
+    "bbox": {
+      "south": 14.6010777,
+      "west": 120.9956442,
+      "north": 14.618924,
+      "east": 121.0174466
+    }
+  },
+  "Galas": {
+    "slug": "galas",
+    "bbox": {
+      "south": 14.602845,
+      "west": 121.0010087,
+      "north": 14.6234568,
+      "east": 121.0220291
+    }
+  },
+  "Barangka": {
+    "slug": "barangka",
+    "bbox": {
+      "south": 14.6265046,
+      "west": 121.0776396,
+      "north": 14.6439275,
+      "east": 121.0858306
+    }
+  },
+  "Bagong Silang": {
+    "slug": "bagong-silang",
+    "bbox": {
+      "south": 14.7656525,
+      "west": 121.0242587,
+      "north": 14.7851597,
+      "east": 121.0642298
+    }
+  },
+  "Daang Bakal": {
+    "slug": "daang-bakal",
+    "bbox": {
+      "south": 14.5907478,
+      "west": 121.0257037,
+      "north": 14.5957451,
+      "east": 121.0303547
+    }
+  },
+  "Barangay 170": {
+    "slug": "barangay-170",
+    "bbox": {
+      "south": 14.7326942,
+      "west": 121.0271643,
+      "north": 14.7443744,
+      "east": 121.0360356
+    }
+  },
+  "Balintawak": {
+    "slug": "balintawak",
+    "bbox": {
+      "south": 14.6445523,
+      "west": 120.9968543,
+      "north": 14.6637284,
+      "east": 121.0157127
+    }
+  },
+  "Ugong": {
+    "slug": "ugong",
+    "bbox": {
+      "south": 14.5704108,
+      "west": 121.0617294,
+      "north": 14.5934403,
+      "east": 121.0830879
+    }
+  },
+  "Katipunan": {
+    "slug": "katipunan",
+    "bbox": {
+      "south": 14.6546624,
+      "west": 121.0151248,
+      "north": 14.6576553,
+      "east": 121.0196921
+    }
+  },
+  "Veterans Village": {
+    "slug": "veterans-village",
+    "bbox": {
+      "south": 14.6506281,
+      "west": 121.0186671,
+      "north": 14.6576553,
+      "east": 121.0288696
+    }
+  },
+  "Paraiso": {
+    "slug": "paraiso",
+    "bbox": {
+      "south": 14.6353571,
+      "west": 121.0154192,
+      "north": 14.6406403,
+      "east": 121.0194034
+    }
+  },
+  "New Era": {
+    "slug": "new-era",
+    "bbox": {
+      "south": 14.6618055,
+      "west": 121.0533928,
+      "north": 14.6676764,
+      "east": 121.0682812
+    }
+  },
+  "Culiat": {
+    "slug": "culiat",
+    "bbox": {
+      "south": 14.6616052,
+      "west": 121.0431426,
+      "north": 14.6738222,
+      "east": 121.0703882
+    }
+  },
+  "UP Campus": {
+    "slug": "up-campus",
+    "bbox": {
+      "south": 14.637808,
+      "west": 121.0447565,
+      "north": 14.6633788,
+      "east": 121.0761783
+    }
+  },
+  "Teachers Village East": {
+    "slug": "teachers-village-east",
+    "bbox": {
+      "south": 14.6410121,
+      "west": 121.0572272,
+      "north": 14.6472602,
+      "east": 121.0613493
+    }
+  },
+  "Santa Teresita": {
+    "slug": "santa-teresita",
+    "bbox": {
+      "south": 14.6171168,
+      "west": 120.9974617,
+      "north": 14.6244228,
+      "east": 121.0035437
+    }
+  },
+  "Pandacan": {
+    "slug": "pandacan",
+    "bbox": {
+      "south": 14.5820039,
+      "west": 120.998696,
+      "north": 14.5962804,
+      "east": 121.0156906
+    }
+  },
+  "Kalusugan": {
+    "slug": "kalusugan",
+    "bbox": {
+      "south": 14.6193342,
+      "west": 121.016441,
+      "north": 14.6261179,
+      "east": 121.0264195
+    }
+  },
+  "Barangay 160": {
+    "slug": "barangay-160",
+    "bbox": {
+      "south": 14.6759535,
+      "west": 120.9992452,
+      "north": 14.6848192,
+      "east": 121.0069622
+    }
+  },
+  "Santa Quiteria/Talipapa": {
+    "slug": "santa-quiteriatalipapa",
+    "bbox": {
+      "south": 14.6787998,
+      "west": 121.0008327,
+      "north": 14.6919676,
+      "east": 121.022243
+    }
+  },
+  "Barangay 162": {
+    "slug": "barangay-162",
+    "bbox": {
+      "south": 14.6787998,
+      "west": 121.0008327,
+      "north": 14.6863905,
+      "east": 121.0104813
+    }
+  },
+  "Libis Baesa/Reparo": {
+    "slug": "libis-baesareparo",
+    "bbox": {
+      "south": 14.667334,
+      "west": 120.9979006,
+      "north": 14.6848192,
+      "east": 121.014895
+    }
+  },
+  "San Vicente": {
+    "slug": "san-vicente",
+    "bbox": {
+      "south": 14.7958138,
+      "west": 120.9880705,
+      "north": 14.8199662,
+      "east": 121.0180735
+    }
+  },
+  "Dioquino Zobel": {
+    "slug": "dioquino-zobel",
+    "bbox": {
+      "south": 14.6187136,
+      "west": 121.0635691,
+      "north": 14.6206919,
+      "east": 121.0660399
+    }
+  },
+  "Masagana": {
+    "slug": "masagana",
+    "bbox": {
+      "south": 14.6148364,
+      "west": 121.064878,
+      "north": 14.62138,
+      "east": 121.0686198
+    }
+  },
+  "San Andres Bukid": {
+    "slug": "san-andres-bukid",
+    "bbox": {
+      "south": 14.5664609,
+      "west": 120.9982434,
+      "north": 14.5801409,
+      "east": 121.0121544
+    }
+  },
+  "Baesa": {
+    "slug": "baesa",
+    "bbox": {
+      "south": 14.660864,
+      "west": 121.0022246,
+      "north": 14.6806545,
+      "east": 121.018905
+    }
+  },
+  "Marilag": {
+    "slug": "marilag",
+    "bbox": {
+      "south": 14.6209217,
+      "west": 121.0658319,
+      "north": 14.6298695,
+      "east": 121.0741764
+    }
+  },
+  "Bagumbuhay": {
+    "slug": "bagumbuhay",
+    "bbox": {
+      "south": 14.622032,
+      "west": 121.062618,
+      "north": 14.6282949,
+      "east": 121.067461
+    }
+  },
+  "Hagdang Bato Libis": {
+    "slug": "hagdang-bato-libis",
+    "bbox": {
+      "south": 14.586488,
+      "west": 121.0319372,
+      "north": 14.5915957,
+      "east": 121.0368517
+    }
+  },
+  "Malamig": {
+    "slug": "malamig",
+    "bbox": {
+      "south": 14.5725083,
+      "west": 121.0406828,
+      "north": 14.5789551,
+      "east": 121.048732
+    }
+  },
+  "Barangka Drive": {
+    "slug": "barangka-drive",
+    "bbox": {
+      "south": 14.569792,
+      "west": 121.0340682,
+      "north": 14.5758284,
+      "east": 121.0414893
+    }
+  },
+  "Mauway": {
+    "slug": "mauway",
+    "bbox": {
+      "south": 14.5760291,
+      "west": 121.0375691,
+      "north": 14.5866452,
+      "east": 121.0476342
+    }
+  },
+  "San Roque": {
+    "slug": "san-roque",
+    "bbox": {
+      "south": 14.6127492,
+      "west": 121.0571745,
+      "north": 14.6265158,
+      "east": 121.067139
+    }
+  },
+  "Plainview": {
+    "slug": "plainview",
+    "bbox": {
+      "south": 14.5707594,
+      "west": 121.0280111,
+      "north": 14.5832527,
+      "east": 121.0427334
+    }
+  },
+  "Kristong Hari": {
+    "slug": "kristong-hari",
+    "bbox": {
+      "south": 14.6224433,
+      "west": 121.0237887,
+      "north": 14.6267057,
+      "east": 121.0400846
+    }
+  },
+  "Kaunlaran": {
+    "slug": "kaunlaran",
+    "bbox": {
+      "south": 14.6126946,
+      "west": 121.0369187,
+      "north": 14.6210529,
+      "east": 121.0490181
+    }
+  },
+  "Horseshoe": {
+    "slug": "horseshoe",
+    "bbox": {
+      "south": 14.6093311,
+      "west": 121.0373494,
+      "north": 14.6161618,
+      "east": 121.0466284
+    }
+  },
+  "Progreso": {
+    "slug": "progreso",
+    "bbox": {
+      "south": 14.601623,
+      "west": 121.019589,
+      "north": 14.6049153,
+      "east": 121.0218437
+    }
+  },
+  "Mariana": {
+    "slug": "mariana",
+    "bbox": {
+      "south": 14.6122953,
+      "west": 121.0240688,
+      "north": 14.6244482,
+      "east": 121.0431542
+    }
+  },
+  "Carmona": {
+    "slug": "carmona",
+    "bbox": {
+      "south": 14.5717585,
+      "west": 121.0151657,
+      "north": 14.5787715,
+      "east": 121.0215281
+    }
+  },
+  "Kasilawan": {
+    "slug": "kasilawan",
+    "bbox": {
+      "south": 14.5749185,
+      "west": 121.0124347,
+      "north": 14.5792125,
+      "east": 121.0174431
+    }
+  },
+  "Sikatuna Village": {
+    "slug": "sikatuna-village",
+    "bbox": {
+      "south": 14.6342338,
+      "west": 121.056028,
+      "north": 14.6429798,
+      "east": 121.0619146
+    }
+  },
+  "Teachers Village West": {
+    "slug": "teachers-village-west",
+    "bbox": {
+      "south": 14.6393362,
+      "west": 121.0540012,
+      "north": 14.6462399,
+      "east": 121.0581764
+    }
+  },
+  "Bagong Barrio West": {
+    "slug": "bagong-barrio-west",
+    "bbox": {
+      "south": 14.6574313,
+      "west": 120.9983484,
+      "north": 14.6694855,
+      "east": 121.0003547
+    }
+  },
+  "Phase 3": {
+    "slug": "phase-3",
+    "bbox": {
+      "south": 14.7670535,
+      "west": 121.0446758,
+      "north": 14.7717201,
+      "east": 121.0527572
+    }
+  },
+  "Phase 2": {
+    "slug": "phase-2",
+    "bbox": {
+      "south": 14.7711141,
+      "west": 121.0497162,
+      "north": 14.7764651,
+      "east": 121.0545368
+    }
+  },
+  "Barangay 176-C": {
+    "slug": "barangay-176c",
+    "bbox": {
+      "south": 14.7709622,
+      "west": 121.0542988,
+      "north": 14.7809668,
+      "east": 121.0642298
+    }
+  },
+  "Barangay 176-D": {
+    "slug": "barangay-176d",
+    "bbox": {
+      "south": 14.7731016,
+      "west": 121.0450689,
+      "north": 14.7827996,
+      "east": 121.0568896
+    }
+  },
+  "Barangay 176-F": {
+    "slug": "barangay-176f",
+    "bbox": {
+      "south": 14.7720008,
+      "west": 121.0242587,
+      "north": 14.7844044,
+      "east": 121.035532
+    }
+  },
+  "Barangay 176-A": {
+    "slug": "barangay-176a",
+    "bbox": {
+      "south": 14.7697014,
+      "west": 121.0372878,
+      "north": 14.7817203,
+      "east": 121.0501443
+    }
+  },
+  "Barangay 176-E": {
+    "slug": "barangay-176e",
+    "bbox": {
+      "south": 14.7724536,
+      "west": 121.0338918,
+      "north": 14.7851597,
+      "east": 121.0424233
+    }
+  },
+  "Purok 2": {
+    "slug": "purok-2",
+    "bbox": {
+      "south": 14.6108359,
+      "west": 121.0845941,
+      "north": 14.6146841,
+      "east": 121.087319
+    }
+  },
+  "Purok 1": {
+    "slug": "purok-1",
+    "bbox": {
+      "south": 14.6058854,
+      "west": 121.0849697,
+      "north": 14.6121512,
+      "east": 121.09231
+    }
+  },
+  "Purok 3": {
+    "slug": "purok-3",
+    "bbox": {
+      "south": 14.6093827,
+      "west": 121.0829636,
+      "north": 14.612775,
+      "east": 121.0859149
+    }
+  },
+  "Purok 4": {
+    "slug": "purok-4",
+    "bbox": {
+      "south": 14.6118071,
+      "west": 121.0814887,
+      "north": 14.614328,
+      "east": 121.0841311
+    }
+  },
+  "Purok 5": {
+    "slug": "purok-5",
+    "bbox": {
+      "south": 14.610948,
+      "west": 121.0793669,
+      "north": 14.6148818,
+      "east": 121.0833377
+    }
+  },
+  "Purok 8": {
+    "slug": "purok-8",
+    "bbox": {
+      "south": 14.6135848,
+      "west": 121.0790111,
+      "north": 14.6163099,
+      "east": 121.0824801
+    }
+  },
+  "Purok 9": {
+    "slug": "purok-9",
+    "bbox": {
+      "south": 14.6157065,
+      "west": 121.0790029,
+      "north": 14.6214623,
+      "east": 121.085982
+    }
+  },
+  "Purok 7": {
+    "slug": "purok-7",
+    "bbox": {
+      "south": 14.6142277,
+      "west": 121.0826681,
+      "north": 14.6174381,
+      "east": 121.0865457
+    }
+  },
+  "Purok 6": {
+    "slug": "purok-6",
+    "bbox": {
+      "south": 14.612263,
+      "west": 121.0814986,
+      "north": 14.6173488,
+      "east": 121.0868247
+    }
+  },
+  "Ermitaño": {
+    "slug": "ermitano",
+    "bbox": {
+      "south": 14.6095569,
+      "west": 121.0279076,
+      "north": 14.6129464,
+      "east": 121.0327022
+    }
+  },
+  "Doña Aurora": {
+    "slug": "dona-aurora",
+    "bbox": {
+      "south": 14.6138599,
+      "west": 121.0078794,
+      "north": 14.6185092,
+      "east": 121.0104911
+    }
+  },
+  "Doña Imelda": {
+    "slug": "dona-imelda",
+    "bbox": {
+      "south": 14.602845,
+      "west": 121.009746,
+      "north": 14.6192777,
+      "east": 121.0220291
+    }
+  },
+  "San Juan": {
+    "slug": "san-juan",
+    "bbox": {
+      "south": 14.5907647,
+      "west": 121.019589,
+      "north": 14.6136497,
+      "east": 121.0591582
+    }
+  },
+  "Valencia": {
+    "slug": "valencia",
+    "bbox": {
+      "south": 14.6063182,
+      "west": 121.0312869,
+      "north": 14.6151253,
+      "east": 121.0421202
+    }
+  },
+  "New Manila": {
+    "slug": "new-manila",
+    "bbox": {
+      "south": 14.6063182,
+      "west": 121.016254,
+      "north": 14.6267057,
+      "east": 121.0466284
+    }
+  },
+  "Valenzuela": {
+    "slug": "valenzuela",
+    "bbox": {
+      "south": 14.6822896,
+      "west": 120.9956404,
+      "north": 14.7539323,
+      "east": 121.024072
+    }
+  },
+  "Olympia": {
+    "slug": "olympia",
+    "bbox": {
+      "south": 14.5684079,
+      "west": 121.0149899,
+      "north": 14.5762497,
+      "east": 121.0245763
+    }
+  },
+  "Manggahan": {
+    "slug": "manggahan",
+    "bbox": {
+      "south": 14.5948822,
+      "west": 121.0825158,
+      "north": 14.613304,
+      "east": 121.105813
+    }
+  },
+  "Quirino 2-B": {
+    "slug": "quirino-2b",
+    "bbox": {
+      "south": 14.6293754,
+      "west": 121.05946,
+      "north": 14.6349176,
+      "east": 121.0636499
+    }
+  },
+  "Quirino 2-C": {
+    "slug": "quirino-2c",
+    "bbox": {
+      "south": 14.6326814,
+      "west": 121.0614362,
+      "north": 14.6363779,
+      "east": 121.0641754
+    }
+  },
+  "Camp Aguinaldo": {
+    "slug": "camp-aguinaldo",
+    "bbox": {
+      "south": 14.5996761,
+      "west": 121.0550436,
+      "north": 14.6145094,
+      "east": 121.0705259
+    }
+  },
+  "Escopa III": {
+    "slug": "escopa-iii",
+    "bbox": {
+      "south": 14.6245057,
+      "west": 121.0716005,
+      "north": 14.6286211,
+      "east": 121.0743681
+    }
+  },
+  "Escopa IV": {
+    "slug": "escopa-iv",
+    "bbox": {
+      "south": 14.6248077,
+      "west": 121.0736962,
+      "north": 14.6262781,
+      "east": 121.0749127
+    }
+  },
+  "Batis": {
+    "slug": "batis",
+    "bbox": {
+      "south": 14.596002,
+      "west": 121.0203891,
+      "north": 14.6033821,
+      "east": 121.0289606
+    }
+  },
+  "Barangka Itaas": {
+    "slug": "barangka-itaas",
+    "bbox": {
+      "south": 14.5692835,
+      "west": 121.0399949,
+      "north": 14.574549,
+      "east": 121.0439891
+    }
+  },
+  "Rosario": {
+    "slug": "rosario",
+    "bbox": {
+      "south": 14.578356,
+      "west": 121.0825052,
+      "north": 14.598935,
+      "east": 121.1107005
+    }
+  },
+  "Saint Joseph": {
+    "slug": "saint-joseph",
+    "bbox": {
+      "south": 14.6021497,
+      "west": 121.0312285,
+      "north": 14.6044241,
+      "east": 121.0335294
+    }
+  },
+  "Oranbo": {
+    "slug": "oranbo",
+    "bbox": {
+      "south": 14.570129,
+      "west": 121.0611,
+      "north": 14.5805662,
+      "east": 121.0687879
+    }
+  },
+  "Bagong Ilog": {
+    "slug": "bagong-ilog",
+    "bbox": {
+      "south": 14.5675252,
+      "west": 121.0658948,
+      "north": 14.5771104,
+      "east": 121.0739946
+    }
+  },
+  "Barangay 173": {
+    "slug": "barangay-173",
+    "bbox": {
+      "south": 14.7443744,
+      "west": 121.0289438,
+      "north": 14.760915,
+      "east": 121.0399874
+    }
+  },
+  "Masambong": {
+    "slug": "masambong",
+    "bbox": {
+      "south": 14.6391443,
+      "west": 121.0058636,
+      "north": 14.6454853,
+      "east": 121.0126206
+    }
+  },
+  "Santolan": {
+    "slug": "santolan",
+    "bbox": {
+      "south": 14.6058854,
+      "west": 121.0790029,
+      "north": 14.6234777,
+      "east": 121.0926953
+    }
+  },
+  "Purok 10": {
+    "slug": "purok-10",
+    "bbox": {
+      "south": 14.6097576,
+      "west": 121.085982,
+      "north": 14.6218603,
+      "east": 121.0926953
+    }
+  },
+  "Alicia": {
+    "slug": "alicia",
+    "bbox": {
+      "south": 14.6598418,
+      "west": 121.0220706,
+      "north": 14.6626727,
+      "east": 121.0274437
+    }
+  },
+  "Ramon Magsaysay": {
+    "slug": "ramon-magsaysay",
+    "bbox": {
+      "south": 14.6565083,
+      "west": 121.0188325,
+      "north": 14.6616057,
+      "east": 121.0275715
+    }
+  },
+  "Project 6": {
+    "slug": "project-6",
+    "bbox": {
+      "south": 14.6462374,
+      "west": 121.035156,
+      "north": 14.6659835,
+      "east": 121.0471159
+    }
+  },
+  "Vasra": {
+    "slug": "vasra",
+    "bbox": {
+      "south": 14.6520263,
+      "west": 121.043073,
+      "north": 14.6652131,
+      "east": 121.0526365
+    }
+  },
+  "Barangay 177": {
+    "slug": "barangay-177",
+    "bbox": {
+      "south": 14.7421609,
+      "west": 121.0436771,
+      "north": 14.7568832,
+      "east": 121.0592065
+    }
+  },
+  "Mariblo": {
+    "slug": "mariblo",
+    "bbox": {
+      "south": 14.6330486,
+      "west": 121.014141,
+      "north": 14.6371444,
+      "east": 121.018149
+    }
+  },
+  "Phase 4": {
+    "slug": "phase-4",
+    "bbox": {
+      "south": 14.7697014,
+      "west": 121.0372878,
+      "north": 14.7817203,
+      "east": 121.045348
+    }
+  },
+  "Phase 1": {
+    "slug": "phase-1",
+    "bbox": {
+      "south": 14.7700303,
+      "west": 121.0440679,
+      "north": 14.7768926,
+      "east": 121.0501443
+    }
+  },
+  "Barangay 172": {
+    "slug": "barangay-172",
+    "bbox": {
+      "south": 14.7384501,
+      "west": 121.0347708,
+      "north": 14.7560651,
+      "east": 121.0464397
+    }
+  },
+  "Barangay 175": {
+    "slug": "barangay-175",
+    "bbox": {
+      "south": 14.7539458,
+      "west": 121.0271028,
+      "north": 14.7731662,
+      "east": 121.0483522
+    }
+  },
+  "Loyola Heights": {
+    "slug": "loyola-heights",
+    "bbox": {
+      "south": 14.6282368,
+      "west": 121.0638059,
+      "north": 14.6473221,
+      "east": 121.083055
+    }
+  },
+  "Barangka Ilaya": {
+    "slug": "barangka-ilaya",
+    "bbox": {
+      "south": 14.5690357,
+      "west": 121.0426218,
+      "north": 14.5767063,
+      "east": 121.05152
+    }
+  },
+  "San Antonio": {
+    "slug": "san-antonio",
+    "bbox": {
+      "south": 14.6451419,
+      "west": 121.0123179,
+      "north": 14.6550433,
+      "east": 121.0212292
+    }
+  },
+  "Holy Spirit": {
+    "slug": "holy-spirit",
+    "bbox": {
+      "south": 14.6715905,
+      "west": 121.0691065,
+      "north": 14.6933239,
+      "east": 121.0873224
+    }
+  },
+  "Matandang Balara": {
+    "slug": "matandang-balara",
+    "bbox": {
+      "south": 14.6493917,
+      "west": 121.0663361,
+      "north": 14.6770967,
+      "east": 121.0986746
+    }
+  },
+  "Rivera": {
+    "slug": "rivera",
+    "bbox": {
+      "south": 14.6038269,
+      "west": 121.0208999,
+      "north": 14.6071993,
+      "east": 121.0235345
+    }
+  },
+  "Malaya": {
+    "slug": "malaya",
+    "bbox": {
+      "south": 14.6332163,
+      "west": 121.054211,
+      "north": 14.6393778,
+      "east": 121.0578978
+    }
+  },
+  "East Kamias": {
+    "slug": "east-kamias",
+    "bbox": {
+      "south": 14.6290273,
+      "west": 121.0520719,
+      "north": 14.6352503,
+      "east": 121.0614362
+    }
+  },
+  "West Kamias": {
+    "slug": "west-kamias",
+    "bbox": {
+      "south": 14.6285753,
+      "west": 121.0458928,
+      "north": 14.6325515,
+      "east": 121.0527542
+    }
+  },
+  "4th District": {
+    "slug": "4th-district",
+    "bbox": {
+      "south": 14.602845,
+      "west": 121.0010087,
+      "north": 14.6633788,
+      "east": 121.0761783
+    }
+  },
+  "Wack-Wack Greenhills": {
+    "slug": "wackwack-greenhills",
+    "bbox": {
+      "south": 14.578203,
+      "west": 121.043409,
+      "north": 14.6016821,
+      "east": 121.0600189
+    }
+  },
+  "Mandaluyong": {
+    "slug": "mandaluyong",
+    "bbox": {
+      "south": 14.5687108,
+      "west": 121.0175364,
+      "north": 14.6016821,
+      "east": 121.0600189
+    }
+  },
+  "Addition Hills": {
+    "slug": "addition-hills",
+    "bbox": {
+      "south": 14.5907647,
+      "west": 121.0320772,
+      "north": 14.5974559,
+      "east": 121.043409
+    }
+  },
+  "Pleasant Hills": {
+    "slug": "pleasant-hills",
+    "bbox": {
+      "south": 14.5859131,
+      "west": 121.0371063,
+      "north": 14.5895599,
+      "east": 121.0464251
+    }
+  },
+  "Buayang Bato": {
+    "slug": "buayang-bato",
+    "bbox": {
+      "south": 14.5687108,
+      "west": 121.0506852,
+      "north": 14.5784709,
+      "east": 121.0572093
+    }
+  },
+  "Highway Hills": {
+    "slug": "highway-hills",
+    "bbox": {
+      "south": 14.5736647,
+      "west": 121.0444913,
+      "north": 14.5872794,
+      "east": 121.0568049
+    }
+  },
+  "Kabayanan": {
+    "slug": "kabayanan",
+    "bbox": {
+      "south": 14.5948489,
+      "west": 121.0261896,
+      "north": 14.5995278,
+      "east": 121.0329996
+    }
+  },
+  "Tibagan": {
+    "slug": "tibagan",
+    "bbox": {
+      "south": 14.5982044,
+      "west": 121.0261202,
+      "north": 14.6040645,
+      "east": 121.0313324
+    }
+  },
+  "San Perfecto": {
+    "slug": "san-perfecto",
+    "bbox": {
+      "south": 14.6018882,
+      "west": 121.0204291,
+      "north": 14.6047993,
+      "east": 121.026087
+    }
+  },
+  "Pedro Cruz": {
+    "slug": "pedro-cruz",
+    "bbox": {
+      "south": 14.6033382,
+      "west": 121.022566,
+      "north": 14.6077573,
+      "east": 121.0288389
+    }
+  },
+  "Teresa": {
+    "slug": "teresa",
+    "bbox": {
+      "south": 14.5665894,
+      "west": 121.2062071,
+      "north": 14.5894738,
+      "east": 121.2392786
+    }
+  },
+  "Bagong Silangan": {
+    "slug": "bagong-silangan",
+    "bbox": {
+      "south": 14.6930498,
+      "west": 121.095471,
+      "north": 14.7298888,
+      "east": 121.1183676
+    }
+  },
+  "2nd District": {
+    "slug": "2nd-district",
+    "bbox": {
+      "south": 14.6822896,
+      "west": 120.9956404,
+      "north": 14.7276701,
+      "east": 121.024072
+    }
+  },
+  "Bagong Lipunan ng Crame": {
+    "slug": "bagong-lipunan-ng-crame",
+    "bbox": {
+      "south": 14.6044481,
+      "west": 121.0429708,
+      "north": 14.6164982,
+      "east": 121.0569378
+    }
+  },
+  "San Martin de Porres": {
+    "slug": "san-martin-de-porres",
+    "bbox": {
+      "south": 14.6144958,
+      "west": 121.0469393,
+      "north": 14.6215693,
+      "east": 121.052484
+    }
+  },
+  "Cubao": {
+    "slug": "cubao",
+    "bbox": {
+      "south": 14.6109072,
+      "west": 121.0369187,
+      "north": 14.6302957,
+      "east": 121.067139
+    }
+  },
+  "San Mateo": {
+    "slug": "san-mateo",
+    "bbox": {
+      "south": 14.6471288,
+      "west": 121.1075892,
+      "north": 14.716755,
+      "east": 121.2125457
+    }
+  },
+  "Maybunga": {
+    "slug": "maybunga",
+    "bbox": {
+      "south": 14.5715071,
+      "west": 121.0788183,
+      "north": 14.5815659,
+      "east": 121.0999433
+    }
+  },
+  "Caniogan": {
+    "slug": "caniogan",
+    "bbox": {
+      "south": 14.5660916,
+      "west": 121.0740922,
+      "north": 14.5761196,
+      "east": 121.0895471
+    }
+  },
+  "Pasig Second District": {
+    "slug": "pasig-second-district",
+    "bbox": {
+      "south": 14.5686882,
+      "west": 121.0788183,
+      "north": 14.6234777,
+      "east": 121.1107005
+    }
+  },
+  "Dela Paz": {
+    "slug": "dela-paz",
+    "bbox": {
+      "south": 14.586246,
+      "west": 121.136408,
+      "north": 14.6227758,
+      "east": 121.1845929
+    }
+  },
+  "Isabelita": {
+    "slug": "isabelita",
+    "bbox": {
+      "south": 14.6021626,
+      "west": 121.0297684,
+      "north": 14.6038982,
+      "east": 121.0315971
+    }
+  },
+  "1st District": {
+    "slug": "1st-district",
+    "bbox": {
+      "south": 14.6171168,
+      "west": 120.9905179,
+      "north": 14.6747256,
+      "east": 121.0526365
+    }
+  },
+  "Hulo": {
+    "slug": "hulo",
+    "bbox": {
+      "south": 14.5691366,
+      "west": 121.0258997,
+      "north": 14.5769975,
+      "east": 121.0352701
+    }
+  },
+  "Barangka Ibaba": {
+    "slug": "barangka-ibaba",
+    "bbox": {
+      "south": 14.5696138,
+      "west": 121.0376142,
+      "north": 14.5737648,
+      "east": 121.041339
+    }
+  },
+  "District I": {
+    "slug": "district-i",
+    "bbox": {
+      "south": 14.6181381,
+      "west": 121.0748675,
+      "north": 14.6554548,
+      "east": 121.1096858
+    }
+  },
+  "Makati": {
+    "slug": "makati",
+    "bbox": {
+      "south": 14.5679953,
+      "west": 121.0070128,
+      "north": 14.5792125,
+      "east": 121.031811
+    }
+  },
+  "Tejeros": {
+    "slug": "tejeros",
+    "bbox": {
+      "south": 14.5679953,
+      "west": 121.0108101,
+      "north": 14.5754598,
+      "east": 121.0167028
+    }
+  },
+  "Santa Ana": {
+    "slug": "santa-ana",
+    "bbox": {
+      "south": 14.5658974,
+      "west": 121.1234525,
+      "north": 14.5706872,
+      "east": 121.1303256
+    }
+  },
+  "Sixth District": {
+    "slug": "sixth-district",
+    "bbox": {
+      "south": 14.575024,
+      "west": 120.998696,
+      "north": 14.6044388,
+      "east": 121.0261504
+    }
+  },
+  "Manila": {
+    "slug": "manila",
+    "bbox": {
+      "south": 14.5664609,
+      "west": 120.9953087,
+      "north": 14.618924,
+      "east": 121.0261504
+    }
+  },
+  "Capital District": {
+    "slug": "capital-district",
+    "bbox": {
+      "south": 14.5664609,
+      "west": 120.9953087,
+      "north": 14.618924,
+      "east": 121.0261504
+    }
+  },
+  "Obrero": {
+    "slug": "obrero",
+    "bbox": {
+      "south": 14.6260452,
+      "west": 121.0250824,
+      "north": 14.6305313,
+      "east": 121.0339368
+    }
+  },
+  "Kamuning": {
+    "slug": "kamuning",
+    "bbox": {
+      "south": 14.6247008,
+      "west": 121.0333567,
+      "north": 14.631033,
+      "east": 121.046846
+    }
+  },
+  "Maharlika": {
+    "slug": "maharlika",
+    "bbox": {
+      "south": 14.6288357,
+      "west": 120.9952704,
+      "north": 14.6378275,
+      "east": 121.0002649
+    }
+  },
+  "South Triangle": {
+    "slug": "south-triangle",
+    "bbox": {
+      "south": 14.6329855,
+      "west": 121.0261446,
+      "north": 14.6441855,
+      "east": 121.0447472
+    }
+  },
+  "West Triangle": {
+    "slug": "west-triangle",
+    "bbox": {
+      "south": 14.6371833,
+      "west": 121.0259674,
+      "north": 14.647888,
+      "east": 121.0375256
+    }
+  },
+  "Ugong Norte": {
+    "slug": "ugong-norte",
+    "bbox": {
+      "south": 14.5893861,
+      "west": 121.0572851,
+      "north": 14.6021957,
+      "east": 121.0825299
+    }
+  },
+  "Bagumbayan": {
+    "slug": "bagumbayan",
+    "bbox": {
+      "south": 14.5995963,
+      "west": 121.074064,
+      "north": 14.6149883,
+      "east": 121.0903629
+    }
+  },
+  "Onse": {
+    "slug": "onse",
+    "bbox": {
+      "south": 14.5990534,
+      "west": 121.0299187,
+      "north": 14.6028309,
+      "east": 121.0341503
+    }
+  },
+  "La Paz": {
+    "slug": "la-paz",
+    "bbox": {
+      "south": 14.5694725,
+      "west": 121.0070128,
+      "north": 14.5710975,
+      "east": 121.0105285
+    }
+  },
+  "Deparo": {
+    "slug": "deparo",
+    "bbox": {
+      "south": 14.7307018,
+      "west": 121.0047994,
+      "north": 14.7463184,
+      "east": 121.0347708
+    }
+  },
+  "Damayan": {
+    "slug": "damayan",
+    "bbox": {
+      "south": 14.6346691,
+      "west": 121.0117551,
+      "north": 14.6404166,
+      "east": 121.0165266
+    }
+  },
+  "Pag-ibig sa Nayon": {
+    "slug": "pagibig-sa-nayon",
+    "bbox": {
+      "south": 14.6447053,
+      "west": 120.9994533,
+      "north": 14.6498472,
+      "east": 121.0005205
+    }
+  },
+  "Manresa": {
+    "slug": "manresa",
+    "bbox": {
+      "south": 14.6378275,
+      "west": 120.9954637,
+      "north": 14.6451648,
+      "east": 121.0068285
+    }
+  },
+  "UP Village": {
+    "slug": "up-village",
+    "bbox": {
+      "south": 14.645685,
+      "west": 121.0528325,
+      "north": 14.652425,
+      "east": 121.0598125
+    }
+  },
+  "Dalig": {
+    "slug": "dalig",
+    "bbox": {
+      "south": 14.5606849,
+      "west": 121.1757771,
+      "north": 14.581286,
+      "east": 121.2037314
+    }
+  },
+  "Pasong Putik Proper": {
+    "slug": "pasong-putik-proper",
+    "bbox": {
+      "south": 14.7181843,
+      "west": 121.0487087,
+      "north": 14.742308,
+      "east": 121.0770383
+    }
+  },
+  "Greater Lagro": {
+    "slug": "greater-lagro",
+    "bbox": {
+      "south": 14.7102765,
+      "west": 121.0487078,
+      "north": 14.7365007,
+      "east": 121.0797871
+    }
+  },
+  "Bago Bantay": {
+    "slug": "bago-bantay",
+    "bbox": {
+      "south": 14.6545413,
+      "west": 121.0188325,
+      "north": 14.6655154,
+      "east": 121.0366548
+    }
+  },
+  "Santo Cristo": {
+    "slug": "santo-cristo",
+    "bbox": {
+      "south": 14.6550102,
+      "west": 121.0260081,
+      "north": 14.6653415,
+      "east": 121.0342629
+    }
+  },
+  "Laging Handa": {
+    "slug": "laging-handa",
+    "bbox": {
+      "south": 14.628699,
+      "west": 121.0255267,
+      "north": 14.6362428,
+      "east": 121.0353157
+    }
+  },
+  "Sacred Heart": {
+    "slug": "sacred-heart",
+    "bbox": {
+      "south": 14.6276211,
+      "west": 121.0337261,
+      "north": 14.634801,
+      "east": 121.0457671
+    }
+  },
+  "Paltok": {
+    "slug": "paltok",
+    "bbox": {
+      "south": 14.6380873,
+      "west": 121.0180551,
+      "north": 14.6480899,
+      "east": 121.0282363
+    }
+  },
+  "Bungad": {
+    "slug": "bungad",
+    "bbox": {
+      "south": 14.6459117,
+      "west": 121.0199659,
+      "north": 14.6558266,
+      "east": 121.0299983
+    }
+  },
+  "Del Monte": {
+    "slug": "del-monte",
+    "bbox": {
+      "south": 14.6399222,
+      "west": 121.0102253,
+      "north": 14.6468111,
+      "east": 121.0199659
+    }
+  },
+  "Barangay 176-B": {
+    "slug": "barangay-176b",
+    "bbox": {
+      "south": 14.7656525,
+      "west": 121.0446758,
+      "north": 14.7764651,
+      "east": 121.0563845
+    }
+  },
+  "Phase 5": {
+    "slug": "phase-5",
+    "bbox": {
+      "south": 14.7656525,
+      "west": 121.0510715,
+      "north": 14.7729361,
+      "east": 121.0563845
+    }
+  },
+  "Barangay 174": {
+    "slug": "barangay-174",
+    "bbox": {
+      "south": 14.7560651,
+      "west": 121.0436756,
+      "north": 14.7672148,
+      "east": 121.0536521
+    }
+  },
+  "District 3": {
+    "slug": "district-3",
+    "bbox": {
+      "south": 14.7420603,
+      "west": 121.0533487,
+      "north": 14.7774135,
+      "east": 121.0990529
+    }
+  },
+  "Escopa I": {
+    "slug": "escopa-i",
+    "bbox": {
+      "south": 14.6236128,
+      "west": 121.0729604,
+      "north": 14.6248077,
+      "east": 121.0739727
+    }
+  },
+  "Escopa II": {
+    "slug": "escopa-ii",
+    "bbox": {
+      "south": 14.6236694,
+      "west": 121.0737074,
+      "north": 14.6251895,
+      "east": 121.0752318
+    }
+  },
+  "Fifth District": {
+    "slug": "fifth-district",
+    "bbox": {
+      "south": 14.5664609,
+      "west": 120.9953087,
+      "north": 14.5960548,
+      "east": 121.0121544
+    }
+  },
+  "Barangay 157": {
+    "slug": "barangay-157",
+    "bbox": {
+      "south": 14.6670709,
+      "west": 121.0003547,
+      "north": 14.6694864,
+      "east": 121.0021413
+    }
+  },
+  "Bagong Barrio East": {
+    "slug": "bagong-barrio-east",
+    "bbox": {
+      "south": 14.6653721,
+      "west": 121.0003547,
+      "north": 14.6694864,
+      "east": 121.0022246
+    }
+  },
+  "Don Manuel": {
+    "slug": "don-manuel",
+    "bbox": {
+      "south": 14.6139723,
+      "west": 121.0010087,
+      "north": 14.6182926,
+      "east": 121.007948
+    }
+  },
+  "Doña Josefa": {
+    "slug": "dona-josefa",
+    "bbox": {
+      "south": 14.6177961,
+      "west": 121.0018225,
+      "north": 14.6234568,
+      "east": 121.0098313
+    }
+  },
+  "Mangga": {
+    "slug": "mangga",
+    "bbox": {
+      "south": 14.6232536,
+      "west": 121.0604137,
+      "north": 14.6275197,
+      "east": 121.0630448
+    }
+  },
+  "Mambugan": {
+    "slug": "mambugan",
+    "bbox": {
+      "south": 14.6056989,
+      "west": 121.1183382,
+      "north": 14.6258434,
+      "east": 121.1479931
+    }
+  },
+  "Cupang": {
+    "slug": "cupang",
+    "bbox": {
+      "south": 14.6242436,
+      "west": 121.1206577,
+      "north": 14.6589934,
+      "east": 121.1778248
+    }
+  },
+  "Antipolo": {
+    "slug": "antipolo",
+    "bbox": {
+      "south": 14.5606849,
+      "west": 121.1064187,
+      "north": 14.6900466,
+      "east": 121.2395657
+    }
+  },
+  "Mayamot": {
+    "slug": "mayamot",
+    "bbox": {
+      "south": 14.6132968,
+      "west": 121.1064187,
+      "north": 14.6383372,
+      "east": 121.1380616
+    }
+  },
+  "Payatas": {
+    "slug": "payatas",
+    "bbox": {
+      "south": 14.6958882,
+      "west": 121.0877497,
+      "north": 14.723455,
+      "east": 121.1115858
+    }
+  },
+  "Commonwealth": {
+    "slug": "commonwealth",
+    "bbox": {
+      "south": 14.6929362,
+      "west": 121.0697816,
+      "north": 14.7119381,
+      "east": 121.0945531
+    }
+  },
+  "Taytay": {
+    "slug": "taytay",
+    "bbox": {
+      "south": 14.5658974,
+      "west": 121.1234525,
+      "north": 14.5913987,
+      "east": 121.1635751
+    }
+  },
+  "Dolores": {
+    "slug": "dolores",
+    "bbox": {
+      "south": 14.5669365,
+      "west": 121.1306161,
+      "north": 14.5868553,
+      "east": 121.1635751
+    }
+  },
+  "Catmon": {
+    "slug": "catmon",
+    "bbox": {
+      "south": 14.8177251,
+      "west": 121.0002918,
+      "north": 14.8283033,
+      "east": 121.0064599
+    }
+  },
+  "Barangay 178": {
+    "slug": "barangay-178",
+    "bbox": {
+      "south": 14.7420603,
+      "west": 121.0533487,
+      "north": 14.7650372,
+      "east": 121.0779317
+    }
+  },
+  "Zone 16": {
+    "slug": "zone-16",
+    "bbox": {
+      "south": 14.7447783,
+      "west": 121.0535575,
+      "north": 14.7774135,
+      "east": 121.0990529
+    }
+  },
+  "Camarin": {
+    "slug": "camarin",
+    "bbox": {
+      "south": 14.7384501,
+      "west": 121.0271028,
+      "north": 14.7731662,
+      "east": 121.0779317
+    }
+  },
+  "Pineda": {
+    "slug": "pineda",
+    "bbox": {
+      "south": 14.5687108,
+      "west": 121.0518149,
+      "north": 14.5716679,
+      "east": 121.0556591
+    }
+  },
+  "Kapitolyo": {
+    "slug": "kapitolyo",
+    "bbox": {
+      "south": 14.5675856,
+      "west": 121.0542936,
+      "north": 14.5781328,
+      "east": 121.0664946
+    }
+  },
+  "Pasig First District": {
+    "slug": "pasig-first-district",
+    "bbox": {
+      "south": 14.5660916,
+      "west": 121.0518149,
+      "north": 14.5934403,
+      "east": 121.0895471
+    }
+  },
+  "Pasig": {
+    "slug": "pasig",
+    "bbox": {
+      "south": 14.5660916,
+      "west": 121.0518149,
+      "north": 14.6234777,
+      "east": 121.1107005
+    }
+  },
+  "Southern Manila District": {
+    "slug": "southern-manila-district",
+    "bbox": {
+      "south": 14.5679953,
+      "west": 121.0070128,
+      "north": 14.5792125,
+      "east": 121.031811
+    }
+  },
+  "Malabon": {
+    "slug": "malabon",
+    "bbox": {
+      "south": 14.6682557,
+      "west": 120.9913464,
+      "north": 14.6727713,
+      "east": 121.0006778
+    }
+  },
+  "Zone 15": {
+    "slug": "zone-15",
+    "bbox": {
+      "south": 14.7087782,
+      "west": 121.0004642,
+      "north": 14.7851597,
+      "east": 121.0779317
+    }
+  },
+  "Bagumbong": {
+    "slug": "bagumbong",
+    "bbox": {
+      "south": 14.7426699,
+      "west": 121.0010412,
+      "north": 14.7712782,
+      "east": 121.0347136
+    }
+  },
+  "Caloocan": {
+    "slug": "caloocan",
+    "bbox": {
+      "south": 14.6574313,
+      "west": 120.9979006,
+      "north": 14.7851597,
+      "east": 121.0990529
+    }
+  },
+  "District 1": {
+    "slug": "district-1",
+    "bbox": {
+      "south": 14.6574313,
+      "west": 120.9979006,
+      "north": 14.7851597,
+      "east": 121.0642298
+    }
+  },
+  "Bagbaguin": {
+    "slug": "bagbaguin",
+    "bbox": {
+      "south": 14.7537175,
+      "west": 120.9980875,
+      "north": 14.7655978,
+      "east": 121.0171455
+    }
+  },
+  "Loma de Gato": {
+    "slug": "loma-de-gato",
+    "bbox": {
+      "south": 14.7715937,
+      "west": 120.9969146,
+      "north": 14.8020991,
+      "east": 121.0275192
+    }
+  },
+  "Bahay Pare": {
+    "slug": "bahay-pare",
+    "bbox": {
+      "south": 14.7607318,
+      "west": 121.0047658,
+      "north": 14.7732525,
+      "east": 121.0271028
+    }
+  },
+  "Perez": {
+    "slug": "perez",
+    "bbox": {
+      "south": 14.7574493,
+      "west": 120.9937726,
+      "north": 14.7703444,
+      "east": 121.0060135
+    }
+  },
+  "Pajo": {
+    "slug": "pajo",
+    "bbox": {
+      "south": 14.7691702,
+      "west": 120.9995319,
+      "north": 14.7822298,
+      "east": 121.0096373
+    }
+  },
+  "Camalig": {
+    "slug": "camalig",
+    "bbox": {
+      "south": 14.7658753,
+      "west": 120.9917681,
+      "north": 14.781947,
+      "east": 121.0022498
+    }
+  },
+  "Bignay": {
+    "slug": "bignay",
+    "bbox": {
+      "south": 14.7357979,
+      "west": 120.9973032,
+      "north": 14.7539323,
+      "east": 121.0067336
+    }
+  },
+  "Northern Manila District": {
+    "slug": "northern-manila-district",
+    "bbox": {
+      "south": 14.6574313,
+      "west": 120.9913464,
+      "north": 14.7851597,
+      "east": 121.0990529
+    }
+  },
+  "City of Meycauayan": {
+    "slug": "city-of-meycauayan",
+    "bbox": {
+      "south": 14.7537175,
+      "west": 120.9917681,
+      "north": 14.7822298,
+      "east": 121.0271028
+    }
+  },
+  "Marilao": {
+    "slug": "marilao",
+    "bbox": {
+      "south": 14.7715937,
+      "west": 120.9969146,
+      "north": 14.8020991,
+      "east": 121.0275192
+    }
+  },
+  "Roxas": {
+    "slug": "roxas",
+    "bbox": {
+      "south": 14.6254551,
+      "west": 121.014896,
+      "north": 14.6305057,
+      "east": 121.0294813
+    }
+  },
+  "Scout Area": {
+    "slug": "scout-area",
+    "bbox": {
+      "south": 14.6276211,
+      "west": 121.0158131,
+      "north": 14.6441855,
+      "east": 121.0457671
+    }
+  },
+  "Paligsahan": {
+    "slug": "paligsahan",
+    "bbox": {
+      "south": 14.6284631,
+      "west": 121.0158131,
+      "north": 14.6371218,
+      "east": 121.0291279
+    }
+  },
+  "Project 1": {
+    "slug": "project-1",
+    "bbox": {
+      "south": 14.6247008,
+      "west": 121.014896,
+      "north": 14.6352503,
+      "east": 121.0614362
+    }
+  },
+  "Diliman": {
+    "slug": "diliman",
+    "bbox": {
+      "south": 14.627542,
+      "west": 121.0158131,
+      "north": 14.6633788,
+      "east": 121.0761783
+    }
+  },
+  "Pinyahan": {
+    "slug": "pinyahan",
+    "bbox": {
+      "south": 14.6307641,
+      "west": 121.0375348,
+      "north": 14.6462012,
+      "east": 121.0549146
+    }
+  },
+  "Duyan-Duyan": {
+    "slug": "duyanduyan",
+    "bbox": {
+      "south": 14.6281298,
+      "west": 121.064691,
+      "north": 14.6323567,
+      "east": 121.0711171
+    }
+  },
+  "Pasadena": {
+    "slug": "pasadena",
+    "bbox": {
+      "south": 14.6055518,
+      "west": 121.0299556,
+      "north": 14.6108464,
+      "east": 121.0377283
+    }
+  },
+  "Corazon de Jesus": {
+    "slug": "corazon-de-jesus",
+    "bbox": {
+      "south": 14.6030766,
+      "west": 121.0268734,
+      "north": 14.6097968,
+      "east": 121.0372635
+    }
+  },
+  "Santa Elena": {
+    "slug": "santa-elena",
+    "bbox": {
+      "south": 14.6291858,
+      "west": 121.0937642,
+      "north": 14.6347839,
+      "east": 121.1058307
+    }
+  },
+  "Santa Cruz": {
+    "slug": "santa-cruz",
+    "bbox": {
+      "south": 14.6298165,
+      "west": 121.0148292,
+      "north": 14.6391906,
+      "east": 121.0260421
+    }
+  },
+  "Bagong Nayon": {
+    "slug": "bagong-nayon",
+    "bbox": {
+      "south": 14.6207811,
+      "west": 121.1484858,
+      "north": 14.6348184,
+      "east": 121.1773288
+    }
+  },
+  "Bulac": {
+    "slug": "bulac",
+    "bbox": {
+      "south": 14.8194308,
+      "west": 121.0130203,
+      "north": 14.8214572,
+      "east": 121.0195292
+    }
+  },
+  "Cainta": {
+    "slug": "cainta",
+    "bbox": {
+      "south": 14.5567952,
+      "west": 121.0986388,
+      "north": 14.6365626,
+      "east": 121.1447327
+    }
+  },
+  "Eastern Manila District": {
+    "slug": "eastern-manila-district",
+    "bbox": {
+      "south": 14.5660916,
+      "west": 120.9905179,
+      "north": 14.7764117,
+      "east": 121.1348006
+    }
+  },
+  "Metro Manila": {
+    "slug": "metro-manila",
+    "bbox": {
+      "south": 14.5660916,
+      "west": 120.9905179,
+      "north": 14.7851597,
+      "east": 121.1348006
+    }
+  },
+  "Llano": {
+    "slug": "llano",
+    "bbox": {
+      "south": 14.7243787,
+      "west": 121.0034381,
+      "north": 14.7366909,
+      "east": 121.0279202
+    }
+  },
+  "Greenhills": {
+    "slug": "greenhills",
+    "bbox": {
+      "south": 14.5941877,
+      "west": 121.0377271,
+      "north": 14.6096537,
+      "east": 121.0591582
+    }
+  },
+  "Little Baguio": {
+    "slug": "little-baguio",
+    "bbox": {
+      "south": 14.5971636,
+      "west": 121.0325407,
+      "north": 14.6062634,
+      "east": 121.0417575
+    }
+  },
+  "E. Rodriguez Sr.": {
+    "slug": "e-rodriguez-sr",
+    "bbox": {
+      "south": 14.6215998,
+      "west": 121.0469577,
+      "north": 14.6302957,
+      "east": 121.0571745
+    }
+  },
+  "Silangan": {
+    "slug": "silangan",
+    "bbox": {
+      "south": 14.6248966,
+      "west": 121.0553008,
+      "north": 14.6292413,
+      "east": 121.0625685
+    }
+  },
+  "Nagkaisang Nayon": {
+    "slug": "nagkaisang-nayon",
+    "bbox": {
+      "south": 14.7046891,
+      "west": 121.0141156,
+      "north": 14.7316726,
+      "east": 121.0352006
+    }
+  },
+  "Nangka": {
+    "slug": "nangka",
+    "bbox": {
+      "south": 14.6625174,
+      "west": 121.099445,
+      "north": 14.6753813,
+      "east": 121.1200104
+    }
+  },
+  "Marikina": {
+    "slug": "marikina",
+    "bbox": {
+      "south": 14.6181381,
+      "west": 121.0748675,
+      "north": 14.6753813,
+      "east": 121.1348006
+    }
+  },
+  "Pansol": {
+    "slug": "pansol",
+    "bbox": {
+      "south": 14.6435798,
+      "west": 121.074287,
+      "north": 14.6604846,
+      "east": 121.0888315
+    }
+  },
+  "3rd District": {
+    "slug": "3rd-district",
+    "bbox": {
+      "south": 14.5893861,
+      "west": 121.0458928,
+      "north": 14.6770967,
+      "east": 121.0986746
+    }
+  },
+  "Quezon City": {
+    "slug": "quezon-city",
+    "bbox": {
+      "south": 14.5893861,
+      "west": 120.9905179,
+      "north": 14.7764117,
+      "east": 121.133132
+    }
+  },
+  "Jesus Dela Peña": {
+    "slug": "jesus-dela-pena",
+    "bbox": {
+      "south": 14.624719,
+      "west": 121.0881544,
+      "north": 14.6463555,
+      "east": 121.0937217
+    }
+  },
+  "Tañong": {
+    "slug": "tanong",
+    "bbox": {
+      "south": 14.6273477,
+      "west": 121.0840501,
+      "north": 14.6459437,
+      "east": 121.0909641
+    }
+  },
+  "Malanday": {
+    "slug": "malanday",
+    "bbox": {
+      "south": 14.640766,
+      "west": 121.0855693,
+      "north": 14.6554548,
+      "east": 121.100575
+    }
+  },
+  "Tumana": {
+    "slug": "tumana",
+    "bbox": {
+      "south": 14.6506746,
+      "west": 121.08575,
+      "north": 14.6650168,
+      "east": 121.102776
+    }
+  },
+  "Concepcion Uno": {
+    "slug": "concepcion-uno",
+    "bbox": {
+      "south": 14.6394783,
+      "west": 121.0984185,
+      "north": 14.665874,
+      "east": 121.1138199
+    }
+  },
+  "Marikina Heights": {
+    "slug": "marikina-heights",
+    "bbox": {
+      "south": 14.6426782,
+      "west": 121.1104537,
+      "north": 14.6602351,
+      "east": 121.1307184
+    }
+  },
+  "Fortune": {
+    "slug": "fortune",
+    "bbox": {
+      "south": 14.6507745,
+      "west": 121.1185129,
+      "north": 14.6694796,
+      "east": 121.1348006
+    }
+  },
+  "Parang": {
+    "slug": "parang",
+    "bbox": {
+      "south": 14.6522952,
+      "west": 121.1049181,
+      "north": 14.6685104,
+      "east": 121.120923
+    }
+  },
+  "District II": {
+    "slug": "district-ii",
+    "bbox": {
+      "south": 14.6343523,
+      "west": 121.08575,
+      "north": 14.6753813,
+      "east": 121.1348006
+    }
+  },
+  "Concepcion Dos": {
+    "slug": "concepcion-dos",
+    "bbox": {
+      "south": 14.6343523,
+      "west": 121.1086708,
+      "north": 14.6480133,
+      "east": 121.1302902
+    }
+  },
+  "Nayong Kanluran": {
+    "slug": "nayong-kanluran",
+    "bbox": {
+      "south": 14.6378032,
+      "west": 121.0219724,
+      "north": 14.6427044,
+      "east": 121.0270752
+    }
+  },
+  "Gulod": {
+    "slug": "gulod",
+    "bbox": {
+      "south": 14.7048343,
+      "west": 121.033562,
+      "north": 14.7188969,
+      "east": 121.047387
+    }
+  },
+  "Old Capitol Site": {
+    "slug": "old-capitol-site",
+    "bbox": {
+      "south": 14.6470271,
+      "west": 121.0509751,
+      "north": 14.6534754,
+      "east": 121.0554731
+    }
+  },
+  "Central": {
+    "slug": "central",
+    "bbox": {
+      "south": 14.6402647,
+      "west": 121.0407788,
+      "north": 14.6543784,
+      "east": 121.0553611
+    }
+  },
+  "Sauyo": {
+    "slug": "sauyo",
+    "bbox": {
+      "south": 14.6821888,
+      "west": 121.0302314,
+      "north": 14.7054947,
+      "east": 121.0602955
+    }
+  },
+  "Bagbag": {
+    "slug": "bagbag",
+    "bbox": {
+      "south": 14.6932187,
+      "west": 121.0178715,
+      "north": 14.7038844,
+      "east": 121.0468939
+    }
+  },
+  "5th District": {
+    "slug": "5th-district",
+    "bbox": {
+      "south": 14.6929853,
+      "west": 121.0141156,
+      "north": 14.7764117,
+      "east": 121.133132
+    }
+  },
+  "Balingasa": {
+    "slug": "balingasa",
+    "bbox": {
+      "south": 14.6450081,
+      "west": 120.9968543,
+      "north": 14.6573899,
+      "east": 121.0065045
+    }
+  },
+  "Apolonio Samson": {
+    "slug": "apolonio-samson",
+    "bbox": {
+      "south": 14.6445523,
+      "west": 121.0029234,
+      "north": 14.6637284,
+      "east": 121.0157127
+    }
+  },
+  "Santa Maria": {
+    "slug": "santa-maria",
+    "bbox": {
+      "south": 14.7958138,
+      "west": 120.9787603,
+      "north": 14.8283033,
+      "east": 121.0195292
+    }
+  },
+  "Amihan": {
+    "slug": "amihan",
+    "bbox": {
+      "south": 14.629917,
+      "west": 121.0661392,
+      "north": 14.6338984,
+      "east": 121.0707608
+    }
+  },
+  "Claro": {
+    "slug": "claro",
+    "bbox": {
+      "south": 14.6292214,
+      "west": 121.0622368,
+      "north": 14.6336563,
+      "east": 121.0665671
+    }
+  },
+  "Phil-Am": {
+    "slug": "philam",
+    "bbox": {
+      "south": 14.6457104,
+      "west": 121.0278742,
+      "north": 14.6555196,
+      "east": 121.0350547
+    }
+  },
+  "Bagong Pag-asa": {
+    "slug": "bagong-pagasa",
+    "bbox": {
+      "south": 14.6442136,
+      "west": 121.0301195,
+      "north": 14.6655154,
+      "east": 121.0407588
+    }
+  },
+  "Talipapa": {
+    "slug": "talipapa",
+    "bbox": {
+      "south": 14.6790359,
+      "west": 121.014895,
+      "north": 14.6934167,
+      "east": 121.0319817
+    }
+  },
+  "Sangandaan": {
+    "slug": "sangandaan",
+    "bbox": {
+      "south": 14.6677968,
+      "west": 121.0155616,
+      "north": 14.6800915,
+      "east": 121.0251291
+    }
+  },
+  "Paco": {
+    "slug": "paco",
+    "bbox": {
+      "south": 14.5756184,
+      "west": 120.9953087,
+      "north": 14.5960548,
+      "east": 121.0048878
+    }
+  },
+  "Saint Peter": {
+    "slug": "saint-peter",
+    "bbox": {
+      "south": 14.6305834,
+      "west": 120.9968167,
+      "north": 14.6383729,
+      "east": 121.0023095
+    }
+  },
+  "Sienna": {
+    "slug": "sienna",
+    "bbox": {
+      "south": 14.6326998,
+      "west": 121.0009421,
+      "north": 14.6391292,
+      "east": 121.0087965
+    }
+  },
+  "San Jose del Monte": {
+    "slug": "san-jose-del-monte",
+    "bbox": {
+      "south": 14.7678518,
+      "west": 121.0174283,
+      "north": 14.8341242,
+      "east": 121.1659133
+    }
+  },
+  "Montalban": {
+    "slug": "montalban",
+    "bbox": {
+      "south": 14.6900466,
+      "west": 121.0963958,
+      "north": 14.823772,
+      "east": 121.232952
+    }
+  },
+  "Norzagaray": {
+    "slug": "norzagaray",
+    "bbox": {
+      "south": 14.8178236,
+      "west": 121.1656577,
+      "north": 14.8384677,
+      "east": 121.2224738
+    }
+  },
+  "Rizal": {
+    "slug": "rizal",
+    "bbox": {
+      "south": 14.5567952,
+      "west": 121.0963958,
+      "north": 14.823772,
+      "east": 121.2395657
+    }
+  },
+  "Central Luzon": {
+    "slug": "central-luzon",
+    "bbox": {
+      "south": 14.7537175,
+      "west": 120.9787603,
+      "north": 14.8384677,
+      "east": 121.2224738
+    }
+  },
+  "Bulacan": {
+    "slug": "bulacan",
+    "bbox": {
+      "south": 14.7537175,
+      "west": 120.9787603,
+      "north": 14.8384677,
+      "east": 121.2224738
+    }
+  },
+  "Tandang Sora": {
+    "slug": "tandang-sora",
+    "bbox": {
+      "south": 14.671299,
+      "west": 121.0239402,
+      "north": 14.6932637,
+      "east": 121.0564183
+    }
+  },
+  "Bahay Toro": {
+    "slug": "bahay-toro",
+    "bbox": {
+      "south": 14.6576608,
+      "west": 121.0150453,
+      "north": 14.6747256,
+      "east": 121.0434532
+    }
+  },
+  "6th District": {
+    "slug": "6th-district",
+    "bbox": {
+      "south": 14.6445523,
+      "west": 120.9991301,
+      "north": 14.7054947,
+      "east": 121.0703882
+    }
+  },
+  "Immaculate Concepcion": {
+    "slug": "immaculate-concepcion",
+    "bbox": {
+      "south": 14.6188313,
+      "west": 121.0374797,
+      "north": 14.625652,
+      "east": 121.0500947
+    }
+  },
+  "Pinagkaisahan": {
+    "slug": "pinagkaisahan",
+    "bbox": {
+      "south": 14.6231219,
+      "west": 121.0394219,
+      "north": 14.6286064,
+      "east": 121.0481696
+    }
+  },
+  "Calabarzon": {
+    "slug": "calabarzon",
+    "bbox": {
+      "south": 14.5567952,
+      "west": 121.0963958,
+      "north": 14.823772,
+      "east": 121.2395657
+    }
+  },
+  "Santa Mesa Heights": {
+    "slug": "santa-mesa-heights",
+    "bbox": {
+      "south": 14.6171168,
+      "west": 120.9952704,
+      "north": 14.6391292,
+      "east": 121.0148467
+    }
+  },
+  "Talayan": {
+    "slug": "talayan",
+    "bbox": {
+      "south": 14.6299722,
+      "west": 121.0068633,
+      "north": 14.6398616,
+      "east": 121.01505
+    }
+  },
+  "San Francisco del Monte": {
+    "slug": "san-francisco-del-monte",
+    "bbox": {
+      "south": 14.6299722,
+      "west": 120.9954637,
+      "north": 14.6550433,
+      "east": 121.0282363
+    }
+  },
+  "Socorro": {
+    "slug": "socorro",
+    "bbox": {
+      "south": 14.6109072,
+      "west": 121.0501331,
+      "north": 14.6248966,
+      "east": 121.0627345
+    }
+  }
+}
