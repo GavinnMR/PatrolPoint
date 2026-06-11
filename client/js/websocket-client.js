@@ -185,6 +185,11 @@ function handleConnected() {
     console.log('CONNECTED: PatrolPoint server connected');
     setConnectionStatus('connected');
     onConnected();
+
+    // Request boundary polygon immediately so the darkening mask renders on open
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'init', data: { barangay: 'Commonwealth' } }));
+    }
 }
 
 function handleNetworkLoaded(data) {

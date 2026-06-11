@@ -7,6 +7,7 @@
 //   ws.previousState:   hull/validCandidates/incidents from last run — incremental hull opt
 //
 // Message protocol (client → server):
+//   { type: 'init', data: { barangay } }   — sent on connect to warm cache and get boundary
 //   { type: 'compute', data: { incidents, n, mode, config, barangay } }
 //   { type: 'ping' }
 //   { type: 'cancel' }
@@ -107,6 +108,10 @@ export function handlePipelineConnection(ws, req) {
                 await handleCompute(ws, msg.data, clientIp);
                 break;
 
+            case 'init':
+                await handleInit(ws, msg.data);
+                break;
+
             case 'ping':
                 pushToClient(ws, { type: 'pong' });
                 break;
@@ -131,6 +136,29 @@ export function handlePipelineConnection(ws, req) {
         console.error(`WebSocket error [${clientIp}]:`, err.message);
         ws.cancelled = true;
     });
+}
+
+// ── Init handler ─────────────────────────────────────────────────────────────
+// Loads the road network (warming the cache) and sends network_loaded so the
+// client can render the barangay darkening mask before the first pipeline run.
+async function handleInit(ws, data) {
+    const barangay = data?.barangay || 'Commonwealth';
+    try {
+        const networkData = await getOrFetchNetwork(barangay);
+        pushToClient(ws, {
+            type: 'network_loaded',
+            data: {
+                barangay,
+                nodeCount:         networkData.nodeCount,
+                edgeCount:         networkData.edgeCount,
+                intersectionCount: networkData.intersectionCount,
+                fromCache:         networkData.fromCache,
+                boundaryPolygon:   networkData.boundary
+            }
+        });
+    } catch (err) {
+        console.error(`[init] Failed to load network for "${barangay}":`, err.message);
+    }
 }
 
 // ── Compute handler ───────────────────────────────────────────────────────────
