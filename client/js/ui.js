@@ -248,7 +248,7 @@ document.addEventListener('alpine:init', () => {
                 .then(r => r.json())
                 .then(manifest => {
                     window.barangayManifest = manifest;
-                    const names = Object.keys(manifest).sort((a, b) => a.localeCompare(b));
+                    const names = Object.keys(manifest).filter(n => !manifest[n].hidden).sort((a, b) => a.localeCompare(b));
                     this.barangayOptions = names;
                     if (!names.includes(this.selectedBarangay)) {
                         this.selectedBarangay = names[0] || 'Commonwealth';

@@ -1671,7 +1671,8 @@
       "west": 121.0009647,
       "north": 14.6633979,
       "east": 121.0762382
-    }
+    },
+    "hidden": true
   },
   "Wack-Wack Greenhills": {
     "slug": "wackwack-greenhills",
@@ -1689,7 +1690,8 @@
       "west": 121.0170704,
       "north": 14.6017034,
       "east": 121.0600702
-    }
+    },
+    "hidden": true
   },
   "Addition Hills": {
     "slug": "addition-hills",
@@ -1824,7 +1826,8 @@
       "west": 121.1066178,
       "north": 14.7208067,
       "east": 121.2131961
-    }
+    },
+    "hidden": true
   },
   "Maybunga": {
     "slug": "maybunga",
@@ -1878,7 +1881,8 @@
       "west": 120.9905179,
       "north": 14.6747281,
       "east": 121.0527342
-    }
+    },
+    "hidden": true
   },
   "Hulo": {
     "slug": "hulo",
@@ -2310,7 +2314,8 @@
       "west": 121.1061877,
       "north": 14.7480932,
       "east": 121.3190238
-    }
+    },
+    "hidden": true
   },
   "Mayamot": {
     "slug": "mayamot",
@@ -2427,7 +2432,8 @@
       "west": 121.0518149,
       "north": 14.6235138,
       "east": 121.1110273
-    }
+    },
+    "hidden": true
   },
   "Southern Manila District": {
     "slug": "southern-manila-district",
@@ -2454,7 +2460,8 @@
       "west": 121.0004642,
       "north": 14.7853355,
       "east": 121.0779317
-    }
+    },
+    "hidden": true
   },
   "Bagumbong": {
     "slug": "bagumbong",
@@ -2472,7 +2479,8 @@
       "west": 120.9607451,
       "north": 14.7853355,
       "east": 121.0990606
-    }
+    },
+    "hidden": true
   },
   "District 1": {
     "slug": "district-1",
@@ -2481,7 +2489,8 @@
       "west": 120.9850066,
       "north": 14.7853355,
       "east": 121.0642622
-    }
+    },
+    "hidden": true
   },
   "Bagbaguin": {
     "slug": "bagbaguin",
@@ -2553,7 +2562,8 @@
       "west": 120.9552239,
       "north": 14.7853355,
       "east": 121.0990606
-    }
+    },
+    "hidden": true
   },
   "City of Meycauayan": {
     "slug": "city-of-meycauayan",
@@ -2616,7 +2626,8 @@
       "west": 121.0156952,
       "north": 14.6633979,
       "east": 121.0762382
-    }
+    },
+    "hidden": true
   },
   "Pinyahan": {
     "slug": "pinyahan",
@@ -2706,7 +2717,8 @@
       "west": 120.9905179,
       "north": 14.7764137,
       "east": 121.1350232
-    }
+    },
+    "hidden": true
   },
   "Metro Manila": {
     "slug": "metro-manila",
@@ -2715,7 +2727,8 @@
       "west": 120.9552239,
       "north": 14.7853355,
       "east": 121.1350232
-    }
+    },
+    "hidden": true
   },
   "Llano": {
     "slug": "llano",
@@ -2787,7 +2800,8 @@
       "west": 121.0743718,
       "north": 14.6757895,
       "east": 121.1350232
-    }
+    },
+    "hidden": true
   },
   "Pansol": {
     "slug": "pansol",
@@ -2805,7 +2819,8 @@
       "west": 121.0458928,
       "north": 14.6770967,
       "east": 121.0989231
-    }
+    },
+    "hidden": true
   },
   "Quezon City": {
     "slug": "quezon-city",
@@ -2814,7 +2829,8 @@
       "west": 120.9905179,
       "north": 14.7764137,
       "east": 121.1337681
-    }
+    },
+    "hidden": true
   },
   "Jesus Dela Peña": {
     "slug": "jesus-dela-pena",
@@ -2967,7 +2983,8 @@
       "west": 121.0136441,
       "north": 14.7764137,
       "east": 121.1337681
-    }
+    },
+    "hidden": true
   },
   "Balingasa": {
     "slug": "balingasa",
@@ -3084,7 +3101,8 @@
       "west": 121.0165886,
       "north": 14.8507882,
       "east": 121.1659133
-    }
+    },
+    "hidden": true
   },
   "Montalban": {
     "slug": "montalban",
@@ -3093,7 +3111,8 @@
       "west": 121.0957373,
       "north": 14.823772,
       "east": 121.3190238
-    }
+    },
+    "hidden": true
   },
   "Norzagaray": {
     "slug": "norzagaray",
@@ -3111,7 +3130,8 @@
       "west": 121.0946307,
       "north": 14.823772,
       "east": 121.3757735
-    }
+    },
+    "hidden": true
   },
   "Central Luzon": {
     "slug": "central-luzon",
@@ -3120,7 +3140,8 @@
       "west": 120.7684324,
       "north": 14.9227447,
       "east": 121.2224738
-    }
+    },
+    "hidden": true
   },
   "Bulacan": {
     "slug": "bulacan",
@@ -3129,7 +3150,8 @@
       "west": 120.7684324,
       "north": 14.9227447,
       "east": 121.2224738
-    }
+    },
+    "hidden": true
   },
   "Tandang Sora": {
     "slug": "tandang-sora",
@@ -3156,7 +3178,8 @@
       "west": 120.9991043,
       "north": 14.7058902,
       "east": 121.0704699
-    }
+    },
+    "hidden": true
   },
   "Immaculate Concepcion": {
     "slug": "immaculate-concepcion",
@@ -3183,7 +3206,8 @@
       "west": 121.0946307,
       "north": 14.823772,
       "east": 121.6036433
-    }
+    },
+    "hidden": true
   },
   "Santa Mesa Heights": {
     "slug": "santa-mesa-heights",
