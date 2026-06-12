@@ -579,7 +579,7 @@ export function sendComputeRequest(incidents, n, mode, config, barangay) {
 
     ws.send(JSON.stringify({
         type: 'compute',
-        data: { incidents, n, mode, config, barangay }
+        data: { incidents, n, mode, config, barangay, removedNodes: Array.from(window.removedNodes || []) }
     }));
 }
 

@@ -47,6 +47,7 @@ window.redoStack            = [];
 window.darkMode             = false;
 window.animationsEnabled    = true;
 window.osmGraphMode         = false;
+window.removedNodes         = new Set();  // node IDs excluded from routing — persists within session
 window.comparisonModeActive = false;
 window.comparisonResultA    = null;
 window.comparisonResultB    = null;

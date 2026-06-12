@@ -34,6 +34,8 @@ let overlapOverlayLines     = [];
 let nearestHighlightMarkers = [];
 let crimeMarkerMap          = {};    // crimeId → Leaflet marker
 let osmGraphLayers          = [];
+let graphNodeMarkers        = {};    // nodeId → L.circleMarker (only populated while graph layer is active)
+let graphNodeEdgeMap        = {};    // nodeId → [{line, fromId, toId}] for connected edge style updates
 let boundaryBounds          = null;  // L.LatLngBounds — set when boundary renders, used by Reset View
 let osmNetworkCache         = null;  // {nodeMap, adjacencyList, intersectionNodeIds} — fetched on demand for OSM Graph
 
@@ -299,24 +301,61 @@ async function toggleOsmGraphMode(active) {
             drawn.add(key);
             const to = nm[edge.neighborId];
             if (!to) continue;
-            osmGraphLayers.push(
-                L.polyline([[from.lat, from.lng], [to.lat, to.lng]],
-                    { color: '#6b7280', weight: 1, opacity: 0.5, interactive: false }
-                ).addTo(map)
-            );
+            const affected = window.removedNodes.has(nodeId) || window.removedNodes.has(edge.neighborId);
+            const line = L.polyline([[from.lat, from.lng], [to.lat, to.lng]], {
+                color: affected ? '#e74c3c' : '#6b7280',
+                weight: 1,
+                opacity: affected ? 0.7 : 0.5,
+                interactive: false
+            }).addTo(map);
+            osmGraphLayers.push(line);
+            const edgeObj = { line, fromId: nodeId, toId: edge.neighborId };
+            (graphNodeEdgeMap[nodeId]          = graphNodeEdgeMap[nodeId]          || []).push(edgeObj);
+            (graphNodeEdgeMap[edge.neighborId] = graphNodeEdgeMap[edge.neighborId] || []).push(edgeObj);
         }
     }
 
-    for (const nodeId of intersections) {
+    graphNodeMarkers = {};
+    graphNodeEdgeMap = {};
+
+    for (const nodeId of Object.keys(nm)) {
         const node = nm[nodeId];
         if (!node) continue;
-        osmGraphLayers.push(
-            L.circleMarker([node.lat, node.lng], {
-                radius: 2, color: '#3b82f6', fillColor: '#3b82f6',
-                fillOpacity: 0.8, weight: 0, interactive: false
-            }).addTo(map)
-        );
+        const isRemoved = window.removedNodes.has(nodeId);
+        const marker = L.circleMarker([node.lat, node.lng], {
+            radius: 3,
+            color:        isRemoved ? '#e74c3c' : '#3b82f6',
+            fillColor:    isRemoved ? '#e74c3c' : '#3b82f6',
+            fillOpacity:  isRemoved ? 1 : 0.7,
+            weight:       isRemoved ? 2 : 0
+        }).addTo(map);
+        marker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            toggleNodeRemoval(nodeId, marker);
+        });
+        graphNodeMarkers[nodeId] = marker;
+        osmGraphLayers.push(marker);
     }
+}
+
+function toggleNodeRemoval(nodeId, marker) {
+    if (window.removedNodes.has(nodeId)) {
+        window.removedNodes.delete(nodeId);
+        marker.setStyle({ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.7, weight: 0 });
+    } else {
+        window.removedNodes.add(nodeId);
+        marker.setStyle({ color: '#e74c3c', fillColor: '#e74c3c', fillOpacity: 1, weight: 2 });
+    }
+    for (const edgeObj of (graphNodeEdgeMap[nodeId] || [])) {
+        const affected = window.removedNodes.has(edgeObj.fromId) || window.removedNodes.has(edgeObj.toId);
+        edgeObj.line.setStyle({ color: affected ? '#e74c3c' : '#6b7280', opacity: affected ? 0.7 : 0.5 });
+    }
+    updateGraphResetBtn();
+}
+
+function updateGraphResetBtn() {
+    const btn = document.getElementById('graph-reset-btn');
+    if (btn) btn.style.display = window.removedNodes.size > 0 ? 'block' : 'none';
 }
 
 // ── Reset view ─────────────────────────────────────────────────────────────────
@@ -904,6 +943,10 @@ window.initMap                    = initMap;
 window.mapResetView               = mapResetView;
 window.onDarkModeChange           = onDarkModeChange;
 window.toggleOsmGraphMode         = toggleOsmGraphMode;
+window.toggleNodeRemoval          = toggleNodeRemoval;
+window.updateGraphResetBtn        = updateGraphResetBtn;
+window.graphNodeMarkers           = graphNodeMarkers;
+window.graphNodeEdgeMap           = graphNodeEdgeMap;
 window.loadBarangayNetwork        = loadBarangayNetwork;
 
 window.plotCrimeMarker            = plotCrimeMarker;

@@ -91,6 +91,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     const pipelineStartMs = performance.now();
     const config          = mergeConfig(data.config);
     const { incidents, n, mode } = data;
+    const removedNodes    = data.removedNodes ? new Set(data.removedNodes) : null;
 
     const {
         hull:            previousHull            = null,
@@ -101,8 +102,12 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
 
     // Build the networkData object that Stage 1 expects
     const barangayAreaM2     = computeBarangayAreaM2(networkData.bbox);
+    const filteredIntersectionNodeIds = removedNodes
+        ? networkData.intersectionNodeIds.filter(id => !removedNodes.has(id))
+        : networkData.intersectionNodeIds;
+
     const networkDataForHull = {
-        intersectionNodeIds: networkData.intersectionNodeIds,
+        intersectionNodeIds: filteredIntersectionNodeIds,
         nodeMap:             networkData.nodes,    // { nodeId → {id, osmId, lat, lng} }
         barangayAreaM2
     };
@@ -325,7 +330,8 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
                 config,
                 hull,                      // CCW hull polygon — used by hull exterior penalty
                 {
-                    pushProgress: (progressData) => pushMessage({ type: 'stage_progress', data: progressData })
+                    pushProgress: (progressData) => pushMessage({ type: 'stage_progress', data: progressData }),
+                    removedNodes
                 }
             );
         } catch (err) {

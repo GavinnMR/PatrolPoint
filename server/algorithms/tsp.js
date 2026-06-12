@@ -114,7 +114,7 @@ export function runTSP(
     zones, patrols, multiNodeZones, singleNodeZones,
     nodeMap, adjacencyList, dijkstraCache, config, hull = null, options = {}
 ) {
-    const { pushProgress = null } = options;
+    const { pushProgress = null, removedNodes = null } = options;
     const log       = [];
     const warnings  = [];
     const routes    = [];
@@ -147,7 +147,7 @@ export function runTSP(
         } else {
             totalDijkstraCalls++;
         }
-        return runDijkstra(sourceId, adjacencyList, effectiveCache, effectiveMap, effectiveHull, effectivePenalty);
+        return runDijkstra(sourceId, adjacencyList, effectiveCache, effectiveMap, effectiveHull, effectivePenalty, removedNodes);
     }
 
     // Build distance matrix D[sourceId][destId] for a set of node IDs.

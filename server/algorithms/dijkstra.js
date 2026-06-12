@@ -154,6 +154,7 @@ function dijkstra(sourceId, adjacencyList, nodeMap = null, hull = null, exterior
         if (!neighbors) continue;
 
         for (const { neighborId, weight } of neighbors) {
+            if (removedNodes && removedNodes.has(neighborId)) continue;
             let w = weight;
             if (penaltyActive) {
                 const nA = nodeMap[current];
@@ -230,7 +231,7 @@ export function normalizedCacheKey(idA, idB) {
 // Disconnected nodes:
 //   distances[nodeId] === Infinity   — node unreachable from source
 //   reconstructPath(...)  === null   — no road path exists
-export function runDijkstra(sourceId, adjacencyList, dijkstraCache, nodeMap = null, hull = null, exteriorPenalty = 1) {
+export function runDijkstra(sourceId, adjacencyList, dijkstraCache, nodeMap = null, hull = null, exteriorPenalty = 1, removedNodes = null) {
     if (dijkstraCache[sourceId]) {
         return dijkstraCache[sourceId];
     }
