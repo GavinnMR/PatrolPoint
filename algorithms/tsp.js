@@ -12,7 +12,7 @@
 // config    : CONFIG object
 //
 // Returns result object { status, message, warnings, data }
-function computeTSP(patrolIdx, si, zone, nodeMap, adjacencyList, dijkstraCache, config) {
+function computeTSP(patrolIdx, si, zone, nodeMap, adjacencyList, dijkstraCache, config, removedNodes = null) {
     const log = [];
     const warnings = [];
     const k = zone.length;
@@ -55,7 +55,7 @@ function computeTSP(patrolIdx, si, zone, nodeMap, adjacencyList, dijkstraCache, 
 
         if (needsCompute.length > 0) {
             dijkstraCalls++;
-            const { distances, parents } = runDijkstra(src.id, adjacencyList, nodeMap);
+            const { distances, parents } = runDijkstra(src.id, adjacencyList, nodeMap, removedNodes);
 
             for (const j of needsCompute) {
                 const dest = nodes[j];

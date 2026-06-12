@@ -49,6 +49,10 @@ let barangayBounds = { minLat: 0, maxLat: 0, minLng: 0, maxLng: 0 };
 let deploymentMode = 'stationary'; // 'stationary' | 'roaming'
 let pipelineResults = false;       // true if any pipeline results exist on map
 let traceStageOpenState = {};      // expand/collapse state per stage, keyed by stage num (1–4)
+let zoneTypes = [];                // 'empty' | 'single' | 'multiple' per patrol — module-level so Stage 4 and popup can read it
+let patrolRouteGroups = [];        // per patrol: { casings, colorLines, decorators } for highlight/dim
+let patrolCircuitDistances = [];   // total circuit distance per patrol (null if N/A)
+let selectedPatrolIdx = -1;        // index of currently highlighted patrol, -1 if none
 
 // ── MAP LAYER REFERENCES ──────────────────────────────────────
 let hullPolygon = null;
@@ -58,6 +62,14 @@ let zoneLines = [];
 let overlapLayer = null;
 let nearestHighlightMarkers = [];
 let crimeMarkers = [];             // parallel array to P
+
+// ── ROAD GRAPH EDIT ───────────────────────────────────────────
+let removedNodes = new Set();      // node IDs excluded from routing — persists within session
+let graphLayerGroup = null;        // Leaflet layer group for road graph visualization
+let graphNodeMarkers = new Map();  // nodeId → L.circleMarker
+let graphNodeEdgeMap = new Map();  // nodeId → [{line, fromId, toId}] for connected edge style updates
+let graphEditMode = false;
+let graphLayerBuilt = false;
 
 // ── PATROL COLOR PALETTE ──────────────────────────────────────
 // Okabe-Ito colorblind-safe palette — validated for deuteranopia, protanopia, tritanopia
@@ -151,7 +163,8 @@ fetch('./data/commonwealth_boundary.json')
 map.on('click', onMapClick);
 
 function onMapClick(e) {
-    if (pipelineRunning) return;
+    clearPatrolHighlight();
+    if (pipelineRunning || graphEditMode) return;
     const { lat, lng } = e.latlng;
 
     // Duplicate check: within 1e-7 degrees
@@ -208,14 +221,17 @@ function excludedNodeIcon() {
     });
 }
 
-function makePatrolIcon(color, num, isStationary) {
+function makePatrolIcon(color, num, isStationary, selected = false) {
     const label = isStationary ? 'S' : String(num);
     const bg    = isStationary ? 'transparent' : color;
     const border = isStationary ? `2px dashed ${color}` : `2px solid ${color}`;
     const textColor = isStationary ? color : '#fff';
+    const shadow = selected
+        ? `box-shadow:0 0 0 3px ${color},0 2px 6px rgba(0,0,0,0.35);`
+        : `box-shadow:0 1px 4px rgba(0,0,0,0.3);`;
     return L.divIcon({
-        className: '',
-        html: `<div style="width:26px;height:26px;border-radius:50%;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;color:${textColor};font-weight:700;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,0.3);">${label}</div>`,
+        className: 'patrol-marker-icon',
+        html: `<div style="width:26px;height:26px;border-radius:50%;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;color:${textColor};font-weight:700;font-size:11px;cursor:pointer;${shadow}">${label}</div>`,
         iconSize: [26, 26],
         iconAnchor: [13, 13]
     });
@@ -290,6 +306,7 @@ function runRayCastPreFilter(hull) {
 
     const candidates = [];
     for (const id of intersectionNodes) {
+        if (removedNodes.has(id)) continue;
         const node = nodeMap.get(id);
         if (!node) continue;
         if (node.lat < minLat || node.lat > maxLat || node.lng < minLng || node.lng > maxLng) continue;
@@ -336,11 +353,16 @@ function clearMapResults({ clearHull = false, clearPatrols = false, clearRoutes 
         patrolMarkers.forEach(m => m.remove());
         patrolMarkers = [];
         S_star = [];
+        zoneTypes = [];
+        selectedPatrolIdx = -1;
     }
     if (clearRoutes) {
         routePolylines.forEach(p => p.remove());
         routePolylines = [];
         if (overlapLayer) { overlapLayer.remove(); overlapLayer = null; }
+        patrolRouteGroups = [];
+        patrolCircuitDistances = [];
+        selectedPatrolIdx = -1;
     }
     if (clearZoneLines) {
         zoneLines.forEach(l => l.remove());
@@ -365,6 +387,7 @@ function stopPipeline() {
     loadingOverlay.style.display = 'none';
     loadingMessage.style.color = '#444';
     map.on('click', onMapClick);
+    document.getElementById('graph-edit-btn').disabled = false;
 }
 
 function addTraceStage(num, name, status, summaryLines, logLines) {
@@ -423,6 +446,101 @@ function showNearestIntersectionHighlights(hull) {
     });
 }
 
+// ── ROAD GRAPH EDIT FUNCTIONS ─────────────────────────────────
+
+function buildGraphLayer() {
+    const renderer = L.canvas({ padding: 0.5 });
+    graphLayerGroup = L.layerGroup();
+    const addedEdges = new Set();
+
+    // Edges first so nodes render on top
+    for (const [fromId, neighbors] of adjacencyList) {
+        const fromNode = nodeMap.get(fromId);
+        if (!fromNode) continue;
+        for (const { neighborId } of neighbors) {
+            const numA = parseInt(fromId.slice(1), 10);
+            const numB = parseInt(neighborId.slice(1), 10);
+            const key = numA < numB ? `${numA}|${numB}` : `${numB}|${numA}`;
+            if (addedEdges.has(key)) continue;
+            addedEdges.add(key);
+
+            const toNode = nodeMap.get(neighborId);
+            if (!toNode) continue;
+
+            const affected = removedNodes.has(fromId) || removedNodes.has(neighborId);
+            const line = L.polyline(
+                [[fromNode.lat, fromNode.lng], [toNode.lat, toNode.lng]],
+                { renderer, color: affected ? '#e74c3c' : '#6b7280', weight: 1, opacity: affected ? 0.7 : 0.35 }
+            );
+            graphLayerGroup.addLayer(line);
+
+            const edgeObj = { line, fromId, toId: neighborId };
+            if (!graphNodeEdgeMap.has(fromId)) graphNodeEdgeMap.set(fromId, []);
+            if (!graphNodeEdgeMap.has(neighborId)) graphNodeEdgeMap.set(neighborId, []);
+            graphNodeEdgeMap.get(fromId).push(edgeObj);
+            graphNodeEdgeMap.get(neighborId).push(edgeObj);
+        }
+    }
+
+    // Nodes on top
+    for (const [id, node] of nodeMap) {
+        const isRemoved = removedNodes.has(id);
+        const marker = L.circleMarker([node.lat, node.lng], {
+            renderer,
+            radius: 3,
+            color: isRemoved ? '#e74c3c' : '#2563eb',
+            fillColor: isRemoved ? '#e74c3c' : '#2563eb',
+            fillOpacity: isRemoved ? 1 : 0.6,
+            weight: isRemoved ? 2 : 1
+        });
+        marker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            toggleNodeRemoval(id, marker);
+        });
+        graphNodeMarkers.set(id, marker);
+        graphLayerGroup.addLayer(marker);
+    }
+
+    graphLayerBuilt = true;
+}
+
+function toggleNodeRemoval(nodeId, marker) {
+    if (removedNodes.has(nodeId)) {
+        removedNodes.delete(nodeId);
+        marker.setStyle({ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.6, weight: 1 });
+    } else {
+        removedNodes.add(nodeId);
+        marker.setStyle({ color: '#e74c3c', fillColor: '#e74c3c', fillOpacity: 1, weight: 2 });
+    }
+    for (const edgeObj of (graphNodeEdgeMap.get(nodeId) || [])) {
+        const affected = removedNodes.has(edgeObj.fromId) || removedNodes.has(edgeObj.toId);
+        edgeObj.line.setStyle({ color: affected ? '#e74c3c' : '#6b7280', opacity: affected ? 0.7 : 0.35 });
+    }
+    validCandidatesHullCache = null; // force ray casting rerun with updated removed set
+    updateGraphResetBtn();
+}
+
+function toggleGraphEditMode() {
+    graphEditMode = !graphEditMode;
+    const btn = document.getElementById('graph-edit-btn');
+    if (graphEditMode) {
+        if (!graphLayerBuilt) buildGraphLayer();
+        graphLayerGroup.addTo(map);
+        btn.textContent = 'Exit Road Graph Edit';
+        btn.classList.add('active');
+    } else {
+        if (graphLayerGroup) graphLayerGroup.removeFrom(map);
+        btn.textContent = 'Edit Road Graph';
+        btn.classList.remove('active');
+    }
+    updateGraphResetBtn();
+}
+
+function updateGraphResetBtn() {
+    document.getElementById('graph-reset-btn').style.display =
+        removedNodes.size > 0 ? 'block' : 'none';
+}
+
 async function runPipeline() {
     if (pipelineRunning) return;
 
@@ -468,6 +586,8 @@ async function runPipeline() {
     pipelineRunning = true;
     pipelineResults = false;
     recalcBtn.disabled = true;
+    document.getElementById('graph-edit-btn').disabled = true;
+    if (graphEditMode) toggleGraphEditMode(); // exit edit mode before running
     map.off('click', onMapClick);
 
     clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true, clearNearestHighlights: true });
@@ -650,6 +770,7 @@ async function runPipeline() {
 
         // Apply patrol colors and store S_star
         S_star = r2.data.positions.map((p, i) => ({ ...p, color: patrolColor(i) }));
+        patrolCircuitDistances = new Array(S_star.length).fill(null);
 
         // Render patrol markers — update in place if count matches, else rebuild
         const isStationary = deploymentMode === 'stationary';
@@ -712,7 +833,8 @@ async function runPipeline() {
         }
 
         zones = r3.data.zones;
-        const { zoneTypes, excludedPIndices, cappedExcludedPIndices, snappingStats, cappedZonesCount } = r3.data;
+        zoneTypes = r3.data.zoneTypes;
+        const { excludedPIndices, cappedExcludedPIndices, snappingStats, cappedZonesCount } = r3.data;
 
         // Grey markers for zone-cap excluded crime nodes
         cappedExcludedPIndices.forEach(pIdx => {
@@ -800,6 +922,7 @@ async function runPipeline() {
                 `Pipeline Complete — Total time: ${totalMs}ms | Stationary mode | ${S_star.length} patrol${S_star.length !== 1 ? 's' : ''}`;
             const traceBodyEl = document.getElementById('trace-body');
             if (traceBodyEl) traceBodyEl.scrollTop = traceBodyEl.scrollHeight;
+            bindPatrolClickHandlers();
             stopPipeline();
             return;
         }
@@ -820,6 +943,9 @@ async function runPipeline() {
         // Edges rendered across all patrol routes — for overlap detection
         const allRenderedPaths = []; // [{ path: [nodeId, ...], color }]
 
+        // Per-patrol layer groups for route highlighting
+        patrolRouteGroups = S_star.map(() => ({ casings: [], colorLines: [], decorators: [] }));
+
         const multipleZoneCount = zoneTypes.filter(t => t === 'multiple').length;
 
         for (let i = 0; i < S_star.length; i++) {
@@ -827,7 +953,7 @@ async function runPipeline() {
             if (zoneTypes[i] === 'single') { directCount4++; continue; }
             // zoneTypes[i] === 'multiple'
 
-            const r4 = computeTSP(i, S_star[i], zones[i], nodeMap, adjacencyList, dijkstraCache, CONFIG);
+            const r4 = computeTSP(i, S_star[i], zones[i], nodeMap, adjacencyList, dijkstraCache, CONFIG, removedNodes);
 
             totalDijkstraCalls += r4.data.dijkstraCalls;
             totalCacheHits    += r4.data.cacheHits;
@@ -845,6 +971,7 @@ async function runPipeline() {
 
             tspCount++;
             const { circuitNodes, legPaths, totalDistance } = r4.data;
+            patrolCircuitDistances[i] = totalDistance;
             const circSumStr = [...circuitNodes, circuitNodes[0]]
                 .map(n => `${n.id} (${n.lat.toFixed(4)}, ${n.lng.toFixed(4)})`)
                 .join(' → ');
@@ -866,11 +993,13 @@ async function runPipeline() {
                     color: '#ffffff', weight: 7, opacity: 0.75, lineCap: 'round', lineJoin: 'round'
                 }).addTo(map);
                 routePolylines.push(casing);
+                patrolRouteGroups[i].casings.push(casing);
 
                 const polyline = L.polyline(latLngs, {
                     color, weight: 4, opacity: 0.95, lineCap: 'round', lineJoin: 'round'
                 }).addTo(map);
                 routePolylines.push(polyline);
+                patrolRouteGroups[i].colorLines.push(polyline);
 
                 if (CONFIG.display.showRouteArrows && typeof L.polylineDecorator === 'function') {
                     const decorator = L.polylineDecorator(polyline, {
@@ -885,6 +1014,7 @@ async function runPipeline() {
                         }]
                     }).addTo(map);
                     routePolylines.push(decorator);
+                    patrolRouteGroups[i].decorators.push(decorator);
                 }
 
                 allRenderedPaths.push({ path, color, patrolIdx: i });
@@ -971,6 +1101,7 @@ async function runPipeline() {
         const traceBodyEl = document.getElementById('trace-body');
         if (traceBodyEl) traceBodyEl.scrollTop = traceBodyEl.scrollHeight;
 
+        bindPatrolClickHandlers();
         stopPipeline();
 
     } catch (err) {
@@ -978,6 +1109,112 @@ async function runPipeline() {
         console.error('[PatrolPoint] Pipeline error:', err);
         stopPipeline();
     }
+}
+
+// ── PATROL INFO POPUP & ROUTE HIGHLIGHT ──────────────────────
+
+function buildPatrolPopupHTML(i) {
+    const pos = S_star[i];
+    const type = zoneTypes[i];
+    const nodeCount = zones[i] ? zones[i].length : 0;
+    const color = pos.color;
+    const isRoaming = deploymentMode === 'roaming' && type === 'multiple';
+
+    let routeLine = '';
+    if (type === 'empty') {
+        routeLine = `<div style="color:#9ca3af;margin-bottom:4px;">No incidents assigned</div>`;
+    } else if (type === 'single' && zones[i] && zones[i][0]) {
+        const sn = zones[i][0];
+        const d = Math.round(2 * haversineDistance(pos.lat, pos.lng, sn.lat, sn.lng));
+        routeLine = `<div style="color:#374151;margin-bottom:4px;">Direct visit: <strong>${d.toLocaleString()} m</strong></div>`;
+    } else if (isRoaming && patrolCircuitDistances[i] != null) {
+        const d = Math.round(patrolCircuitDistances[i]);
+        routeLine = `<div style="color:#374151;margin-bottom:4px;">Circuit: <strong>${d.toLocaleString()} m</strong></div>`;
+    }
+
+    const modeLabel = isRoaming ? 'Roaming' : 'Stationary';
+    const countLabel = `${nodeCount} crime node${nodeCount !== 1 ? 's' : ''}`;
+
+    return `<div style="min-width:155px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.5;">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
+            <span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
+            <span style="font-weight:700;font-size:14px;">Patrol ${i + 1}</span>
+        </div>
+        <div style="color:#6b7280;margin-bottom:3px;">${modeLabel} · ${countLabel}</div>
+        ${routeLine}<div style="border-top:1px solid #f0f0f0;padding-top:5px;margin-top:2px;color:#9ca3af;font-size:11px;">Node ${pos.id}<br>${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}</div>
+    </div>`;
+}
+
+function highlightPatrolRoute(idx) {
+    if (selectedPatrolIdx === idx) {
+        clearPatrolHighlight();
+        return;
+    }
+    clearPatrolHighlight();
+    selectedPatrolIdx = idx;
+
+    for (let i = 0; i < patrolRouteGroups.length; i++) {
+        const group = patrolRouteGroups[i];
+        if (!group) continue;
+        if (i === idx) {
+            group.casings.forEach(l => l.setStyle({ weight: 9, opacity: 0.9 }));
+            group.colorLines.forEach(l => l.setStyle({ weight: 6, opacity: 1.0 }));
+        } else {
+            group.casings.forEach(l => l.setStyle({ weight: 7, opacity: 0.06 }));
+            group.colorLines.forEach(l => l.setStyle({ weight: 4, opacity: 0.1 }));
+        }
+    }
+
+    patrolMarkers.forEach((m, i) => {
+        const isStationary = !zoneTypes[i] || zoneTypes[i] === 'empty' || zoneTypes[i] === 'single' || deploymentMode !== 'roaming';
+        m.setIcon(makePatrolIcon(S_star[i].color, i + 1, isStationary, i === idx));
+    });
+}
+
+function clearPatrolHighlight() {
+    if (selectedPatrolIdx === -1) return;
+
+    for (const group of patrolRouteGroups) {
+        if (!group) continue;
+        group.casings.forEach(l => l.setStyle({ weight: 7, opacity: 0.75 }));
+        group.colorLines.forEach(l => l.setStyle({ weight: 4, opacity: 0.95 }));
+    }
+
+    patrolMarkers.forEach((m, i) => {
+        const isStationary = !zoneTypes[i] || zoneTypes[i] === 'empty' || zoneTypes[i] === 'single' || deploymentMode !== 'roaming';
+        m.setIcon(makePatrolIcon(S_star[i].color, i + 1, isStationary, false));
+    });
+
+    selectedPatrolIdx = -1;
+}
+
+function bindPatrolClickHandlers() {
+    patrolMarkers.forEach((marker, i) => {
+        const el = marker.getElement();
+        if (!el) return;
+
+        // disableClickPropagation sets _leaflet_disable_click on the element,
+        // which Leaflet reads in _handleDOMEvent before dispatching any map-level
+        // events — this is the correct way to stop a marker from triggering map clicks.
+        L.DomUtil.disableClickPropagation(el);
+        el.style.cursor = 'pointer';
+
+        if (marker._patrolClickFn) {
+            L.DomEvent.off(el, 'click', marker._patrolClickFn);
+        }
+        marker._patrolClickFn = function() {
+            const hasRoute = deploymentMode === 'roaming' &&
+                             zoneTypes[i] === 'multiple' &&
+                             patrolRouteGroups[i] &&
+                             patrolRouteGroups[i].colorLines.length > 0;
+            if (hasRoute) highlightPatrolRoute(i);
+            L.popup({ offset: [0, -16], maxWidth: 240, className: 'patrol-popup' })
+                .setLatLng([S_star[i].lat, S_star[i].lng])
+                .setContent(buildPatrolPopupHTML(i))
+                .openOn(map);
+        };
+        L.DomEvent.on(el, 'click', marker._patrolClickFn);
+    });
 }
 
 // ── PATROL COUNT INPUT VALIDATION ────────────────────────────
@@ -1064,6 +1301,27 @@ document.getElementById('undo-btn').addEventListener('click', () => {
     addCrimeNode(lastRemovedPoint);
     lastRemovedPoint = null;
     updateUndoButton();
+});
+
+// ── ROAD GRAPH EDIT BUTTONS ───────────────────────────────────
+document.getElementById('graph-edit-btn').addEventListener('click', () => {
+    toggleGraphEditMode();
+});
+
+document.getElementById('graph-reset-btn').addEventListener('click', () => {
+    if (!confirm(`Restore ${removedNodes.size} removed road node(s) to the graph?`)) return;
+    for (const nodeId of removedNodes) {
+        const marker = graphNodeMarkers.get(nodeId);
+        if (marker) marker.setStyle({ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.6, weight: 1 });
+        for (const edgeObj of (graphNodeEdgeMap.get(nodeId) || [])) {
+            const stillAffected = removedNodes.has(edgeObj.fromId) && edgeObj.fromId !== nodeId ||
+                                  removedNodes.has(edgeObj.toId)   && edgeObj.toId   !== nodeId;
+            if (!stillAffected) edgeObj.line.setStyle({ color: '#6b7280', opacity: 0.35 });
+        }
+    }
+    removedNodes.clear();
+    validCandidatesHullCache = null;
+    updateGraphResetBtn();
 });
 
 // ── COLLAPSIBLE SECTIONS ──────────────────────────────────────

@@ -77,8 +77,9 @@ function normalizeEdgeKey(idA, idB) {
 }
 
 // Dijkstra from sourceId — traverses the full graph including non-intersection nodes
+// removedNodes: optional Set of node IDs to treat as absent from the graph
 // Returns { distances: Map<nodeId → dist>, parents: Map<nodeId → parentId|null> }
-function runDijkstra(sourceId, adjacencyList, nodeMap) {
+function runDijkstra(sourceId, adjacencyList, nodeMap, removedNodes = null) {
     const dist = new Map();
     const parent = new Map();
 
@@ -96,6 +97,7 @@ function runDijkstra(sourceId, adjacencyList, nodeMap) {
         if (currDist > dist.get(curr)) continue; // stale entry
 
         for (const { neighborId, weight } of (adjacencyList.get(curr) || [])) {
+            if (removedNodes && removedNodes.has(neighborId)) continue;
             const newDist = currDist + weight;
             if (newDist < dist.get(neighborId)) {
                 dist.set(neighborId, newDist);
