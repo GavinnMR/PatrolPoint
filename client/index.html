@@ -777,23 +777,27 @@
 
         <!-- TSP settings -->
         <div>
-          <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">TSP</h3>
+          <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Patrol Routes</h3>
           <div class="space-y-2">
-            <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Max nodes per zone</span>
+            <label class="flex items-center justify-between gap-2">
+              <span class="text-gray-600 dark:text-gray-400 leading-tight">Max incidents per patrol
+                <span class="block text-xs text-gray-400 dark:text-gray-500">Cap on how many incidents one patrol visits</span>
+              </span>
               <input type="number" x-model.number="settingsDraft.tsp.maxCrimeNodesPerZone"
                      min="3" max="20"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
-            </label>
-            <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">NN fallback threshold</span>
-              <input type="number" x-model.number="settingsDraft.tsp.nearestNeighborFallbackThreshold"
-                     min="6" max="20"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
             </label>
             <label class="flex items-center justify-between gap-2">
-              <span class="text-gray-600 dark:text-gray-400 leading-tight">Hull exterior penalty
-                <span class="block text-xs text-gray-400 dark:text-gray-500">1 = off · &gt;1 = penalize routes outside danger zone</span>
+              <span class="text-gray-600 dark:text-gray-400 leading-tight">Fast route above N incidents
+                <span class="block text-xs text-gray-400 dark:text-gray-500">Zones larger than this use a quick estimate instead of exact optimal</span>
+              </span>
+              <input type="number" x-model.number="settingsDraft.tsp.nearestNeighborFallbackThreshold"
+                     min="6" max="20"
+                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
+            </label>
+            <label class="flex items-center justify-between gap-2">
+              <span class="text-gray-600 dark:text-gray-400 leading-tight">Stay-inside penalty
+                <span class="block text-xs text-gray-400 dark:text-gray-500">1 = off · higher values push routes to stay within the danger zone</span>
               </span>
               <input type="number" x-model.number="settingsDraft.tsp.hullExteriorPenalty"
                      min="1" max="20" step="0.5"
