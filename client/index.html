@@ -754,11 +754,11 @@
                 ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500'
                 : 'bg-blue-500 text-white hover:bg-blue-600'"
               class="px-3 py-1 text-xs rounded"
-              x-text="routePlaybackActive ? '⏸ Pause' : '▶ Play'">
+              x-text="routePlaybackActive ? 'Pause' : 'Play'">
       </button>
       <button @click="playbackStop()"
               class="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
-        ■ Stop
+        Stop
       </button>
       <input type="range" x-model="playbackSpeed" @change="onPlaybackSpeedChange()"
              min="0.5" max="3" step="0.5" class="w-20" />
