@@ -275,6 +275,10 @@ document.addEventListener('alpine:init', () => {
 
         // Called by map.js when user clicks map to add an incident.
         addCrimeNode(lat, lng) {
+            // Boundary check — reject points outside barangay
+            if (typeof window.isInsideBarangay === 'function' && !window.isInsideBarangay(lat, lng)) {
+                return null;
+            }
             window.crimeIdCounter++;
             const crimeId = 'CRIME-' + String(window.crimeIdCounter).padStart(3, '0');
             const point = { crimeId, lat, lng };
@@ -626,28 +630,22 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
-            // Check each point against barangay bounding box derived from nodeMap extents
+            // Barangay boundary check — hard filter, reject outside points
             const warnings = [];
-            const nodeIds = Object.keys(window.nodeMap || {});
-            if (nodeIds.length > 0) {
-                let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-                for (const id of nodeIds) {
-                    const n = window.nodeMap[id];
-                    if (n.lat < minLat) minLat = n.lat;
-                    if (n.lat > maxLat) maxLat = n.lat;
-                    if (n.lng < minLng) minLng = n.lng;
-                    if (n.lng > maxLng) maxLng = n.lng;
-                }
-                const outsideCount = valid.filter(
-                    p => p.lat < minLat || p.lat > maxLat || p.lng < minLng || p.lng > maxLng
-                ).length;
-                if (outsideCount > 0) {
-                    warnings.push(
-                        `${outsideCount} coordinate${outsideCount !== 1 ? 's' : ''} fall outside Barangay ${this.selectedBarangay}. ` +
-                        'These points may produce no valid patrol positions.'
-                    );
-                }
+            let outsideCount = 0;
+            const inside = typeof window.isInsideBarangay === 'function'
+                ? valid.filter(p => {
+                    if (window.isInsideBarangay(p.lat, p.lng)) return true;
+                    outsideCount++;
+                    return false;
+                })
+                : valid;
+            if (outsideCount > 0) skipped += outsideCount;
+            if (inside.length === 0) {
+                this.importMessage = 'No coordinates fall inside the barangay boundary. Nothing imported.';
+                return;
             }
+            const valid_filtered = inside;
 
             const replacingCount = this.P.length;
             if (replacingCount > 0) {
@@ -660,12 +658,12 @@ document.addEventListener('alpine:init', () => {
             // Build new points with unique IDs (IDs continue from current counter)
             const prevCounter = window.crimeIdCounter;
             const prevP = [...this.P];
-            const newP = valid.map((v, i) => ({
+            const newP = valid_filtered.map((v, i) => ({
                 crimeId: 'CRIME-' + String(prevCounter + i + 1).padStart(3, '0'),
                 lat: v.lat,
                 lng: v.lng
             }));
-            const newCounter = prevCounter + valid.length;
+            const newCounter = prevCounter + valid_filtered.length;
 
             // Outlier detection — runs immediately after parsing, before markers are plotted.
             // Flags points whose Haversine distance from centroid exceeds multiplier × average.
@@ -714,8 +712,8 @@ document.addEventListener('alpine:init', () => {
                 this.showBanner(warnings[0], 'warning', warnings);
             }
 
-            const skippedMsg = skipped ? `, ${skipped} line${skipped !== 1 ? 's' : ''} skipped` : '';
-            this.importMessage = `${valid.length} point${valid.length !== 1 ? 's' : ''} imported successfully${skippedMsg}.`;
+            const skippedMsg = skipped ? `, ${skipped} line${skipped !== 1 ? 's' : ''} skipped (invalid format or outside boundary)` : '';
+            this.importMessage = `${valid_filtered.length} point${valid_filtered.length !== 1 ? 's' : ''} imported successfully${skippedMsg}.`;
             setTimeout(() => { this.importMessage = ''; }, 3000);
         },
 

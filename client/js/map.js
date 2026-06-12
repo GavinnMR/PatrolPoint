@@ -110,6 +110,12 @@ function initMap(ui) {
         if (window.pipelineRunning) return;
         const { lat, lng } = e.latlng;
 
+        // Barangay boundary check — hard block
+        if (window.boundaryPolygon && !pointInHull(lat, lng, window.boundaryPolygon)) {
+            if (ui) ui.showBanner('Incident plotted outside Barangay Commonwealth boundary. Point ignored.', 'warning');
+            return;
+        }
+
         // Duplicate check
         const dup = (window.P || []).find(
             p => Math.abs(p.lat - lat) < 1e-7 && Math.abs(p.lng - lng) < 1e-7
@@ -247,6 +253,7 @@ function renderBarangayBoundary(boundaryPolygon) {
     ).addTo(map);
 
     window.barangayMask = barangayMask;
+    window.boundaryPolygon = boundaryPolygon; // expose for boundary checks
 
     // Fit map only on first render — subsequent pipeline runs re-send network_loaded
     // but the user's zoom/pan should be preserved.
@@ -1213,6 +1220,7 @@ window.renderPatrolMarkers        = renderPatrolMarkers;
 window.updatePatrolPositionsInstant = updatePatrolPositionsInstant;
 window.updatePatrolMarkerStyle    = updatePatrolMarkerStyle;
 window.renderBarangayBoundary     = renderBarangayBoundary;
+window.isInsideBarangay           = (lat, lng) => pointInHull(lat, lng, window.boundaryPolygon || []);
 window.renderZoneLines            = renderZoneLines;
 window.clearZoneLines             = clearZoneLines;
 window.renderRoutes               = renderRoutes;
