@@ -185,18 +185,14 @@ export function runTSP(
 
     // Process one leg of a circuit: get path IDs, convert to coords, track edge usage.
     // Returns { coords: [{lat,lng}], noPath: boolean }.
+    // noPath=true means Dijkstra found no road path — coords is empty so the renderer skips
+    // this segment rather than drawing a straight line through non-road terrain.
     function processLeg(fromId, toId) {
         const pathIds = getPathIds(fromId, toId);
 
         if (!pathIds || pathIds.length === 0) {
-            // Fallback to straight line — log, but don't fail
-            return {
-                coords: [
-                    { lat: nodeMap[fromId].lat, lng: nodeMap[fromId].lng },
-                    { lat: nodeMap[toId].lat,   lng: nodeMap[toId].lng   }
-                ],
-                noPath: true
-            };
+            log.push(`Warning: no road path ${fromId} → ${toId} — segment omitted (road graph disconnected).`);
+            return { coords: [], noPath: true };
         }
 
         // Track edge usage for overlap detection using normalized numeric keys
@@ -223,14 +219,25 @@ export function runTSP(
 
         const distStoC = distFromS[cId] ?? Infinity;
         const distCtoS = distFromC[sId] ?? Infinity;
-        const circuitDistanceM = (distStoC < Infinity ? distStoC : 0) +
-                                 (distCtoS < Infinity ? distCtoS : 0);
+
+        // Reachability guard: if crime node is unreachable from patrol via road network,
+        // treat zone as empty (stationary) rather than drawing a straight-line route.
+        if (distStoC === Infinity) {
+            log.push(`Patrol ${patrol.id}: single-node zone — crime node ${crimeNode.crimeId} unreachable via road network — patrol remains stationary.`);
+            warnings.push(`Crime node ${crimeNode.crimeId} unreachable from patrol ${patrol.id} via road network — single-node zone treated as stationary.`);
+            routes.push({
+                patrolId: patrol.id, patrolIndex: pi,
+                sequence: [], circuitDistanceM: 0,
+                pathSegments: [], approximate: false,
+                isEmpty: true, isSingleNode: false
+            });
+            continue;
+        }
+
+        const circuitDistanceM = distStoC + distCtoS;
 
         const leg1 = processLeg(sId, cId); // si → c1 (outbound)
         const leg2 = processLeg(cId, sId); // c1 → si (return leg — explicit)
-
-        if (leg1.noPath) log.push(`Warning: no road path found ${sId} → ${cId} — using straight line.`);
-        if (leg2.noPath) log.push(`Warning: no road path found ${cId} → ${sId} — using straight line.`);
 
         log.push(`Patrol ${patrol.id}: single-node circuit — ${sId} → ${cId} → ${sId}, distance: ${Math.round(circuitDistanceM)}m`);
 
@@ -332,9 +339,6 @@ export function runTSP(
         for (let i = 0; i + 1 < fullCircuit.length; i++) {
             const leg = processLeg(fullCircuit[i], fullCircuit[i + 1]);
             pathSegments.push(leg.coords);
-            if (leg.noPath) {
-                log.push(`Warning: no road path found ${fullCircuit[i]} → ${fullCircuit[i + 1]} — using straight line.`);
-            }
         }
 
         // Build sequence output with coordinates
