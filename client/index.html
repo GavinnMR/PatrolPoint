@@ -655,11 +655,6 @@
                 'font-medium text-yellow-600 dark:text-yellow-400': stage.confidence >= 50 && stage.confidence < 80,
                 'font-medium text-red-600 dark:text-red-400': stage.confidence < 50
               }" x-text="Math.round(stage.confidence || 0) + '%'"></span>
-              <span :class="{
-                'text-green-600 dark:text-green-400': stage.confidence >= 80,
-                'text-yellow-600 dark:text-yellow-400': stage.confidence >= 50 && stage.confidence < 80,
-                'text-red-600 dark:text-red-400': stage.confidence < 50
-              }" x-text="(stage.confidence >= 80) ? 'High confidence' : (stage.confidence >= 50) ? 'Medium confidence' : 'Low confidence — consider increasing restarts'"></span>
             </div>
             <!-- Convergence curve — shown only for Stage 2 when curve data is available -->
             <div x-show="stage.id === 2 && stage.convergenceCurve && stage.convergenceCurve.length > 0" class="pt-2">
@@ -679,7 +674,7 @@
                 </div>
               </template>
               <div class="mt-1.5 flex gap-3 text-gray-500 dark:text-gray-400">
-                <span>Converged: restart
+                <span>Converged at restart
                   <span class="font-medium text-gray-700 dark:text-gray-200"
                         x-text="'#' + (stage.convergenceRestart ?? '—')"></span>
                   of
