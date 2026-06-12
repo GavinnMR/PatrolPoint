@@ -892,6 +892,24 @@
           </div>
         </div>
 
+        <!-- Zone Assignment settings -->
+        <div>
+          <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Zone Assignment</h3>
+          <div class="space-y-2">
+            <label class="flex items-center justify-between gap-2">
+              <span class="text-gray-600 dark:text-gray-400 leading-tight">Strong rebalancing
+                <span class="block text-xs text-gray-400 dark:text-gray-500">Off: light rebalancing (default) — only corrects extreme imbalance · On: redistributes until all patrols have equal workload</span>
+              </span>
+              <button @click="settingsDraft.zoneAssignment.strongRebalancing = !settingsDraft.zoneAssignment.strongRebalancing"
+                      :class="settingsDraft.zoneAssignment.strongRebalancing ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
+                      class="relative w-10 h-5 rounded-full transition-colors flex-shrink-0">
+                <span :class="settingsDraft.zoneAssignment.strongRebalancing ? 'translate-x-5' : 'translate-x-0'"
+                      class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
+              </button>
+            </label>
+          </div>
+        </div>
+
         <!-- Display settings -->
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Display</h3>

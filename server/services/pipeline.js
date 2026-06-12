@@ -37,6 +37,9 @@ export const DEFAULT_CONFIG = {
         nearestNeighborFallbackThreshold: 12,
         hullExteriorPenalty: 1
     },
+    zoneAssignment: {
+        strongRebalancing: false
+    },
     snapping: {
         boundingBoxEpsilon: 1e-7,
         initialSearchRadiusMeters: 500
@@ -48,8 +51,9 @@ function mergeConfig(userConfig) {
     return {
         hillClimbing: { ...DEFAULT_CONFIG.hillClimbing, ...(userConfig?.hillClimbing || {}) },
         convexHull:   { ...DEFAULT_CONFIG.convexHull,   ...(userConfig?.convexHull   || {}) },
-        tsp:          { ...DEFAULT_CONFIG.tsp,           ...(userConfig?.tsp          || {}) },
-        snapping:     { ...DEFAULT_CONFIG.snapping,      ...(userConfig?.snapping     || {}) }
+        tsp:            { ...DEFAULT_CONFIG.tsp,            ...(userConfig?.tsp            || {}) },
+        zoneAssignment: { ...DEFAULT_CONFIG.zoneAssignment, ...(userConfig?.zoneAssignment || {}) },
+        snapping:       { ...DEFAULT_CONFIG.snapping,       ...(userConfig?.snapping       || {}) }
     };
 }
 

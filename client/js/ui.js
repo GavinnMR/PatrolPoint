@@ -141,6 +141,9 @@ document.addEventListener('alpine:init', () => {
                 nearestNeighborFallbackThreshold:    12,
                 hullExteriorPenalty:                 1
             },
+            zoneAssignment: {
+                strongRebalancing:      false
+            },
             display: {
                 showZoneLines:          true,
                 showRouteArrows:        true,
@@ -168,6 +171,9 @@ document.addEventListener('alpine:init', () => {
                 maxCrimeNodesPerZone:                10,
                 nearestNeighborFallbackThreshold:    12,
                 hullExteriorPenalty:                 1
+            },
+            zoneAssignment: {
+                strongRebalancing:      false
             },
             display: {
                 showZoneLines:          true,
@@ -754,6 +760,9 @@ document.addEventListener('alpine:init', () => {
                     maxCrimeNodesPerZone:                10,
                     nearestNeighborFallbackThreshold:    12,
                     hullExteriorPenalty:                 1
+                },
+                zoneAssignment: {
+                    redistribute:           true
                 },
                 display: {
                     showZoneLines:          true,

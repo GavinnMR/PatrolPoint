@@ -59,14 +59,12 @@ function snapToNearestCandidate(crimeNode, validCandidates, hullDiameterM, confi
     }
 }
 
-// ── Zone rebalancing ──────────────────────────────────────────────────────────
-// Triggered when any zone > 2× mean AND another < 0.5× mean.
-// Identifies boundary crime nodes in the largest zone: nodes where
-//   |dToLargest - dToSmallest| / max(dToLargest, dToSmallest) < 0.10
-// Reassigns the boundary node closest to the smallest zone's patrol.
-// Stops when no zone > 1.5× mean, no boundary nodes exist, or 10 iterations reached.
+// ── Light rebalancing ─────────────────────────────────────────────────────────
+// Default mode. Only fires on extreme imbalance: largest zone > 2× mean AND
+// smallest < 0.5× mean. Moves only boundary nodes (within 10% equidistant
+// between the two patrols). Max 10 iterations.
 // Mutates zones array in-place.
-function rebalanceZones(zones, distanceMatrix, log) {
+function lightRebalanceZones(zones, distanceMatrix, log) {
     let iterations = 0;
     const MAX_ITER = 10;
 
@@ -83,10 +81,8 @@ function rebalanceZones(zones, distanceMatrix, log) {
         const largest  = nonEmpty.reduce((a, b) => b.zone.length > a.zone.length ? b : a);
         const smallest = nonEmpty.reduce((a, b) => b.zone.length < a.zone.length ? b : a);
 
-        // Threshold check — only rebalance if imbalance is significant
         if (largest.zone.length <= 2 * mean || smallest.zone.length >= 0.5 * mean) break;
 
-        // Find boundary crime node in largest zone to reassign to smallest zone
         let bestNode    = null;
         let bestNodeIdx = -1;
         let bestDist    = Infinity;
@@ -99,7 +95,6 @@ function rebalanceZones(zones, distanceMatrix, log) {
             const dToSmallest = dm[smallest.idx] ?? Infinity;
             if (dToLargest === Infinity || dToSmallest === Infinity) continue;
             const maxD = Math.max(dToLargest, dToSmallest);
-            // Boundary criterion: within 10% of equidistant between the two patrols
             if (maxD > 0 && Math.abs(dToLargest - dToSmallest) / maxD < 0.10) {
                 if (dToSmallest < bestDist) {
                     bestDist    = dToSmallest;
@@ -109,19 +104,80 @@ function rebalanceZones(zones, distanceMatrix, log) {
             }
         }
 
-        if (!bestNode) break; // no boundary nodes — cannot rebalance further
+        if (!bestNode) break;
 
-        // Reassign from largest → smallest (arrays are references, mutates zones in-place)
         largest.zone.splice(bestNodeIdx, 1);
         smallest.zone.push(bestNode);
-        log.push(`Rebalance iter ${iterations + 1}: reassigned ${bestNode.crimeId} from patrol ${largest.idx + 1} to patrol ${smallest.idx + 1} for balance`);
+        log.push(`Light rebalance iter ${iterations + 1}: reassigned ${bestNode.crimeId} from patrol ${largest.idx + 1} to patrol ${smallest.idx + 1}`);
         iterations++;
 
-        // Check if imbalance resolved after this reassignment
         const allSizes   = zones.map(z => z.length).filter(s => s > 0);
         const newMean    = allSizes.reduce((s, l) => s + l, 0) / allSizes.length;
         const newLargest = Math.max(...allSizes);
         if (newLargest <= 1.5 * newMean) break;
+    }
+
+    return iterations;
+}
+
+// ── Strong rebalancing ────────────────────────────────────────────────────────
+// Opt-in mode. Iteratively moves nodes from overloaded zones to underloaded ones
+// until all non-empty zones are within [floor(target), ceil(target)] nodes.
+// Empty zones are excluded from the calculation and never filled.
+// At each step picks the node in any overloaded zone with minimum road distance
+// to any underloaded patrol — least-cost move. Mutates zones array in-place.
+function strongRebalanceZones(zones, distanceMatrix, log) {
+    const nonEmptyIndices = zones
+        .map((_, i) => i)
+        .filter(i => zones[i].length > 0);
+
+    if (nonEmptyIndices.length < 2) return 0;
+
+    const total      = nonEmptyIndices.reduce((s, i) => s + zones[i].length, 0);
+    const target     = total / nonEmptyIndices.length;
+    const ceilTarget = Math.ceil(target);
+    const floorTarget = Math.floor(target);
+
+    let iterations = 0;
+    const MAX_ITER = total; // safety cap — can't need more moves than there are nodes
+
+    while (iterations < MAX_ITER) {
+        const overloaded  = nonEmptyIndices.filter(i => zones[i].length > ceilTarget);
+        const underloaded = nonEmptyIndices.filter(i => zones[i].length < floorTarget);
+
+        if (overloaded.length === 0 || underloaded.length === 0) break;
+
+        // Find least-cost move: node in any overloaded zone closest to any underloaded patrol
+        let bestNode    = null;
+        let bestNodeIdx = -1;
+        let bestFromIdx = -1;
+        let bestToIdx   = -1;
+        let bestDist    = Infinity;
+
+        for (const fromIdx of overloaded) {
+            for (let ni = 0; ni < zones[fromIdx].length; ni++) {
+                const node = zones[fromIdx][ni];
+                const dm   = distanceMatrix[node.snappedNodeId];
+                if (!dm) continue;
+                for (const toIdx of underloaded) {
+                    const d = dm[toIdx] ?? Infinity;
+                    if (d < bestDist) {
+                        bestDist    = d;
+                        bestNode    = node;
+                        bestNodeIdx = ni;
+                        bestFromIdx = fromIdx;
+                        bestToIdx   = toIdx;
+                    }
+                }
+            }
+        }
+
+        if (!bestNode) break;
+
+        zones[bestFromIdx].splice(bestNodeIdx, 1);
+        zones[bestToIdx].push(bestNode);
+        log.push(`Strong rebalance iter ${iterations + 1}: reassigned ${bestNode.crimeId} from patrol ${bestFromIdx + 1} to patrol ${bestToIdx + 1} (road dist: ${Math.round(bestDist)}m)`);
+        iterations++;
     }
 
     return iterations;
@@ -328,10 +384,13 @@ export function runZoneAssignment(
         zones[assignedIdx].push({ ...node, roadDistToPatrol: minDist });
     }
 
-    // ── Zone rebalancing (V2) ─────────────────────────────────────────────────
-    const rebalanceIterations = rebalanceZones(zones, distanceMatrix, log);
+    // ── Zone rebalancing ──────────────────────────────────────────────────────
+    const useStrong = config.zoneAssignment?.strongRebalancing === true;
+    const rebalanceIterations = useStrong
+        ? strongRebalanceZones(zones, distanceMatrix, log)
+        : lightRebalanceZones(zones, distanceMatrix, log);
     if (rebalanceIterations > 0) {
-        log.push(`Zone rebalancing: ${rebalanceIterations} iteration(s) completed`);
+        log.push(`${useStrong ? 'Strong' : 'Light'} rebalancing: ${rebalanceIterations} iteration(s) completed`);
     }
 
     // ── Zone cap enforcement ──────────────────────────────────────────────────

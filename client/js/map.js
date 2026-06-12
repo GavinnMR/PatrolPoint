@@ -206,6 +206,11 @@ function initMap(ui) {
         clearZoneLines();
         if (result.routes && result.routes.length > 0) {
             renderRoutes(result.routes);
+            // Patrols whose crime nodes were all unreachable via road network during Stage 4
+            // get isEmpty:true and empty pathSegments — update their marker to stationary style.
+            result.routes.forEach(route => {
+                if (route.isEmpty) updatePatrolMarkerStyle(route.patrolId, 'stationary');
+            });
             if ((result.overlapEdges || []).length > 0) {
                 renderOverlapOverlay(result.routes);
             }
