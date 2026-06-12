@@ -673,21 +673,20 @@
                         x-text="item.improved ? '↑' : ''"></span>
                 </div>
               </template>
-              <div class="mt-1.5 flex gap-3 text-gray-500 dark:text-gray-400">
-                <span>Converged at restart
+              <div class="mt-1.5 space-y-0.5 text-gray-500 dark:text-gray-400">
+                <div>Converged at restart
                   <span class="font-medium text-gray-700 dark:text-gray-200"
                         x-text="'#' + (stage.convergenceRestart ?? '—')"></span>
                   of
                   <span x-text="stage.restartsCompleted ?? '—'"></span>
-                </span>
-                <span>|</span>
-                <span>Redundancy:
+                </div>
+                <div>Redundancy:
                   <span :class="{
                     'font-medium text-green-600 dark:text-green-400': stage.redundancy >= 75,
                     'font-medium text-yellow-600 dark:text-yellow-400': stage.redundancy >= 50 && stage.redundancy < 75,
                     'font-medium text-red-600 dark:text-red-400': stage.redundancy < 50
                   }" x-text="(stage.redundancy ?? '—') + '%'"></span>
-                </span>
+                </div>
               </div>
             </div>
             <template x-if="stage.fullLog">

@@ -550,7 +550,8 @@ function buildTraceSummary(stage, result, runtimeMs) {
         case 2:
             return [
                 `Best min pairwise distance: ${result.bestMinPairwiseDist?.toFixed(1) ?? '—'}m`,
-                `Converged at restart #${result.convergenceRestart ?? '—'} of ${result.restartsCompleted ?? '—'} | Redundancy: ${result.redundancy?.toFixed(1) ?? '—'}%`,
+                `Converged at restart #${result.convergenceRestart ?? '—'} of ${result.restartsCompleted ?? '—'}`,
+                `Redundancy: ${result.redundancy?.toFixed(1) ?? '—'}%`,
                 `Confidence: ${result.confidence?.toFixed(1) ?? '—'}%`,
                 result.cappedFrom != null ? `Patrol count capped: ${result.cappedFrom} → ${result.patrols?.length}` : '',
                 `Runtime: ${rt}`
