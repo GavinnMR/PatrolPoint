@@ -185,9 +185,11 @@ function computeZoneAssignment(P, S_star, validCandidates, hullVertices, config,
             zoneTypes.push('empty');
             log.push(`Zone ${i + 1}: empty — patrol stationary`);
         } else if (zones[i].length === 1) {
-            const dist2x = 2 * haversineDistance(zones[i][0].lat, zones[i][0].lng, S_star[i].lat, S_star[i].lng);
+            const sn = zones[i][0];
+            const roadDist = patrolDistances[i].get(sn.id) ?? Infinity;
+            const dist2x = roadDist < Infinity ? 2 * roadDist : null;
             zoneTypes.push('single');
-            log.push(`Zone ${i + 1}: single node ${zones[i][0].id} — direct visit, round trip ${Math.round(dist2x)}m`);
+            log.push(`Zone ${i + 1}: single node ${sn.id} — direct visit, round trip ${dist2x != null ? Math.round(dist2x) + 'm' : 'unreachable by road'}`);
         } else {
             zoneTypes.push('multiple');
             log.push(`Zone ${i + 1}: ${zones[i].length} nodes — proceeding to TSP`);
