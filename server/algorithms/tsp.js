@@ -218,11 +218,11 @@ export function runTSP(
         const cId       = crimeNode.snappedNodeId;
 
         // Ensure Dijkstra from both endpoints is in cache before processLeg calls
-        trackedDijkstra(sId);
-        trackedDijkstra(cId);
+        const { distances: distFromS } = trackedDijkstra(sId);
+        const { distances: distFromC } = trackedDijkstra(cId);
 
-        const distStoC = effectiveCache[sId].distances[cId] ?? Infinity;
-        const distCtoS = effectiveCache[cId].distances[sId] ?? Infinity;
+        const distStoC = distFromS[cId] ?? Infinity;
+        const distCtoS = distFromC[sId] ?? Infinity;
         const circuitDistanceM = (distStoC < Infinity ? distStoC : 0) +
                                  (distCtoS < Infinity ? distCtoS : 0);
 

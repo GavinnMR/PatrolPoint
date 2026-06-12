@@ -91,7 +91,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     const pipelineStartMs = performance.now();
     const config          = mergeConfig(data.config);
     const { incidents, n, mode } = data;
-    const removedNodes    = data.removedNodes ? new Set(data.removedNodes) : null;
+    const removedNodes    = data.removedNodes && data.removedNodes.length > 0 ? new Set(data.removedNodes) : null;
 
     const {
         hull:            previousHull            = null,
