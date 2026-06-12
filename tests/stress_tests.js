@@ -779,6 +779,65 @@ window.PP_TESTS = (() => {
             }
         },
 
+        // ══ Stage 3 — Road Distance (zone assignment uses Dijkstra, not Haversine) ════
+
+        {
+            id: 'S3-T08', stage: 3, n: 3,
+            name: 'Road distance — dijkstraCache pre-filled by Stage 3 in stationary mode (Stage 4 never runs)',
+            // Stage 4 is skipped in stationary mode. Before the road-distance fix, dijkstraCache
+            // stayed empty after Stage 3. After the fix, Stage 3 runs Dijkstra from each patrol
+            // and populates the cache — so dijkstraCache must be non-empty even with no Stage 4.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const cacheSize = Object.keys(dijkstraCache).length;
+                return [
+                    chkNull(stageStatus(4),     'Stage 4 did not run (stationary mode)'),
+                    chkGt(cacheSize, 0,         `dijkstraCache has ${cacheSize} entries — Stage 3 ran Dijkstra without Stage 4`)
+                ];
+            }
+        },
+
+        {
+            id: 'S3-T09', stage: 3, n: 10,
+            name: 'Road distance — single-node zone round trip comes from dijkstraCache, not Haversine',
+            // n=10 with 5 spread crime nodes → 5 single-node zones + 5 empty zones (10 patrols, 5 nodes).
+            // For each single-node zone, Stage 3 must have a dijkstraCache entry for that patrol→crime pair
+            // and the trace log must show a finite road distance, not "undefined" or "unreachable by road".
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const singleIdx = zoneTypes ? zoneTypes.findIndex(t => t === 'single') : -1;
+                if (singleIdx < 0) {
+                    return [{ ok: 'manual', label: 'No single-node zone produced — re-run or check zone distribution' }];
+                }
+                const patrol = S_star[singleIdx];
+                const crime  = zones[singleIdx][0];
+                const cacheKey = (typeof normalizeEdgeKey === 'function')
+                    ? normalizeEdgeKey(patrol.id, crime.id) : null;
+                const entry = cacheKey ? dijkstraCache[cacheKey] : undefined;
+                const traceText = document.getElementById('trace-content')?.textContent || '';
+                return [
+                    chkEq(entry !== undefined ? 'ok' : 'fail', 'ok',
+                        'dijkstraCache has patrol→crime entry for single-node zone (Stage 3 populated it)'),
+                    chkEq(entry && entry.distance < Infinity ? 'ok' : 'fail', 'ok',
+                        'cached road distance is finite'),
+                    chkIncludes(traceText, 'direct visit, round trip',
+                        'Stage 3 trace contains "direct visit, round trip" entry'),
+                    chkEq(!traceText.includes('round trip undefinedm') ? 'ok' : 'fail', 'ok',
+                        'round trip distance resolved to a number, not undefined')
+                ];
+            }
+        },
+
         // ══ Stage 4 — Backtracking TSP ══════════════════════════════════════
 
         {
@@ -890,6 +949,34 @@ window.PP_TESTS = (() => {
                     chkGt(Object.keys(window.patrolRoutes || {}).length, 0,                     'TSP routes rendered for capped zone'),
                     chkNotNull(s4,                                       'Stage 4 trace entry present'),
                     chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error')
+                ];
+            }
+        },
+
+        {
+            id: 'S4-T06', stage: 4, n: 3, mode: 'roaming',
+            name: 'Road distance — Stage 3 cache pre-population gives Stage 4 cache hits for patrol→crime pairs',
+            // Stage 3 runs Dijkstra from each patrol and stores patrol→crime pairs in dijkstraCache.
+            // Stage 4 then iterates the same patrol→crime pairs and must find them cached (needsCompute=[]).
+            // "Dijkstra calls avoided (cache): X" in the Stage 4 summary must have X > 0.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const traceText = document.getElementById('trace-content')?.textContent || '';
+                const hitMatch  = traceText.match(/dijkstra calls avoided \(cache\):\s*(\d+)/i);
+                const cacheHits = hitMatch ? parseInt(hitMatch[1], 10) : null;
+                return [
+                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0,
+                        'TSP routes rendered'),
+                    chkEq(cacheHits !== null ? 'ok' : 'fail', 'ok',
+                        'Stage 4 summary contains "Dijkstra calls avoided (cache): X"'),
+                    chkGt(cacheHits ?? -1, 0,
+                        `Stage 4 reports >0 cache hits — Stage 3 pre-populated patrol→crime pairs (got: ${cacheHits})`)
                 ];
             }
         },
