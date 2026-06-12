@@ -347,20 +347,55 @@
         </p>
 
         <!-- Incident list — live running list of plotted crime nodes -->
-        <div x-show="P.length > 0" x-data="{ open: true }"
+        <div x-show="P.length > 0"
+             x-data="{
+               open: true,
+               copied: false,
+               copyCoords() {
+                 const text = $store?.P
+                   ? $store.P.map(n => n.lat.toFixed(5) + ', ' + n.lng.toFixed(5)).join('\n')
+                   : window.P.map(n => n.lat.toFixed(5) + ', ' + n.lng.toFixed(5)).join('\n');
+                 navigator.clipboard.writeText(text).then(() => {
+                   this.copied = true;
+                   setTimeout(() => this.copied = false, 1500);
+                 });
+               }
+             }"
              class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-          <button @click="open = !open"
-                  class="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
-            <span class="flex items-center gap-1.5">
+          <div class="flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+            <button @click="open = !open" class="flex items-center gap-1.5 hover:text-gray-800 dark:hover:text-gray-200">
               Incidents
               <span class="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full px-1.5 font-semibold"
                     x-text="P.length"></span>
-            </span>
-            <svg :class="open ? 'rotate-180' : ''"
-                 class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </button>
+            </button>
+            <div class="flex items-center gap-1">
+              <!-- Copy to clipboard -->
+              <button @click.stop="copyCoords()"
+                      title="Copy all coordinates in import format"
+                      class="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      :class="copied ? 'text-green-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                <template x-if="!copied">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                  </svg>
+                </template>
+                <template x-if="copied">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </template>
+                <span x-text="copied ? 'Copied!' : 'Copy'"></span>
+              </button>
+              <!-- Collapse toggle -->
+              <button @click="open = !open" class="p-0.5 hover:text-gray-800 dark:hover:text-gray-200">
+                <svg :class="open ? 'rotate-180' : ''"
+                     class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
           <div x-show="open" class="border-t border-gray-200 dark:border-gray-700 max-h-44 overflow-y-auto">
             <template x-for="node in P" :key="node.crimeId">
               <div class="group flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs">
