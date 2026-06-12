@@ -686,12 +686,12 @@
                   <span x-text="stage.restartsCompleted ?? '—'"></span>
                 </span>
                 <span>|</span>
-                <span>Efficiency:
+                <span>Redundancy:
                   <span :class="{
-                    'font-medium text-green-600 dark:text-green-400': stage.efficiency >= 50,
-                    'font-medium text-yellow-600 dark:text-yellow-400': stage.efficiency >= 25 && stage.efficiency < 50,
-                    'font-medium text-red-600 dark:text-red-400': stage.efficiency < 25
-                  }" x-text="(stage.efficiency ?? '—') + '%'"></span>
+                    'font-medium text-green-600 dark:text-green-400': stage.redundancy >= 75,
+                    'font-medium text-yellow-600 dark:text-yellow-400': stage.redundancy >= 50 && stage.redundancy < 75,
+                    'font-medium text-red-600 dark:text-red-400': stage.redundancy < 50
+                  }" x-text="(stage.redundancy ?? '—') + '%'"></span>
                 </span>
               </div>
             </div>

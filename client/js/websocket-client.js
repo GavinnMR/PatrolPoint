@@ -310,7 +310,7 @@ function handleStageComplete(data) {
     // Stage 2: capture confidence + min pairwise dist + convergence curve
     if (stage === 2) {
         _lastMinPairwiseDist        = result.bestMinPairwiseDist ?? null;
-        _lastConfidence             = result.confidence ?? null;
+        _lastConfidence             = result.confidence  ?? null;
         window._lastMinPairwiseDist = _lastMinPairwiseDist;
         window._pipelineConfidence  = _lastConfidence;
 
@@ -351,7 +351,7 @@ function handleStageComplete(data) {
             if (_lastConfidence !== null)    stageUpdate.confidence        = _lastConfidence;
             if (_lastConvergenceCurve)       stageUpdate.convergenceCurve  = _lastConvergenceCurve;
             stageUpdate.convergenceRestart  = result.convergenceRestart  ?? null;
-            stageUpdate.efficiency          = result.efficiency          ?? null;
+            stageUpdate.redundancy          = result.redundancy          ?? null;
             stageUpdate.restartsCompleted   = result.restartsCompleted   ?? null;
         }
         ui.updateTraceStage(stage, stageUpdate);
@@ -551,7 +551,7 @@ function buildTraceSummary(stage, result, runtimeMs) {
             return [
                 `Best min pairwise distance: ${result.bestMinPairwiseDist?.toFixed(1) ?? '—'}m`,
                 `Best restart: #${result.bestRestart ?? '—'} of ${result.restartsCompleted ?? '—'}`,
-                `Convergence restart: #${result.convergenceRestart ?? '—'} | Efficiency: ${result.efficiency?.toFixed(1) ?? '—'}%`,
+                `Convergence restart: #${result.convergenceRestart ?? '—'} | Redundancy: ${result.redundancy?.toFixed(1) ?? '—'}%`,
                 `Confidence: ${result.confidence?.toFixed(1) ?? '—'}%`,
                 result.cappedFrom != null ? `Patrol count capped: ${result.cappedFrom} → ${result.patrols?.length}` : '',
                 `Runtime: ${rt}`

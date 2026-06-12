@@ -265,7 +265,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
                 cappedFrom:          s2Data.cappedFrom,
                 bestSoFarCurve:      s2Data.bestSoFarCurve,
                 convergenceRestart:  s2Data.convergenceRestart,
-                efficiency:          s2Data.efficiency
+                redundancy:          s2Data.redundancy
             },
             trace:     { log: s2Data.traceLog },
             runtimeMs: stage2RuntimeMs

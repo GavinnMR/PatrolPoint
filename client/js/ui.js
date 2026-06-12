@@ -1105,13 +1105,13 @@ document.addEventListener('alpine:init', () => {
                 confidence:         null,
                 convergenceCurve:   null,
                 convergenceRestart: null,
-                efficiency:         null,
+                redundancy:         null,
                 restartsCompleted:  null
             });
         },
 
         updateTraceStage(id, { status, summary, fullLog, runtimeMs, confidence,
-                                convergenceCurve, convergenceRestart, efficiency, restartsCompleted }) {
+                                convergenceCurve, convergenceRestart, redundancy, restartsCompleted }) {
             const stage = this.traceStages.find(s => s.id === id);
             if (!stage) return;
             if (status             !== undefined) stage.status             = status;
@@ -1121,7 +1121,7 @@ document.addEventListener('alpine:init', () => {
             if (confidence         !== undefined) stage.confidence         = confidence;
             if (convergenceCurve   !== undefined) stage.convergenceCurve   = convergenceCurve;
             if (convergenceRestart !== undefined) stage.convergenceRestart = convergenceRestart;
-            if (efficiency         !== undefined) stage.efficiency         = efficiency;
+            if (redundancy         !== undefined) stage.redundancy         = redundancy;
             if (restartsCompleted  !== undefined) stage.restartsCompleted  = restartsCompleted;
         },
 

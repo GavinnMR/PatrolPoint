@@ -494,10 +494,10 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         }
         bestSoFarCurve.push(runningBest);
     }
-    const efficiency = restartsCompleted > 0
-        ? Math.round((improvingCount / restartsCompleted) * 1000) / 10
+    const redundancy = restartsCompleted > 0
+        ? Math.round((1 - improvingCount / restartsCompleted) * 1000) / 10
         : null;
-    log.push(`Convergence restart: ${convergenceRestart} of ${restartsCompleted}. Efficiency: ${efficiency}%.`);
+    log.push(`Convergence restart: ${convergenceRestart} of ${restartsCompleted}. Redundancy: ${redundancy}%.`);
 
     const hasWarnings = anyMaxIterWarning || duplicateConfigCount > 0 || totalRadiusExpansions > 0;
 
@@ -517,7 +517,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
             traceLog:            log,
             bestSoFarCurve,
             convergenceRestart,
-            efficiency
+            redundancy
         }
     };
 }
