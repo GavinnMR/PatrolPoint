@@ -1064,6 +1064,110 @@ function loadBarangayNetwork(barangay) {
     console.log(`[map.js] Barangay switched to: ${barangay}`);
 }
 
+// ── Route Playback ─────────────────────────────────────────────────────────────
+
+function _pbHaversine(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+const PLAYBACK_BASE_DURATION = 20; // seconds for one full circuit at 1× speed
+
+let _pb = null;  // { marker, rafHandle, points, cumDist, totalDist, speed, progressOffset, timeRef }
+
+function startRoutePlayback(patrolIndex, speed) {
+    stopRoutePlayback();
+
+    if (!_lastRoutes || !_lastRoutes[patrolIndex]) return;
+    const route = _lastRoutes[patrolIndex];
+    if (!route.pathSegments || route.pathSegments.length === 0) return;
+
+    // Flatten segments into one ordered point array, skipping duplicate junction points
+    const points = [];
+    route.pathSegments.forEach((seg, si) => {
+        if (!seg || seg.length === 0) return;
+        const start = si === 0 ? 0 : 1;
+        for (let i = start; i < seg.length; i++) points.push(seg[i]);
+    });
+    if (points.length < 2) return;
+
+    // Pre-compute cumulative distances for interpolation
+    const cumDist = [0];
+    for (let i = 1; i < points.length; i++) {
+        const p = points[i - 1], q = points[i];
+        cumDist.push(cumDist[i - 1] + _pbHaversine(p.lat, p.lng, q.lat, q.lng));
+    }
+    const totalDist = cumDist[cumDist.length - 1];
+    if (totalDist === 0) return;
+
+    // Resolve patrol color
+    const idx = parseInt((route.patrolId || 'p0').replace(/\D/g, ''), 10);
+    const color = (window.S_star && window.S_star[idx] && window.S_star[idx].color)
+        ? window.S_star[idx].color
+        : PATROL_COLORS[idx % PATROL_COLORS.length];
+
+    const icon = L.divIcon({
+        className: '',
+        html: `<div class="pb-dot" style="--pb-color:${color}"></div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+    });
+    const marker = L.marker([points[0].lat, points[0].lng], {
+        icon, zIndexOffset: 2000, interactive: false
+    }).addTo(map);
+
+    _pb = { marker, rafHandle: null, points, cumDist, totalDist,
+            speed: parseFloat(speed) || 1, progressOffset: 0, timeRef: performance.now() };
+
+    function tick(now) {
+        if (!_pb) return;
+        const elapsed  = (now - _pb.timeRef) / 1000;
+        const progress = _pb.progressOffset + elapsed * _pb.speed / PLAYBACK_BASE_DURATION;
+        const looped   = progress % 1;
+
+        // Binary search for current segment
+        const targetDist = looped * _pb.totalDist;
+        let lo = 0, hi = _pb.cumDist.length - 2;
+        while (lo < hi) {
+            const mid = (lo + hi + 1) >> 1;
+            if (_pb.cumDist[mid] <= targetDist) lo = mid; else hi = mid - 1;
+        }
+        const segLen = _pb.cumDist[lo + 1] - _pb.cumDist[lo];
+        const t = segLen > 0 ? (targetDist - _pb.cumDist[lo]) / segLen : 0;
+        const pA = _pb.points[lo], pB = _pb.points[lo + 1];
+        _pb.marker.setLatLng([pA.lat + t * (pB.lat - pA.lat), pA.lng + t * (pB.lng - pA.lng)]);
+
+        if (window.uiApp) window.uiApp.playbackProgress = looped;
+        _pb.rafHandle = requestAnimationFrame(tick);
+    }
+    _pb.rafHandle = requestAnimationFrame(tick);
+
+    if (window.uiApp) { window.uiApp.routePlaybackActive = true; window.uiApp.playbackProgress = 0; }
+}
+
+function stopRoutePlayback() {
+    if (!_pb) return;
+    if (_pb.rafHandle) cancelAnimationFrame(_pb.rafHandle);
+    if (_pb.marker && map) map.removeLayer(_pb.marker);
+    _pb = null;
+    if (window.uiApp) { window.uiApp.routePlaybackActive = false; window.uiApp.playbackProgress = 0; }
+}
+
+function updatePlaybackSpeed(speed) {
+    if (!_pb) return;
+    // Preserve current looped progress so the marker doesn't jump on speed change
+    const now     = performance.now();
+    const elapsed = (now - _pb.timeRef) / 1000;
+    _pb.progressOffset = (_pb.progressOffset + elapsed * _pb.speed / PLAYBACK_BASE_DURATION) % 1;
+    _pb.timeRef = now;
+    _pb.speed   = parseFloat(speed) || 1;
+}
+
 // ── Global exports ─────────────────────────────────────────────────────────────
 window.initMap                    = initMap;
 window.mapResetView               = mapResetView;
@@ -1096,6 +1200,9 @@ window.renderNearestHighlights    = renderNearestHighlights;
 window.clearNearestHighlights     = clearNearestHighlights;
 window.clearAllMapResults         = clearAllMapResults;
 
+window.startRoutePlayback         = startRoutePlayback;
+window.stopRoutePlayback          = stopRoutePlayback;
+window.updatePlaybackSpeed        = updatePlaybackSpeed;
 
 window.highlightPatrolRoute       = highlightPatrolRoute;
 window.clearPatrolHighlight       = clearPatrolHighlight;

@@ -734,29 +734,41 @@
   <!-- Route playback controls bar (appears after roaming pipeline complete)    -->
   <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showPlayback" x-cloak
-       class="fixed bottom-0 left-0 right-80 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-20 px-4 py-2 flex items-center gap-4 text-sm">
-    <span class="font-medium text-xs flex-shrink-0">Route Playback</span>
-    <select x-model="playbackPatrolIndex"
-            class="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700">
-      <template x-for="(r, i) in routes" :key="i">
-        <option :value="i" x-text="'Patrol ' + (i + 1)"></option>
-      </template>
-    </select>
-    <button @click="playbackPlay()"
-            class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">
-      Play
-    </button>
-    <button @click="playbackStop()"
-            class="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
-      Stop
-    </button>
-    <input type="range" x-model="playbackSpeed" min="0.5" max="3" step="0.5" class="w-20" />
-    <span class="text-xs text-gray-400" x-text="playbackSpeed + 'x'"></span>
-    <button @click="showPlayback = false" class="ml-auto text-gray-400 hover:text-gray-600">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-      </svg>
-    </button>
+       class="fixed bottom-0 left-0 right-80 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-20 flex flex-col text-sm">
+    <!-- Progress bar -->
+    <div class="h-1 bg-gray-100 dark:bg-gray-700">
+      <div class="h-1 bg-blue-500 transition-none"
+           :style="'width:' + Math.round(playbackProgress * 100) + '%'"></div>
+    </div>
+    <!-- Controls -->
+    <div class="px-4 py-2 flex items-center gap-4">
+      <span class="font-medium text-xs flex-shrink-0">Route Playback</span>
+      <select x-model="playbackPatrolIndex" @change="onPlaybackPatrolChange()"
+              class="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700">
+        <template x-for="(r, i) in routes" :key="i">
+          <option :value="i" x-text="'Patrol ' + (i + 1)"></option>
+        </template>
+      </select>
+      <button @click="playbackToggle()"
+              :class="routePlaybackActive
+                ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500'
+                : 'bg-blue-500 text-white hover:bg-blue-600'"
+              class="px-3 py-1 text-xs rounded"
+              x-text="routePlaybackActive ? '⏸ Pause' : '▶ Play'">
+      </button>
+      <button @click="playbackStop()"
+              class="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+        ■ Stop
+      </button>
+      <input type="range" x-model="playbackSpeed" @change="onPlaybackSpeedChange()"
+             min="0.5" max="3" step="0.5" class="w-20" />
+      <span class="text-xs text-gray-400" x-text="playbackSpeed + 'x'"></span>
+      <button @click="playbackStop(); showPlayback = false" class="ml-auto text-gray-400 hover:text-gray-600">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <!-- ──────────────────────────────────────────────────────────────────────── -->

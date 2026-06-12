@@ -111,6 +111,7 @@ document.addEventListener('alpine:init', () => {
         routePlaybackActive: false,
         playbackPatrolIndex: 0,
         playbackSpeed:       1,
+        playbackProgress:    0,
 
         // ── Demo mode ─────────────────────────────────────────────────────────
         demoMode: false,
@@ -962,20 +963,26 @@ document.addEventListener('alpine:init', () => {
 
         // ── Route playback ────────────────────────────────────────────────────
 
-        playbackPlay() {
-            if (typeof startRoutePlayback === 'function') {
-                startRoutePlayback(this.playbackPatrolIndex, this.playbackSpeed);
+        playbackToggle() {
+            if (this.routePlaybackActive) {
+                stopRoutePlayback();
             } else {
-                console.log('[ui.js] playbackPlay() — startRoutePlayback not yet implemented (Part 10)');
+                startRoutePlayback(this.playbackPatrolIndex, this.playbackSpeed);
             }
         },
 
         playbackStop() {
-            if (typeof stopRoutePlayback === 'function') {
-                stopRoutePlayback();
-            } else {
-                console.log('[ui.js] playbackStop() — stopRoutePlayback not yet implemented (Part 10)');
+            stopRoutePlayback();
+        },
+
+        onPlaybackPatrolChange() {
+            if (this.routePlaybackActive) {
+                startRoutePlayback(this.playbackPatrolIndex, this.playbackSpeed);
             }
+        },
+
+        onPlaybackSpeedChange() {
+            updatePlaybackSpeed(this.playbackSpeed);
         },
 
         // ── Mobile bottom sheet drag ──────────────────────────────────────────
