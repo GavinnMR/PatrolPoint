@@ -57,7 +57,7 @@
 
       <!-- Map overlays -->
 
-      <!-- Reset View + Road Graph toggle (top-left, offset to not cover Leaflet zoom controls) -->
+      <!-- Reset View + Road Graph Editor toggle (top-left, offset to not cover Leaflet zoom controls) -->
       <div class="absolute top-3 left-12 z-[1000] flex flex-col gap-2">
         <button @click="resetView()"
                 class="bg-white dark:bg-gray-800 text-sm px-3 py-1.5 rounded shadow hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200">
@@ -68,7 +68,7 @@
                   ? 'bg-blue-500 text-white border-blue-500'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600'"
                 class="text-sm px-3 py-1.5 rounded shadow border">
-          Road Graph
+          Road Graph Editor
         </button>
         <button id="graph-reset-btn"
                 @click="resetRoadGraph()"

@@ -250,7 +250,7 @@ function onDarkModeChange(isDark) {
     if (barangayOutline) barangayOutline.setStyle({ color: isDark ? '#6b7280' : '#9ca3af' });
 }
 
-// ── OSM graph-only mode ────────────────────────────────────────────────────────
+// ── Road Graph Editor ──────────────────────────────────────────────────────────
 // V2 does not send nodeMap to the client (server-side compute architecture), so we
 // fetch the road network file directly here for rendering purposes only.
 async function toggleOsmGraphMode(active) {
