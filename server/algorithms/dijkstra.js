@@ -126,7 +126,7 @@ function pointInHull(lat, lng, hull) {
 // Returns:
 //   distances — { nodeId: distanceInMeters } — Infinity for unreachable nodes
 //   parents   — { nodeId: parentNodeId }     — null for source and unreachable nodes
-function dijkstra(sourceId, adjacencyList, nodeMap = null, hull = null, exteriorPenalty = 1) {
+function dijkstra(sourceId, adjacencyList, nodeMap = null, hull = null, exteriorPenalty = 1, removedNodes = null) {
     const penaltyActive = exteriorPenalty > 1 && hull && hull.length >= 3 && nodeMap;
 
     const distances = {};
@@ -235,7 +235,7 @@ export function runDijkstra(sourceId, adjacencyList, dijkstraCache, nodeMap = nu
     if (dijkstraCache[sourceId]) {
         return dijkstraCache[sourceId];
     }
-    const result = dijkstra(sourceId, adjacencyList, nodeMap, hull, exteriorPenalty);
+    const result = dijkstra(sourceId, adjacencyList, nodeMap, hull, exteriorPenalty, removedNodes);
     dijkstraCache[sourceId] = result;
     return result;
 }
