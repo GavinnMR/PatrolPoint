@@ -248,10 +248,12 @@ function renderBarangayBoundary(boundaryPolygon) {
 
     window.barangayMask = barangayMask;
 
-    // Store bounds and fit map — works for any barangay, no hardcoded coordinates needed
+    // Fit map only on first render — subsequent pipeline runs re-send network_loaded
+    // but the user's zoom/pan should be preserved.
+    const isFirstRender = boundaryBounds === null;
     boundaryBounds = L.latLngBounds(boundaryPolygon.map(v => [v.lat, v.lng]));
     map.invalidateSize();
-    map.fitBounds(boundaryBounds, { padding: [24, 24] });
+    if (isFirstRender) map.fitBounds(boundaryBounds, { padding: [24, 24] });
 }
 
 // ── Dark mode ──────────────────────────────────────────────────────────────────
@@ -1076,6 +1078,7 @@ function loadBarangayNetwork(barangay) {
     if (barangayMask)    { map.removeLayer(barangayMask);    barangayMask    = null; }
     if (barangayOutline) { map.removeLayer(barangayOutline); barangayOutline = null; }
     window.barangayMask = null;
+    boundaryBounds = null; // reset so next renderBarangayBoundary fits to the new barangay
     // Clear OSM graph cache so next toggle fetches the new barangay's network
     osmNetworkCache = null;
     // If OSM graph is currently active, redraw it for the new barangay
