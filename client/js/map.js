@@ -1029,6 +1029,14 @@ function renderSessionResults(session, ui) {
                 renderRoutes(routes);
                 renderOverlapOverlay(routes);
                 window.routes = routes;
+                if (ui) {
+                    const animatable = routes.filter(r => r.pathSegments && r.pathSegments.length > 0);
+                    ui.routes = animatable;
+                    if (animatable.length > 0) {
+                        ui.playbackPatrolId = animatable[0].patrolId;
+                        ui.showPlayback     = true;
+                    }
+                }
             } else {
                 renderZoneLines(zones, patrols);
             }
@@ -1080,12 +1088,12 @@ const PLAYBACK_BASE_DURATION = 20; // seconds for one full circuit at 1× speed
 
 let _pb = null;  // { marker, rafHandle, points, cumDist, totalDist, speed, progressOffset, timeRef }
 
-function startRoutePlayback(patrolIndex, speed) {
+function startRoutePlayback(patrolId, speed) {
     stopRoutePlayback();
 
-    if (!_lastRoutes || !_lastRoutes[patrolIndex]) return;
-    const route = _lastRoutes[patrolIndex];
-    if (!route.pathSegments || route.pathSegments.length === 0) return;
+    if (!_lastRoutes) return;
+    const route = _lastRoutes.find(r => r.patrolId === patrolId);
+    if (!route || !route.pathSegments || route.pathSegments.length === 0) return;
 
     // Flatten segments into one ordered point array, skipping duplicate junction points
     const points = [];
@@ -1105,8 +1113,8 @@ function startRoutePlayback(patrolIndex, speed) {
     const totalDist = cumDist[cumDist.length - 1];
     if (totalDist === 0) return;
 
-    // Resolve patrol color
-    const idx = parseInt((route.patrolId || 'p0').replace(/\D/g, ''), 10);
+    // Resolve patrol color via patrolIndex from route object
+    const idx = route.patrolIndex ?? parseInt((route.patrolId || 'p0').replace(/\D/g, ''), 10);
     const color = (window.S_star && window.S_star[idx] && window.S_star[idx].color)
         ? window.S_star[idx].color
         : PATROL_COLORS[idx % PATROL_COLORS.length];

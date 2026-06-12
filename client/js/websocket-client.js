@@ -423,13 +423,14 @@ function handlePipelineComplete(data) {
         ui.pipelineRunning   = false;
         ui.pipelineStageText = 'Recalculate';
 
-        // Sync reactive routes mirror for route playback selector
-        ui.routes = routes || [];
+        // Sync reactive routes mirror — only animatable routes (non-empty pathSegments)
+        const animatableRoutes = (routes || []).filter(r => r.pathSegments && r.pathSegments.length > 0);
+        ui.routes = animatableRoutes;
 
         // Show route playback controls bar in roaming mode
-        if (ui.deploymentMode === 'roaming' && routes && routes.length > 0) {
-            ui.routePlaybackActive = true;
-            ui.showPlayback        = true;
+        if (ui.deploymentMode === 'roaming' && animatableRoutes.length > 0) {
+            ui.playbackPatrolId = animatableRoutes[0].patrolId;
+            ui.showPlayback     = true;
         }
 
         // Build and append pipeline summary to trace panel

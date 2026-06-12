@@ -744,10 +744,10 @@
     <!-- Controls -->
     <div class="px-4 py-2 flex items-center gap-4">
       <span class="font-medium text-xs flex-shrink-0">Route Playback</span>
-      <select x-model="playbackPatrolIndex" @change="onPlaybackPatrolChange()"
+      <select x-model="playbackPatrolId" @change="onPlaybackPatrolChange()"
               class="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700">
-        <template x-for="(r, i) in routes" :key="i">
-          <option :value="i" x-text="'Patrol ' + (i + 1)"></option>
+        <template x-for="r in routes" :key="r.patrolId">
+          <option :value="r.patrolId" x-text="'Patrol ' + (r.patrolIndex + 1)"></option>
         </template>
       </select>
       <button @click="playbackToggle()"

@@ -109,7 +109,7 @@ document.addEventListener('alpine:init', () => {
 
         // ── Route playback ────────────────────────────────────────────────────
         routePlaybackActive: false,
-        playbackPatrolIndex: 0,
+        playbackPatrolId:    '',
         playbackSpeed:       1,
         playbackProgress:    0,
 
@@ -967,7 +967,7 @@ document.addEventListener('alpine:init', () => {
             if (this.routePlaybackActive) {
                 stopRoutePlayback();
             } else {
-                startRoutePlayback(this.playbackPatrolIndex, this.playbackSpeed);
+                startRoutePlayback(this.playbackPatrolId, this.playbackSpeed);
             }
         },
 
@@ -977,7 +977,7 @@ document.addEventListener('alpine:init', () => {
 
         onPlaybackPatrolChange() {
             if (this.routePlaybackActive) {
-                startRoutePlayback(this.playbackPatrolIndex, this.playbackSpeed);
+                startRoutePlayback(this.playbackPatrolId, this.playbackSpeed);
             }
         },
 
