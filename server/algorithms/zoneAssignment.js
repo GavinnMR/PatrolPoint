@@ -432,10 +432,10 @@ export function runZoneAssignment(
             log.push(`Patrol ${patrols[pi].id}: empty zone — stationary deployment`);
         } else if (size === 1) {
             const crimeNode = zones[pi][0];
-            const directDistM = 2 * haversineDistance(
-                patrols[pi].lat, patrols[pi].lng,
-                crimeNode.snappedLat, crimeNode.snappedLng
-            );
+            const roadDist = distanceMatrix[crimeNode.snappedNodeId]?.[pi] ?? Infinity;
+            const directDistM = roadDist < Infinity
+                ? 2 * roadDist
+                : 2 * haversineDistance(patrols[pi].lat, patrols[pi].lng, crimeNode.snappedLat, crimeNode.snappedLng);
             singleNodeZones.push(pi);
             log.push(`Patrol ${patrols[pi].id}: single node zone — direct visit route. Distance: ${Math.round(directDistM)}m`);
         } else {
