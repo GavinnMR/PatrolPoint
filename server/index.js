@@ -64,6 +64,10 @@ app.use(express.static(path.join(__dirname, '..', 'client')));
 // client/data/ is already covered by the static above; this adds the barangay files
 // that live only in the root data/ directory (manifest.json, barangays/*.json, etc.)
 app.use('/data', express.static(path.join(__dirname, '..', 'data')));
+// Serve tests/ directory — dev only, not exposed in production
+if (process.env.NODE_ENV !== 'production') {
+    app.use('/tests', express.static(path.join(__dirname, '..', 'tests')));
+}
 
 // Rate limiter — applied to all /api routes only
 app.use('/api', apiLimiter);

@@ -41,47 +41,46 @@ function shuffle(arr, rng = Math.random) {
     return a;
 }
 
-// Minimum pairwise Haversine distance across all patrol positions — O(n²).
-function globalMinPairwiseDist(positions) {
+// Minimum pairwise road distance across all patrol positions — O(n²) matrix lookups.
+// Falls back to Haversine if roadDistMatrix is not provided.
+function globalMinPairwiseDist(positions, roadDistMatrix) {
     let minDist = Infinity;
     for (let i = 0; i < positions.length; i++) {
         for (let j = i + 1; j < positions.length; j++) {
-            const d = haversineDistance(
-                positions[i].lat, positions[i].lng,
-                positions[j].lat, positions[j].lng
-            );
+            const d = roadDistMatrix
+                ? (roadDistMatrix[positions[i].nodeId]?.[positions[j].nodeId] ?? Infinity)
+                : haversineDistance(positions[i].lat, positions[i].lng, positions[j].lat, positions[j].lng);
             if (d < minDist) minDist = d;
         }
     }
     return minDist;
 }
 
-// Minimum pairwise distance over all pairs that do NOT involve patrol at excludeIdx.
+// Minimum pairwise road distance over all pairs that do NOT involve patrol at excludeIdx.
 // Precomputed once per patrol per iteration — O(n²) — so per-neighbor evaluation is O(n).
-function minPairwiseExcluding(positions, excludeIdx) {
+// Falls back to Haversine if roadDistMatrix is not provided.
+function minPairwiseExcluding(positions, excludeIdx, roadDistMatrix) {
     let minDist = Infinity;
     const n = positions.length;
     for (let j = 0; j < n; j++) {
         if (j === excludeIdx) continue;
         for (let k = j + 1; k < n; k++) {
             if (k === excludeIdx) continue;
-            const d = haversineDistance(
-                positions[j].lat, positions[j].lng,
-                positions[k].lat, positions[k].lng
-            );
+            const d = roadDistMatrix
+                ? (roadDistMatrix[positions[j].nodeId]?.[positions[k].nodeId] ?? Infinity)
+                : haversineDistance(positions[j].lat, positions[j].lng, positions[k].lat, positions[k].lng);
             if (d < minDist) minDist = d;
         }
     }
     return minDist;
 }
 
-// Find all valid candidate nodes within Haversine distance R of patrol at positions[idx].
-// Bounding box pre-filter (expanded by eps) rejects far candidates without Haversine.
+// Find all valid candidate nodes within road distance R of patrol at positions[idx].
+// Uses roadDistMatrix for O(1) lookup per candidate — no bbox pre-filter needed.
+// Falls back to Haversine bbox+confirmation if roadDistMatrix is not provided.
 // Excludes si's own node and any node currently occupied by another patrol.
-function findNeighbors(positions, idx, R, validCandidates, eps) {
-    const si   = positions[idx];
-    const dLat = R / 111000;
-    const dLng = R / (111000 * Math.cos(si.lat * Math.PI / 180));
+function findNeighbors(positions, idx, R, validCandidates, roadDistMatrix, eps) {
+    const si = positions[idx];
 
     const occupiedIds = new Set();
     for (let j = 0; j < positions.length; j++) {
@@ -89,15 +88,25 @@ function findNeighbors(positions, idx, R, validCandidates, eps) {
     }
 
     const neighbors = [];
-    for (const v of validCandidates) {
-        if (v.id === si.nodeId) continue;
-        if (occupiedIds.has(v.id)) continue;
-        // Bounding box pre-filter
-        if (v.lat < si.lat - dLat - eps || v.lat > si.lat + dLat + eps) continue;
-        if (v.lng < si.lng - dLng - eps || v.lng > si.lng + dLng + eps) continue;
-        // Full Haversine only for candidates that passed the bbox
-        if (haversineDistance(si.lat, si.lng, v.lat, v.lng) <= R) {
-            neighbors.push(v);
+
+    if (roadDistMatrix) {
+        const row = roadDistMatrix[si.nodeId];
+        if (!row) return neighbors;
+        for (const v of validCandidates) {
+            if (v.id === si.nodeId) continue;
+            if (occupiedIds.has(v.id)) continue;
+            if ((row[v.id] ?? Infinity) <= R) neighbors.push(v);
+        }
+    } else {
+        // Haversine fallback — bbox pre-filter then confirmation
+        const dLat = R / 111000;
+        const dLng = R / (111000 * Math.cos(si.lat * Math.PI / 180));
+        for (const v of validCandidates) {
+            if (v.id === si.nodeId) continue;
+            if (occupiedIds.has(v.id)) continue;
+            if (v.lat < si.lat - dLat - eps || v.lat > si.lat + dLat + eps) continue;
+            if (v.lng < si.lng - dLng - eps || v.lng > si.lng + dLng + eps) continue;
+            if (haversineDistance(si.lat, si.lng, v.lat, v.lng) <= R) neighbors.push(v);
         }
     }
     return neighbors;
@@ -126,11 +135,15 @@ function findNeighbors(positions, idx, R, validCandidates, eps) {
 //   }
 // }
 export function runHillClimbing(validCandidates, n, hullAreaM2, config, options = {}) {
-    const { pushProgress = null, seed = null } = options;
+    const { pushProgress = null, seed = null, roadDistMatrix = null } = options;
 
     const eps  = config.snapping.boundingBoxEpsilon;   // 1e-7
     const log      = [];
     const warnings = [];
+
+    log.push(roadDistMatrix
+        ? `Distance metric: road network (precomputed matrix, ${Object.keys(roadDistMatrix).length} nodes)`
+        : 'Distance metric: Haversine straight-line (no road matrix provided)');
 
     // ── Defensive check ───────────────────────────────────────────────────────
     if (!validCandidates || validCandidates.length === 0) {
@@ -155,7 +168,9 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         for (const candidate of validCandidates) {
             let total = 0;
             for (const other of validCandidates) {
-                total += haversineDistance(candidate.lat, candidate.lng, other.lat, other.lng);
+                total += roadDistMatrix
+                    ? (roadDistMatrix[candidate.id]?.[other.id] ?? Infinity)
+                    : haversineDistance(candidate.lat, candidate.lng, other.lat, other.lng);
             }
             const avg = total / validCandidates.length;
             if (avg < bestAvgDist) {
@@ -265,15 +280,15 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
                 // ── Synchronous mode ──────────────────────────────────────────
                 // Phase 1: compute proposed moves for ALL patrols using OLD positions.
                 // No patrol sees another's movement during this phase.
-                const globalMinCurrent = globalMinPairwiseDist(positions);
+                const globalMinCurrent = globalMinPairwiseDist(positions, roadDistMatrix);
                 const proposedMoves    = new Array(effectiveN).fill(null);
 
                 for (const idx of shuffledOrder) {
-                    const neighbors = findNeighbors(positions, idx, R, validCandidates, eps);
+                    const neighbors = findNeighbors(positions, idx, R, validCandidates, roadDistMatrix, eps);
                     if (neighbors.length === 0) continue;
                     anyPatrolHadNeighbors = true;
 
-                    const minExclSi  = minPairwiseExcluding(positions, idx);
+                    const minExclSi  = minPairwiseExcluding(positions, idx, roadDistMatrix);
                     let bestMinDist  = globalMinCurrent;
                     let bestNeighbor = null;
 
@@ -281,7 +296,9 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
                         let minFromV = Infinity;
                         for (let j = 0; j < effectiveN; j++) {
                             if (j === idx) continue;
-                            const d = haversineDistance(v.lat, v.lng, positions[j].lat, positions[j].lng);
+                            const d = roadDistMatrix
+                                ? (roadDistMatrix[v.id]?.[positions[j].nodeId] ?? Infinity)
+                                : haversineDistance(v.lat, v.lng, positions[j].lat, positions[j].lng);
                             if (d < minFromV) minFromV = d;
                         }
                         const newGlobalMin = Math.min(minExclSi, minFromV);
@@ -330,7 +347,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
                 // Process patrols sequentially — each patrol sees the moves already
                 // applied by earlier patrols in this iteration's shuffled order.
                 for (const idx of shuffledOrder) {
-                    const neighbors = findNeighbors(positions, idx, R, validCandidates, eps);
+                    const neighbors = findNeighbors(positions, idx, R, validCandidates, roadDistMatrix, eps);
 
                     if (neighbors.length === 0) {
                         log.push(`  Iter ${iteration}, ${positions[idx].id}: no unoccupied neighbors within R=${Math.round(R)}m`);
@@ -340,8 +357,8 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
 
                     // Precompute min pairwise excluding si — O(n²) once per patrol.
                     // Used to avoid recomputing this term for every neighbor candidate.
-                    const minExclSi     = minPairwiseExcluding(positions, idx);
-                    const prevGlobalMin = globalMinPairwiseDist(positions);
+                    const minExclSi     = minPairwiseExcluding(positions, idx, roadDistMatrix);
+                    const prevGlobalMin = globalMinPairwiseDist(positions, roadDistMatrix);
                     let bestMinDist     = prevGlobalMin;
                     let bestNeighbor    = null;
 
@@ -350,7 +367,9 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
                         let minFromV = Infinity;
                         for (let j = 0; j < effectiveN; j++) {
                             if (j === idx) continue;
-                            const d = haversineDistance(v.lat, v.lng, positions[j].lat, positions[j].lng);
+                            const d = roadDistMatrix
+                                ? (roadDistMatrix[v.id]?.[positions[j].nodeId] ?? Infinity)
+                                : haversineDistance(v.lat, v.lng, positions[j].lat, positions[j].lng);
                             if (d < minFromV) minFromV = d;
                         }
                         // New global min if si were at v
@@ -402,7 +421,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
             warnings.push(msg);
         }
 
-        const finalMinDist = effectiveN > 1 ? globalMinPairwiseDist(positions) : 0;
+        const finalMinDist = effectiveN > 1 ? globalMinPairwiseDist(positions, roadDistMatrix) : 0;
 
         // Duplicate configuration detection — compare node ID sets
         const nodeIdSet   = new Set(positions.map(p => p.nodeId));

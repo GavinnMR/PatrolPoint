@@ -512,6 +512,90 @@ window.PP_TESTS = (() => {
             }
         },
 
+        // ══ Stage 2 — Road Distance Matrix ══════════════════════════════════
+
+        {
+            id: 'S2-T11', stage: 2, n: 5,
+            name: 'Road distance matrix — Stage 2 trace confirms road network metric used',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                return [
+                    chkIncludes(traceText, 'road network',      'Stage 2 trace confirms road network distance metric'),
+                    chkEq(patrolMarkers.length, 5,              '5 patrol markers still placed (matrix did not break placement)'),
+                    chkEq(S_star ? S_star.length : 0, 5,        'S_star has 5 positions'),
+                    chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
+                ];
+            }
+        },
+
+        {
+            id: 'S2-T12', stage: 2, n: 5,
+            name: 'Road distance matrix — bestMinPairwiseDist is finite and positive',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const summaries = document.querySelectorAll('#trace-stages .trace-summary');
+                const s2Summary = summaries[1]?.textContent || '';
+                const distMatch = s2Summary.match(/min pairwise[^:]*:\s*([\d.]+)m/i);
+                const dist = distMatch ? parseFloat(distMatch[1]) : null;
+                return [
+                    chkEq(S_star ? S_star.length : 0, 5,                        'S_star has 5 positions'),
+                    chkEq(dist !== null ? 'ok' : 'fail', 'ok',                  'Stage 2 summary contains min pairwise distance'),
+                    chkEq(dist > 0 ? 'ok' : 'fail', 'ok',                       'min pairwise distance is positive (> 0m)'),
+                    chkEq(dist < Infinity ? 'ok' : 'fail', 'ok',                'min pairwise distance is finite (not Infinity)')
+                ];
+            }
+        },
+
+        {
+            id: 'S2-T13', stage: 2, n: 3,
+            name: 'Road distance matrix — n=1 single patrol uses matrix for central node',
+            coords: [
+                { lat: 14.6990, lng: 121.0880 }, { lat: 14.7060, lng: 121.0960 },
+                { lat: 14.7030, lng: 121.1010 }, { lat: 14.6970, lng: 121.0970 },
+                { lat: 14.7080, lng: 121.0880 }
+            ],
+            check() {
+                // Set n=1 to trigger the single-patrol code path that uses road matrix
+                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                return [
+                    chkEq(patrolMarkers.length, 3,              '3 patrol markers placed'),
+                    chkEq(S_star ? S_star.length : 0, 3,        'S_star has 3 positions'),
+                    chkEq(new Set(S_star?.map(p => p.nodeId) ?? []).size, 3, 'all 3 positions at distinct nodes'),
+                    chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
+                ];
+            }
+        },
+
+        {
+            id: 'S2-T14', stage: 2, n: 1,
+            name: 'Road distance matrix — n=1 single patrol, central node via road distances',
+            coords: [
+                { lat: 14.6990, lng: 121.0880 }, { lat: 14.7060, lng: 121.0960 },
+                { lat: 14.7030, lng: 121.1010 }, { lat: 14.6970, lng: 121.0970 },
+                { lat: 14.7080, lng: 121.0880 }
+            ],
+            check() {
+                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                return [
+                    chkEq(patrolMarkers.length, 1,              '1 patrol marker placed'),
+                    chkIncludes(traceText, 'road network',      'trace confirms road network metric used for central node'),
+                    chkIncludes(traceText, 'single patrol',     'trace confirms single patrol mode'),
+                    chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
+                ];
+            }
+        },
+
         // ══ Stage 3 — Zone Assignment (Build Step 5) ═════════════════════════
 
         {

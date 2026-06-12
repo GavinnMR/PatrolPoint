@@ -624,7 +624,7 @@ function renderZoneLines(zones, patrols) {
         zone.forEach(node => {
             const line = L.polyline(
                 [[patrol.lat, patrol.lng],[node.lat, node.lng]],
-                { color, weight: 1, opacity: 0.4, dashArray: '4 6', interactive: false }
+                { color, weight: 2, opacity: 1, dashArray: '4 6', interactive: false }
             ).addTo(map);
             zoneLinesList.push(line);
         });

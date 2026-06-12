@@ -337,7 +337,8 @@ function handleStageComplete(data) {
         const existing    = ui.traceStages.find(s => s.id === stage);
         const existStatus = existing?.status;
         const existLog    = existing?.fullLog || '';
-        const serverLog   = trace?.log || '';
+        const rawLog      = trace?.log ?? '';
+        const serverLog   = Array.isArray(rawLog) ? rawLog.join('\n') : rawLog;
         const combinedLog = [existLog, serverLog].filter(Boolean).join('\n');
 
         const stageUpdate = {

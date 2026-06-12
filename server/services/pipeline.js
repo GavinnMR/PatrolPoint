@@ -10,6 +10,7 @@ import { runHillClimbing } from '../algorithms/hillClimbing.js';
 import { runZoneAssignment } from '../algorithms/zoneAssignment.js';
 import { runTSP } from '../algorithms/tsp.js';
 import { verifyAll } from '../algorithms/verifier.js';
+import { buildRoadDistMatrix } from '../algorithms/dijkstra.js';
 
 // Derive deterministic 32-bit seed from incident coordinates.
 // Incidents are sorted before hashing so add-order does not affect the seed.
@@ -53,7 +54,7 @@ export const DEFAULT_CONFIG = {
         hullExteriorPenalty: 1
     },
     zoneAssignment: {
-        strongRebalancing: false
+        strongRebalancing: true
     },
     snapping: {
         boundingBoxEpsilon: 1e-7,
@@ -228,6 +229,15 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     finalValidCandidates = validCandidates;
     finalHullAreaM2      = s1Data.hullAreaM2 ?? previousHullAreaM2;
 
+    // ── Road distance matrix — precomputed once, shared by Stage 2 and Stage 3 ─
+    // Runs Dijkstra from each valid candidate. O(|candidates| × (V+E)logV).
+    // Worst case ~914 candidates × ~90k ops ≈ 82M ops (~1-2s). Typical hull
+    // covers far fewer candidates so cost is usually well under 1s.
+    const matrixStartMs = performance.now();
+    const roadDistMatrix = buildRoadDistMatrix(validCandidates, networkData.adjacencyList);
+    const matrixMs = Math.round(performance.now() - matrixStartMs);
+    console.log(`Road distance matrix: ${validCandidates.length} candidates, built in ${matrixMs}ms`);
+
     // ── Stage 2: Hill Climbing ────────────────────────────────────────────────
     if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
 
@@ -237,8 +247,9 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     let hill2Result;
     try {
         hill2Result = runHillClimbing(validCandidates, n, hullAreaM2, config, {
-            seed:         deriveHCSeed(incidents),
-            pushProgress: (progressData) => pushMessage({ type: 'stage_progress', data: progressData })
+            seed:            deriveHCSeed(incidents),
+            pushProgress:    (progressData) => pushMessage({ type: 'stage_progress', data: progressData }),
+            roadDistMatrix
         });
     } catch (err) {
         pushMessage({ type: 'error', data: { stage: 2, message: `Stage 2 error: ${err.message}`, fatal: true } });
@@ -316,6 +327,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
             stage: 3,
             result: {
                 zones:           s3Data.zones,
+                patrols:         patrols,
                 emptyZones:      s3Data.emptyZones,
                 singleNodeZones: s3Data.singleNodeZones,
                 multiNodeZones:  s3Data.multiNodeZones,

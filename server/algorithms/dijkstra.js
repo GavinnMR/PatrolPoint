@@ -215,6 +215,26 @@ export function normalizedCacheKey(idA, idB) {
     return numA < numB ? `${idA}|${idB}` : `${idB}|${idA}`;
 }
 
+// ── All-pairs road distance matrix ───────────────────────────────────────────
+// Runs Dijkstra once from each candidate node and stores pairwise road distances.
+// Returns { [nodeId]: { [nodeId]: distanceMeters } } covering every candidate pair.
+// Used by Hill Climbing so neighbor search and the objective function use road
+// distances instead of Haversine straight-line approximations.
+// Time: O(|candidates| × (V+E)logV). Memory: O(|candidates|²) — ~6.7MB worst case.
+export function buildRoadDistMatrix(candidates, adjacencyList) {
+    const matrix = {};
+    const cache  = {};  // local cache — not shared, not persisted
+    for (const src of candidates) {
+        const { distances } = runDijkstra(src.id, adjacencyList, cache);
+        const row = {};
+        for (const dst of candidates) {
+            row[dst.id] = distances[dst.id] ?? Infinity;
+        }
+        matrix[src.id] = row;
+    }
+    return matrix;
+}
+
 // ── Cached Dijkstra runner ────────────────────────────────────────────────────
 // Public entry point used by all other algorithm files.
 // Cache is keyed by sourceId — one Dijkstra run populates distances and parents
