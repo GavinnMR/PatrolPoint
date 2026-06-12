@@ -270,7 +270,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     let filtered      = incidents.slice();
     let outlierIndices = [];
 
-    if (!config.convexHull_includeOutliers && incidents.length >= 3) {
+    if (!config.convexHull.includeOutliers && incidents.length >= 3) {
         const centLat = incidents.reduce((s, p) => s + p.lat, 0) / incidents.length;
         const centLng = incidents.reduce((s, p) => s + p.lng, 0) / incidents.length;
         const dists   = incidents.map(p => haversineDistance(centLat, centLng, p.lat, p.lng));
@@ -528,6 +528,17 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     // Keep hull polygon in result so pipeline can highlight nearest outside intersections.
     if (validCandidates.length === 0) {
         log.push('No intersection nodes found inside hull — cannot place any patrols');
+
+        // Find 5 nearest intersection nodes to hull centroid — all are outside the hull
+        const centLat = hull.reduce((s, v) => s + v.lat, 0) / hull.length;
+        const centLng = hull.reduce((s, v) => s + v.lng, 0) / hull.length;
+        const nearestHighlights = intersectionNodeIds
+            .map(id => ({ id, lat: nodeMap[id].lat, lng: nodeMap[id].lng,
+                dist: haversineDistance(centLat, centLng, nodeMap[id].lat, nodeMap[id].lng) }))
+            .sort((a, b) => a.dist - b.dist)
+            .slice(0, 5)
+            .map(({ id, lat, lng }) => ({ id, lat, lng }));
+
         return {
             status: 'error',
             message: 'No road intersections found inside the danger zone. Please plot incident coordinates closer to road intersections or expand the incident area.',
@@ -537,6 +548,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
                 hullAreaDeg,
                 hullAreaM2,
                 validCandidates: [],
+                nearestHighlights,
                 filteredCount: filtered.length,
                 outlierCount: outlierIndices.length,
                 outlierIndices,

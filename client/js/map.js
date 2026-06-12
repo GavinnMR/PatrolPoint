@@ -196,6 +196,8 @@ function initMap(ui) {
                 if (p) updatePatrolMarkerStyle(p.id || `p${idx}`, 'stationary');
             });
         }
+        // Grey out zone-capped and unreachable crime nodes so user can see they won't be visited
+        (result.excludedCrimeNodes || []).forEach(n => updateCrimeMarkerStyle(n.crimeId, 'excluded'));
         const showRadius = window.uiApp?.activeConfig?.display?.showCoverageRadius;
         if (showRadius && result.patrols) renderCoverageRadius(result.patrols);
     });
@@ -811,26 +813,28 @@ function renderOverlapOverlay(routes) {
     if (!window.uiApp?.activeConfig?.display?.showOverlapColoring) return;
     if (!routes || routes.length === 0) return;
 
-    // First pass: count usage per edge key
-    const edgeCount = new Map();
+    // First pass: track which patrol IDs use each edge — Set prevents single-patrol
+    // double-traversal (e.g. dead-end road) from counting as an overlap.
+    const edgePatrols = new Map(); // key → Set<patrolId>
 
     for (const route of routes) {
         for (const seg of (route.pathSegments || [])) {
             for (let i = 0; i < seg.length - 1; i++) {
                 const key = _edgeKey(seg[i], seg[i + 1]);
-                edgeCount.set(key, (edgeCount.get(key) || 0) + 1);
+                if (!edgePatrols.has(key)) edgePatrols.set(key, new Set());
+                edgePatrols.get(key).add(route.patrolId);
             }
         }
     }
 
-    // Second pass: draw overlay once per edge that has count >= 2
+    // Second pass: draw overlay once per edge shared by 2+ different patrols
     const drawn = new Set();
 
     for (const route of routes) {
         for (const seg of (route.pathSegments || [])) {
             for (let i = 0; i < seg.length - 1; i++) {
                 const key   = _edgeKey(seg[i], seg[i + 1]);
-                const count = edgeCount.get(key) || 0;
+                const count = edgePatrols.get(key)?.size || 0;
                 if (count < 2 || drawn.has(key)) continue;
                 drawn.add(key);
 

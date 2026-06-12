@@ -385,6 +385,10 @@ function handleServerError(data) {
             }
         }
         window.pipelineRunning = false;
+        // Show nearest intersection hints when validCandidates is empty
+        if (data.nearestHighlights && data.nearestHighlights.length > 0) {
+            window.renderNearestHighlights?.(data.nearestHighlights);
+        }
     } else {
         // Non-fatal — append to relevant stage's fullLog only, pipeline continues
         const ui = window.uiApp;

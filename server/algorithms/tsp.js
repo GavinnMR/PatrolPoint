@@ -118,7 +118,8 @@ export function runTSP(
     const log       = [];
     const warnings  = [];
     const routes    = [];
-    const edgeUsage = new Map(); // normalized edge key → count across all patrol routes
+    const edgeUsage = new Map(); // normalized edge key → Set<patrolId> — prevents single-patrol double-traversal false positives
+    let _edgeTrackingPatrolId = null; // set before each patrol's processLeg calls
     const fallbackThreshold = config.tsp.nearestNeighborFallbackThreshold ?? 12;
     const exteriorPenalty   = config.tsp.hullExteriorPenalty ?? 1;
 
@@ -195,10 +196,12 @@ export function runTSP(
             return { coords: [], noPath: true };
         }
 
-        // Track edge usage for overlap detection using normalized numeric keys
+        // Track edge usage for overlap detection using normalized numeric keys.
+        // Use a Set per key so a single patrol traversing the same edge twice doesn't count as overlap.
         for (let i = 0; i + 1 < pathIds.length; i++) {
             const key = normalizedCacheKey(pathIds[i], pathIds[i + 1]);
-            edgeUsage.set(key, (edgeUsage.get(key) ?? 0) + 1);
+            if (!edgeUsage.has(key)) edgeUsage.set(key, new Set());
+            edgeUsage.get(key).add(_edgeTrackingPatrolId);
         }
 
         return { coords: pathIdsToCoords(pathIds), noPath: false };
@@ -211,6 +214,7 @@ export function runTSP(
         const patrol    = patrols[pi];
         const crimeNode = zones[pi][0];
         const sId       = patrol.nodeId;
+        _edgeTrackingPatrolId = patrol.id;
         const cId       = crimeNode.snappedNodeId;
 
         // Ensure Dijkstra from both endpoints is in cache before processLeg calls
@@ -262,6 +266,7 @@ export function runTSP(
         const patrol = patrols[pi];
         const zone   = zones[pi];
         const sId    = patrol.nodeId;
+        _edgeTrackingPatrolId = patrol.id;
 
         log.push(`─── Patrol ${patrol.id}: ${zone.length} crime node(s) ───`);
 
@@ -376,8 +381,8 @@ export function runTSP(
 
     // ── Overlap edges ─────────────────────────────────────────────────────────
     const overlapEdges = [];
-    for (const [key, count] of edgeUsage) {
-        if (count >= 2) overlapEdges.push({ key, count });
+    for (const [key, patrolSet] of edgeUsage) {
+        if (patrolSet.size >= 2) overlapEdges.push({ key, count: patrolSet.size });
     }
     overlapEdges.sort((a, b) => b.count - a.count);
 

@@ -192,7 +192,10 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
 
     // ── Stage 1 error (empty validCandidates or zero-area hull) ──────────────
     if (hull1Result.status === 'error') {
-        pushMessage({ type: 'error', data: { stage: 1, message: hull1Result.message, fatal: true } });
+        pushMessage({ type: 'error', data: {
+            stage: 1, message: hull1Result.message, fatal: true,
+            nearestHighlights: hull1Result.data?.nearestHighlights ?? null
+        }});
         return { previousState };
     }
 
