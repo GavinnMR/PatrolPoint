@@ -165,13 +165,13 @@ export function verifyZoneAssignment(zones, patrols, allCrimeNodes, dijkstraCach
             let minDist    = Infinity;
             let nearestIdx = -1;
             for (let j = 0; j < patrols.length; j++) {
-                const d = dijkstraCache[snappedId].distances[patrols[j].nodeId] ?? Infinity;
+                const d = cachedDist(snappedId, patrols[j].nodeId, dijkstraCache);
                 if (d < minDist) { minDist = d; nearestIdx = j; }
             }
 
             if (nearestIdx === -1 || nearestIdx === pi) continue; // no better patrol, or already optimal
 
-            const assignedDist = dijkstraCache[snappedId].distances[patrols[pi].nodeId] ?? Infinity;
+            const assignedDist = cachedDist(snappedId, patrols[pi].nodeId, dijkstraCache);
             // Allow assignment to non-nearest patrol if within 10% (zone rebalancing tolerance)
             const withinTolerance = minDist > 0 &&
                 (assignedDist - minDist) / minDist <= 0.10;
