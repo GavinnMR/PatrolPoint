@@ -269,7 +269,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         zone3Result = runZoneAssignment(
             incidents, patrols, validCandidates, hull,
             networkData.adjacencyList, dijkstraCache, config,
-            { bestRestartIndex: s2Data.bestRestart }
+            { bestRestartIndex: s2Data.bestRestart, removedNodes }
         );
     } catch (err) {
         pushMessage({ type: 'error', data: { stage: 3, message: `Stage 3 error: ${err.message}`, fatal: true } });

@@ -135,7 +135,7 @@ function rebalanceZones(zones, distanceMatrix, log) {
 // adjacencyList:    road network adjacency list — passed to Dijkstra
 // dijkstraCache:    { [sourceId]: { distances, parents } } — shared with Stage 4, mutated in-place
 // config:           CONFIG object — reads tsp.maxCrimeNodesPerZone, snapping.*
-// options:          { bestRestartIndex?: number } — Hill Climbing restart number for trace log
+// options:          { bestRestartIndex?: number, removedNodes?: Set<string> } — Hill Climbing restart number for trace log
 //
 // Return shape:
 // {
@@ -163,7 +163,7 @@ export function runZoneAssignment(
     incidents, patrols, validCandidates, hull,
     adjacencyList, dijkstraCache, config, options = {}
 ) {
-    const { bestRestartIndex = null } = options;
+    const { bestRestartIndex = null, removedNodes = null } = options;
     const log      = [];
     const warnings = [];
 
@@ -274,10 +274,10 @@ export function runZoneAssignment(
     for (const node of deduplicatedNodes) {
         if (distanceMatrix[node.snappedNodeId]) continue; // already built for this source
 
-        const wasCached = !!dijkstraCache[node.snappedNodeId];
+        const wasCached = !removedNodes && !!dijkstraCache[node.snappedNodeId];
         wasCached ? dijkstraCacheHits++ : dijkstraCacheMisses++;
 
-        const { distances } = runDijkstra(node.snappedNodeId, adjacencyList, dijkstraCache);
+        const { distances } = runDijkstra(node.snappedNodeId, adjacencyList, dijkstraCache, null, null, 1, removedNodes);
         distanceMatrix[node.snappedNodeId] = {};
         for (let pi = 0; pi < n; pi++) {
             distanceMatrix[node.snappedNodeId][pi] = distances[patrols[pi].nodeId] ?? Infinity;
