@@ -232,14 +232,14 @@ export function normalizedCacheKey(idA, idB) {
 //   distances[nodeId] === Infinity   — node unreachable from source
 //   reconstructPath(...)  === null   — no road path exists
 export function runDijkstra(sourceId, adjacencyList, dijkstraCache, nodeMap = null, hull = null, exteriorPenalty = 1, removedNodes = null) {
-    // When removedNodes is active the graph topology differs from the base cache —
-    // skip both read and write so stale (full-graph) results are never returned.
+    // Skip cache read when removedNodes is active — topology differs from base graph,
+    // so a cached base-graph result would return wrong distances. Always recompute.
+    // Writing is always safe: the cache is cleared before every pipeline run, so
+    // a removed-nodes result cannot contaminate a later base-graph run.
     if (!removedNodes && dijkstraCache[sourceId]) {
         return dijkstraCache[sourceId];
     }
     const result = dijkstra(sourceId, adjacencyList, nodeMap, hull, exteriorPenalty, removedNodes);
-    if (!removedNodes) {
-        dijkstraCache[sourceId] = result;
-    }
+    dijkstraCache[sourceId] = result;
     return result;
 }
