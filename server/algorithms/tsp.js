@@ -167,9 +167,10 @@ export function runTSP(
 
     // Get road-following path IDs from fromId to toId using cached Dijkstra parents.
     // Caller must ensure Dijkstra from fromId is already in cache (via trackedDijkstra or buildDistanceMatrix).
+    // Uses effectiveCache (which equals dijkstraCache when no penalty, or the local penalty cache).
     function getPathIds(fromId, toId) {
         if (fromId === toId) return [fromId];
-        const cached = dijkstraCache[fromId];
+        const cached = effectiveCache[fromId];
         if (!cached) return null;
         return reconstructPath(fromId, toId, cached.parents);
     }
@@ -220,8 +221,8 @@ export function runTSP(
         trackedDijkstra(sId);
         trackedDijkstra(cId);
 
-        const distStoC = dijkstraCache[sId].distances[cId] ?? Infinity;
-        const distCtoS = dijkstraCache[cId].distances[sId] ?? Infinity;
+        const distStoC = effectiveCache[sId].distances[cId] ?? Infinity;
+        const distCtoS = effectiveCache[cId].distances[sId] ?? Infinity;
         const circuitDistanceM = (distStoC < Infinity ? distStoC : 0) +
                                  (distCtoS < Infinity ? distCtoS : 0);
 
