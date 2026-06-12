@@ -43,6 +43,7 @@ let _lastRoutes       = null;   // stored for zoom-level redraw
 let _lastPatrols      = null;   // stored for patrol popup content
 let _lastZones        = null;   // stored for patrol popup content
 let _selectedPatrolId = null;   // currently highlighted patrol
+let _activePopup      = null;   // standalone L.popup instance (not bound to marker)
 
 // Comparison overlay layers
 let comparisonLayersA = [];   // Leaflet layers for Run A
@@ -515,9 +516,6 @@ function renderPatrolMarkers(patrols) {
                 if (window.pipelineRunning) return;
                 _onPatrolClick(patrolId, marker);
             });
-            marker.on('popupclose', () => {
-                if (_selectedPatrolId === patrolId) clearPatrolHighlight();
-            });
             patrolClusterGroup.addLayer(marker);
             patrolMarkerMap[patrolId] = { marker, color, num, style: 'roaming', coverageCircle: null };
             window.patrolMarkers[patrolId] = marker;
@@ -554,9 +552,6 @@ function updatePatrolPositionsInstant(positions) {
                 L.DomEvent.stopPropagation(e);
                 if (window.pipelineRunning) return;
                 _onPatrolClick(patrolId, marker);
-            });
-            marker.on('popupclose', () => {
-                if (_selectedPatrolId === patrolId) clearPatrolHighlight();
             });
             patrolClusterGroup.addLayer(marker);
             patrolMarkerMap[patrolId] = { marker, color, num, style: 'roaming', coverageCircle: null };
@@ -700,17 +695,28 @@ function _buildPatrolPopupContent(patrolId) {
 }
 
 function _onPatrolClick(patrolId, marker) {
+    // Toggle: same patrol clicked again → close and deselect
     if (_selectedPatrolId === patrolId) {
-        marker.closePopup();
+        if (_activePopup) { _activePopup.remove(); _activePopup = null; }
         clearPatrolHighlight();
         return;
     }
+
+    // Close any popup from a previously selected patrol
+    if (_activePopup) { _activePopup.remove(); _activePopup = null; }
+
     highlightPatrolRoute(patrolId);
-    marker.bindPopup(_buildPatrolPopupContent(patrolId), {
-        maxWidth: 260,
-        className: 'patrol-popup-wrapper',
-        closeButton: true
-    }).openPopup();
+
+    // Standalone popup — NOT bound to the marker so Leaflet adds no competing click handler
+    _activePopup = L.popup({ maxWidth: 260, className: 'patrol-popup-wrapper', closeButton: true })
+        .setLatLng(marker.getLatLng())
+        .setContent(_buildPatrolPopupContent(patrolId))
+        .openOn(map);
+
+    _activePopup.on('remove', () => {
+        _activePopup = null;
+        if (_selectedPatrolId === patrolId) clearPatrolHighlight();
+    });
 }
 
 function highlightPatrolRoute(patrolId) {
@@ -910,6 +916,7 @@ function clearAllMapResults() {
     _lastPatrols      = null;
     _lastZones        = null;
     _selectedPatrolId = null;
+    if (_activePopup) { _activePopup.remove(); _activePopup = null; }
 }
 
 // ── Algorithm comparison overlay ──────────────────────────────────────────────
