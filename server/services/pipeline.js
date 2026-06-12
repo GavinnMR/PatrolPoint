@@ -11,6 +11,21 @@ import { runZoneAssignment } from '../algorithms/zoneAssignment.js';
 import { runTSP } from '../algorithms/tsp.js';
 import { verifyAll } from '../algorithms/verifier.js';
 
+// Derive deterministic 32-bit seed from incident coordinates.
+// Incidents are sorted before hashing so add-order does not affect the seed.
+// Same incident set → same seed → Hill Climbing produces identical results every run.
+function deriveHCSeed(incidents) {
+    const sorted = incidents.slice().sort((a, b) => a.lat - b.lat || a.lng - b.lng);
+    let h = 2166136261; // FNV-1a offset basis
+    for (const p of sorted) {
+        const latInt = Math.round(p.lat * 1e6);
+        const lngInt = Math.round(p.lng * 1e6);
+        h = (Math.imul(h ^ latInt, 16777619)) >>> 0;
+        h = (Math.imul(h ^ lngInt, 16777619)) >>> 0;
+    }
+    return h;
+}
+
 // Patrol color palette — identical to V1 and hillClimbing.js
 const PATROL_COLORS = [
     '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
@@ -222,6 +237,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     let hill2Result;
     try {
         hill2Result = runHillClimbing(validCandidates, n, hullAreaM2, config, {
+            seed:         deriveHCSeed(incidents),
             pushProgress: (progressData) => pushMessage({ type: 'stage_progress', data: progressData })
         });
     } catch (err) {

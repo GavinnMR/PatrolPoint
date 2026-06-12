@@ -12,6 +12,17 @@
 
 import { haversineDistance } from './dijkstra.js';
 
+// mulberry32 — seedable PRNG (Vigna 2017). Returns a callable that produces [0,1) floats.
+// Same seed → same sequence. Used to make Hill Climbing deterministic per incident set.
+function mulberry32(seed) {
+    return function () {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
 const PATROL_COLORS = [
     '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
     '#1abc9c', '#e67e22', '#34495e', '#e91e63', '#00bcd4'
@@ -20,10 +31,11 @@ const PATROL_COLORS = [
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Fisher-Yates shuffle — returns a shuffled copy, never mutates input.
-function shuffle(arr) {
+// rng defaults to Math.random so callers without a seed still work.
+function shuffle(arr, rng = Math.random) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(rng() * (i + 1));
         [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
@@ -114,7 +126,7 @@ function findNeighbors(positions, idx, R, validCandidates, eps) {
 //   }
 // }
 export function runHillClimbing(validCandidates, n, hullAreaM2, config, options = {}) {
-    const { pushProgress = null } = options;
+    const { pushProgress = null, seed = null } = options;
 
     const eps  = config.snapping.boundingBoxEpsilon;   // 1e-7
     const log      = [];
@@ -211,9 +223,15 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     for (let restartIdx = 0; restartIdx < maxRestarts; restartIdx++) {
         log.push(`─── Restart ${restartIdx + 1} ───`);
 
+        // Per-restart RNG — seeded from incident hash XOR restart index so each restart
+        // explores a different region while remaining fully deterministic per input set.
+        // Falls back to Math.random when no seed is provided.
+        const rng = seed !== null
+            ? mulberry32((seed ^ Math.imul(restartIdx, 2654435761)) >>> 0)
+            : Math.random;
+
         // Shuffle-and-slice initialization — guarantees unique starting positions.
-        // Different random shuffle each restart — no fixed seed.
-        const shuffledCandidates = shuffle(validCandidates);
+        const shuffledCandidates = shuffle(validCandidates, rng);
         let positions = shuffledCandidates.slice(0, effectiveN).map((node, i) => ({
             id:     `s${i + 1}`,
             nodeId:  node.id,
@@ -235,7 +253,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
             let anyPatrolHadNeighbors = false;
 
             // Shuffle patrol processing order each iteration to prevent systematic bias.
-            const shuffledOrder = shuffle(Array.from({ length: effectiveN }, (_, i) => i));
+            const shuffledOrder = shuffle(Array.from({ length: effectiveN }, (_, i) => i), rng);
 
             if (syncMode) {
                 // ── Synchronous mode ──────────────────────────────────────────
