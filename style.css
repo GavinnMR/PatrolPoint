@@ -164,52 +164,61 @@ html, body {
   background: #5a6268;
 }
 
-#graph-edit-btn {
+.graph-edit-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.graph-edit-btn {
   display: block;
-  width: 100%;
-  padding: 6px;
+  padding: 6px 10px;
   background: #fff;
   border: 1px solid #2563eb;
   color: #2563eb;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
-  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 
-#graph-edit-btn:hover:not(:disabled) {
+.graph-edit-btn:hover:not(:disabled) {
   background: #eff6ff;
 }
 
-#graph-edit-btn.active {
+.graph-edit-btn.active {
   background: #2563eb;
   color: #fff;
 }
 
-#graph-edit-btn.active:hover {
+.graph-edit-btn.active:hover {
   background: #1d4ed8;
 }
 
-#graph-edit-btn:disabled {
+.graph-edit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-#graph-reset-btn {
-  width: 100%;
-  padding: 6px;
+.graph-reset-btn {
+  display: block;
+  padding: 6px 10px;
   background: #fff;
   border: 1px solid #dc3545;
   color: #dc3545;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
-  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
   transition: background 0.15s;
+  white-space: nowrap;
 }
 
-#graph-reset-btn:hover {
+.graph-reset-btn:hover {
   background: #fff5f5;
 }
 

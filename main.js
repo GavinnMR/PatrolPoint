@@ -119,6 +119,44 @@ window.addEventListener('resize', () => map.invalidateSize());
 // boundaryBounds is set once the boundary file loads; Reset View uses it.
 let boundaryBounds = null;
 
+// Road Graph Edit controls (topleft)
+let graphEditBtnEl = null;
+let graphResetBtnEl = null;
+
+const GraphEditControl = L.Control.extend({
+    options: { position: 'topleft' },
+    onAdd() {
+        const container = L.DomUtil.create('div', 'graph-edit-control');
+        L.DomEvent.disableClickPropagation(container);
+
+        graphEditBtnEl = L.DomUtil.create('button', 'graph-edit-btn', container);
+        graphEditBtnEl.textContent = 'Edit Road Graph';
+        L.DomEvent.on(graphEditBtnEl, 'click', () => toggleGraphEditMode());
+
+        graphResetBtnEl = L.DomUtil.create('button', 'graph-reset-btn', container);
+        graphResetBtnEl.textContent = 'Reset Road Graph';
+        graphResetBtnEl.style.display = 'none';
+        L.DomEvent.on(graphResetBtnEl, 'click', () => {
+            if (!confirm(`Restore ${removedNodes.size} removed road node(s) to the graph?`)) return;
+            for (const nodeId of removedNodes) {
+                const marker = graphNodeMarkers.get(nodeId);
+                if (marker) marker.setStyle({ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.6, weight: 1 });
+                for (const edgeObj of (graphNodeEdgeMap.get(nodeId) || [])) {
+                    const stillAffected = (removedNodes.has(edgeObj.fromId) && edgeObj.fromId !== nodeId) ||
+                                         (removedNodes.has(edgeObj.toId)   && edgeObj.toId   !== nodeId);
+                    if (!stillAffected) edgeObj.line.setStyle({ color: '#6b7280', opacity: 0.35 });
+                }
+            }
+            removedNodes.clear();
+            validCandidatesHullCache = null;
+            updateGraphResetBtn();
+        });
+
+        return container;
+    }
+});
+map.addControl(new GraphEditControl());
+
 // Reset View button
 const ResetViewControl = L.Control.extend({
     options: { position: 'topright' },
@@ -387,7 +425,7 @@ function stopPipeline() {
     loadingOverlay.style.display = 'none';
     loadingMessage.style.color = '#444';
     map.on('click', onMapClick);
-    document.getElementById('graph-edit-btn').disabled = false;
+    if (graphEditBtnEl) graphEditBtnEl.disabled = false;
 }
 
 function addTraceStage(num, name, status, summaryLines, logLines) {
@@ -522,7 +560,7 @@ function toggleNodeRemoval(nodeId, marker) {
 
 function toggleGraphEditMode() {
     graphEditMode = !graphEditMode;
-    const btn = document.getElementById('graph-edit-btn');
+    const btn = graphEditBtnEl;
     if (graphEditMode) {
         if (!graphLayerBuilt) buildGraphLayer();
         graphLayerGroup.addTo(map);
@@ -537,8 +575,7 @@ function toggleGraphEditMode() {
 }
 
 function updateGraphResetBtn() {
-    document.getElementById('graph-reset-btn').style.display =
-        removedNodes.size > 0 ? 'block' : 'none';
+    if (graphResetBtnEl) graphResetBtnEl.style.display = removedNodes.size > 0 ? 'block' : 'none';
 }
 
 async function runPipeline() {
@@ -586,7 +623,7 @@ async function runPipeline() {
     pipelineRunning = true;
     pipelineResults = false;
     recalcBtn.disabled = true;
-    document.getElementById('graph-edit-btn').disabled = true;
+    if (graphEditBtnEl) graphEditBtnEl.disabled = true;
     if (graphEditMode) toggleGraphEditMode(); // exit edit mode before running
     map.off('click', onMapClick);
 
@@ -1301,27 +1338,6 @@ document.getElementById('undo-btn').addEventListener('click', () => {
     addCrimeNode(lastRemovedPoint);
     lastRemovedPoint = null;
     updateUndoButton();
-});
-
-// ── ROAD GRAPH EDIT BUTTONS ───────────────────────────────────
-document.getElementById('graph-edit-btn').addEventListener('click', () => {
-    toggleGraphEditMode();
-});
-
-document.getElementById('graph-reset-btn').addEventListener('click', () => {
-    if (!confirm(`Restore ${removedNodes.size} removed road node(s) to the graph?`)) return;
-    for (const nodeId of removedNodes) {
-        const marker = graphNodeMarkers.get(nodeId);
-        if (marker) marker.setStyle({ color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.6, weight: 1 });
-        for (const edgeObj of (graphNodeEdgeMap.get(nodeId) || [])) {
-            const stillAffected = removedNodes.has(edgeObj.fromId) && edgeObj.fromId !== nodeId ||
-                                  removedNodes.has(edgeObj.toId)   && edgeObj.toId   !== nodeId;
-            if (!stillAffected) edgeObj.line.setStyle({ color: '#6b7280', opacity: 0.35 });
-        }
-    }
-    removedNodes.clear();
-    validCandidatesHullCache = null;
-    updateGraphResetBtn();
 });
 
 // ── COLLAPSIBLE SECTIONS ──────────────────────────────────────
