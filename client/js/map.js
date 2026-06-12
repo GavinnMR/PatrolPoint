@@ -39,7 +39,10 @@ let graphNodeEdgeMap        = {};    // nodeId → [{line, fromId, toId}] for co
 let boundaryBounds          = null;  // L.LatLngBounds — set when boundary renders, used by Reset View
 let osmNetworkCache         = null;  // {nodeMap, adjacencyList, intersectionNodeIds} — fetched on demand for OSM Graph
 
-let _lastRoutes = null;              // stored for zoom-level redraw
+let _lastRoutes       = null;   // stored for zoom-level redraw
+let _lastPatrols      = null;   // stored for patrol popup content
+let _lastZones        = null;   // stored for patrol popup content
+let _selectedPatrolId = null;   // currently highlighted patrol
 
 // Comparison overlay layers
 let comparisonLayersA = [];   // Leaflet layers for Run A
@@ -182,6 +185,8 @@ function initMap(ui) {
 
     replacePlaceholder('onZonesComplete', (result) => {
         clearZoneLines();
+        _lastZones   = result.zones   || null;
+        _lastPatrols = result.patrols || null;
         if (result.zones && result.patrols) {
             renderZoneLines(result.zones, result.patrols);
             // Mark empty-zone patrols as stationary
@@ -502,8 +507,16 @@ function renderPatrolMarkers(patrols) {
             const icon = _roamingIcon(color, num);
             const marker = L.marker([patrol.lat, patrol.lng], {
                 icon,
-                interactive: false,
+                interactive: true,
                 zIndexOffset: 500
+            });
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                if (window.pipelineRunning) return;
+                _onPatrolClick(patrolId, marker);
+            });
+            marker.on('popupclose', () => {
+                if (_selectedPatrolId === patrolId) clearPatrolHighlight();
             });
             patrolClusterGroup.addLayer(marker);
             patrolMarkerMap[patrolId] = { marker, color, num, style: 'roaming', coverageCircle: null };
@@ -534,8 +547,16 @@ function updatePatrolPositionsInstant(positions) {
         } else {
             const marker = L.marker([pos.lat, pos.lng], {
                 icon: _roamingIcon(color, num),
-                interactive: false,
+                interactive: true,
                 zIndexOffset: 500
+            });
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                if (window.pipelineRunning) return;
+                _onPatrolClick(patrolId, marker);
+            });
+            marker.on('popupclose', () => {
+                if (_selectedPatrolId === patrolId) clearPatrolHighlight();
             });
             patrolClusterGroup.addLayer(marker);
             patrolMarkerMap[patrolId] = { marker, color, num, style: 'roaming', coverageCircle: null };
@@ -631,6 +652,85 @@ function renderCoverageRadius(patrols) {
         }).addTo(map);
         if (patrolMarkerMap[patrolId]) patrolMarkerMap[patrolId].coverageCircle = circle;
     });
+}
+
+// ── Patrol info popup & route highlight ───────────────────────────────────────
+
+function _buildPatrolPopupContent(patrolId) {
+    const entry = patrolMarkerMap[patrolId];
+    if (!entry) return '<div class="pp-body"><em>No data</em></div>';
+
+    const { color, num, style } = entry;
+    const latlng = entry.marker.getLatLng();
+    const idx    = parseInt(patrolId.replace(/\D/g, ''), 10);
+
+    const zone  = _lastZones  ? (_lastZones[idx]  || []) : null;
+    const route = _lastRoutes ? _lastRoutes.find(r => r.patrolId === patrolId) : null;
+
+    const modeLabel = style === 'stationary' ? 'Stationary' : 'Roaming';
+
+    let rows = `
+      <div class="pp-row">
+        <span class="pp-label">Position</span>
+        <span class="pp-value">${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}</span>
+      </div>`;
+
+    if (zone !== null) {
+        rows += `
+      <div class="pp-row">
+        <span class="pp-label">Crime nodes</span>
+        <span class="pp-value">${zone.length}</span>
+      </div>`;
+    }
+
+    if (route && route.totalDistance != null) {
+        rows += `
+      <div class="pp-row">
+        <span class="pp-label">Circuit</span>
+        <span class="pp-value">${Math.round(route.totalDistance)} m</span>
+      </div>`;
+    }
+
+    return `
+      <div class="pp-header" style="background:${color}">
+        <span class="pp-title">Patrol ${num}</span>
+        <span class="pp-badge">${modeLabel}</span>
+      </div>
+      <div class="pp-body">${rows}</div>`;
+}
+
+function _onPatrolClick(patrolId, marker) {
+    if (_selectedPatrolId === patrolId) {
+        marker.closePopup();
+        clearPatrolHighlight();
+        return;
+    }
+    highlightPatrolRoute(patrolId);
+    marker.bindPopup(_buildPatrolPopupContent(patrolId), {
+        maxWidth: 260,
+        className: 'patrol-popup-wrapper',
+        closeButton: true
+    }).openPopup();
+}
+
+function highlightPatrolRoute(patrolId) {
+    _selectedPatrolId = patrolId;
+    Object.entries(routePolylines).forEach(([pid, entry]) => {
+        const selected = pid === patrolId;
+        entry.lines.forEach(line => {
+            line.setStyle({ weight: selected ? 7 : 2, opacity: selected ? 1.0 : 0.2 });
+            if (selected) line.bringToFront();
+        });
+    });
+    overlapOverlayLines.forEach(l => l.setStyle({ opacity: 0.15 }));
+}
+
+function clearPatrolHighlight() {
+    _selectedPatrolId = null;
+    Object.values(routePolylines).forEach(entry => {
+        entry.lines.forEach(line => line.setStyle({ weight: 4, opacity: 0.9 }));
+    });
+    overlapOverlayLines.forEach(l => l.setStyle({ opacity: 1 }));
 }
 
 // ── Route rendering ────────────────────────────────────────────────────────────
@@ -806,7 +906,10 @@ function clearAllMapResults() {
 
     window.currentHull     = null;
     window.pipelineComplete = false;
-    _lastRoutes            = null;
+    _lastRoutes       = null;
+    _lastPatrols      = null;
+    _lastZones        = null;
+    _selectedPatrolId = null;
 }
 
 // ── Algorithm comparison overlay ──────────────────────────────────────────────
@@ -912,6 +1015,8 @@ function renderSessionResults(session, ui) {
 
         if (zones) {
             window.zones = zones;
+            _lastPatrols = patrols;
+            _lastZones   = zones;
             const mode = session.deployment_mode || 'stationary';
             if (mode === 'roaming' && routes && routes.length > 0) {
                 renderRoutes(routes);
@@ -984,6 +1089,9 @@ window.renderNearestHighlights    = renderNearestHighlights;
 window.clearNearestHighlights     = clearNearestHighlights;
 window.clearAllMapResults         = clearAllMapResults;
 
+
+window.highlightPatrolRoute       = highlightPatrolRoute;
+window.clearPatrolHighlight       = clearPatrolHighlight;
 
 window.renderComparisonResults    = renderComparisonResults;
 window.showComparisonRunA         = showComparisonRunA;

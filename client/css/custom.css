@@ -47,7 +47,7 @@
     color: #fff;
     border: 2px solid rgba(255,255,255,0.8);
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    cursor: default;
+    cursor: pointer;
 }
 
 /* Patrol marker (stationary) */
@@ -55,7 +55,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    cursor: default;
+    cursor: pointer;
 }
 .patrol-pin {
     width: 28px;
@@ -115,6 +115,69 @@
     pointer-events: none;
 }
 .patrol-marker-roaming { position: relative; }
+
+/* Patrol info popup */
+.patrol-popup-wrapper .leaflet-popup-content-wrapper {
+    padding: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    min-width: 210px;
+}
+.patrol-popup-wrapper .leaflet-popup-content {
+    margin: 0;
+    line-height: 1.4;
+}
+.pp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    color: #fff;
+}
+.pp-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+.pp-badge {
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.22);
+    border-radius: 4px;
+    padding: 1px 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.pp-body {
+    padding: 6px 12px 8px;
+    background: #fff;
+}
+.pp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 4px 0;
+    font-size: 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+.pp-row:last-child { border-bottom: none; }
+.pp-label {
+    color: #6b7280;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.pp-value {
+    color: #111827;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    font-family: monospace;
+}
 
 /* Mobile bottom sheet — touch targets */
 @media (max-width: 767px) {
