@@ -388,17 +388,7 @@ document.addEventListener('alpine:init', () => {
         resetRoadGraph() {
             if (!window.removedNodes || window.removedNodes.size === 0) return;
             if (!confirm(`Restore ${window.removedNodes.size} removed road node(s) to the graph?`)) return;
-            for (const nodeId of window.removedNodes) {
-                const marker = window.graphNodeMarkers?.[nodeId];
-                if (marker) marker.setStyle({ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.7, weight: 0 });
-                for (const edgeObj of (window.graphNodeEdgeMap?.[nodeId] || [])) {
-                    const stillAffected = (window.removedNodes.has(edgeObj.fromId) && edgeObj.fromId !== nodeId) ||
-                                         (window.removedNodes.has(edgeObj.toId)   && edgeObj.toId   !== nodeId);
-                    if (!stillAffected) edgeObj.line.setStyle({ color: '#6b7280', opacity: 0.5 });
-                }
-            }
-            window.removedNodes.clear();
-            if (typeof updateGraphResetBtn === 'function') updateGraphResetBtn();
+            if (typeof resetRemovedNodes === 'function') resetRemovedNodes();
         },
 
         // ── Map view ──────────────────────────────────────────────────────────

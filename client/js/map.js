@@ -358,6 +358,20 @@ function updateGraphResetBtn() {
     if (btn) btn.style.display = window.removedNodes.size > 0 ? 'block' : 'none';
 }
 
+function resetRemovedNodes() {
+    for (const nodeId of window.removedNodes) {
+        const marker = graphNodeMarkers[nodeId];
+        if (marker) marker.setStyle({ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.7, weight: 0 });
+        for (const edgeObj of (graphNodeEdgeMap[nodeId] || [])) {
+            const stillAffected = (window.removedNodes.has(edgeObj.fromId) && edgeObj.fromId !== nodeId) ||
+                                  (window.removedNodes.has(edgeObj.toId)   && edgeObj.toId   !== nodeId);
+            if (!stillAffected) edgeObj.line.setStyle({ color: '#6b7280', opacity: 0.5 });
+        }
+    }
+    window.removedNodes.clear();
+    updateGraphResetBtn();
+}
+
 // ── Reset view ─────────────────────────────────────────────────────────────────
 function mapResetView() {
     if (!map) return;
@@ -945,6 +959,7 @@ window.onDarkModeChange           = onDarkModeChange;
 window.toggleOsmGraphMode         = toggleOsmGraphMode;
 window.toggleNodeRemoval          = toggleNodeRemoval;
 window.updateGraphResetBtn        = updateGraphResetBtn;
+window.resetRemovedNodes          = resetRemovedNodes;
 window.graphNodeMarkers           = graphNodeMarkers;
 window.graphNodeEdgeMap           = graphNodeEdgeMap;
 window.loadBarangayNetwork        = loadBarangayNetwork;
