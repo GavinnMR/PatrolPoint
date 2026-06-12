@@ -1030,7 +1030,9 @@ function renderSessionResults(session, ui) {
                 renderOverlapOverlay(routes);
                 window.routes = routes;
                 if (ui) {
-                    const animatable = routes.filter(r => r.pathSegments && r.pathSegments.length > 0);
+                    const animatable = routes
+                        .filter(r => r.pathSegments && r.pathSegments.length > 0)
+                        .sort((a, b) => (a.patrolIndex ?? 0) - (b.patrolIndex ?? 0));
                     ui.routes = animatable;
                     if (animatable.length > 0) {
                         ui.playbackPatrolId = animatable[0].patrolId;

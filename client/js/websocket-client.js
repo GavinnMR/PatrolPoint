@@ -424,7 +424,9 @@ function handlePipelineComplete(data) {
         ui.pipelineStageText = 'Recalculate';
 
         // Sync reactive routes mirror — only animatable routes (non-empty pathSegments)
-        const animatableRoutes = (routes || []).filter(r => r.pathSegments && r.pathSegments.length > 0);
+        const animatableRoutes = (routes || [])
+            .filter(r => r.pathSegments && r.pathSegments.length > 0)
+            .sort((a, b) => (a.patrolIndex ?? 0) - (b.patrolIndex ?? 0));
         ui.routes = animatableRoutes;
 
         // Show route playback controls bar in roaming mode
