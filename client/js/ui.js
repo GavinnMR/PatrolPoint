@@ -1097,23 +1097,32 @@ document.addEventListener('alpine:init', () => {
             this.traceStages.push({
                 id,
                 name,
-                status:     'running',
-                summary:    '',
-                fullLog:    '',
-                expanded:   true,
-                runtimeMs:  null,
-                confidence: null
+                status:             'running',
+                summary:            '',
+                fullLog:            '',
+                expanded:           true,
+                runtimeMs:          null,
+                confidence:         null,
+                convergenceCurve:   null,
+                convergenceRestart: null,
+                efficiency:         null,
+                restartsCompleted:  null
             });
         },
 
-        updateTraceStage(id, { status, summary, fullLog, runtimeMs, confidence }) {
+        updateTraceStage(id, { status, summary, fullLog, runtimeMs, confidence,
+                                convergenceCurve, convergenceRestart, efficiency, restartsCompleted }) {
             const stage = this.traceStages.find(s => s.id === id);
             if (!stage) return;
-            if (status     !== undefined) stage.status     = status;
-            if (summary    !== undefined) stage.summary    = summary;
-            if (fullLog    !== undefined) stage.fullLog    = fullLog;
-            if (runtimeMs  !== undefined) stage.runtimeMs  = runtimeMs;
-            if (confidence !== undefined) stage.confidence = confidence;
+            if (status             !== undefined) stage.status             = status;
+            if (summary            !== undefined) stage.summary            = summary;
+            if (fullLog            !== undefined) stage.fullLog            = fullLog;
+            if (runtimeMs          !== undefined) stage.runtimeMs          = runtimeMs;
+            if (confidence         !== undefined) stage.confidence         = confidence;
+            if (convergenceCurve   !== undefined) stage.convergenceCurve   = convergenceCurve;
+            if (convergenceRestart !== undefined) stage.convergenceRestart = convergenceRestart;
+            if (efficiency         !== undefined) stage.efficiency         = efficiency;
+            if (restartsCompleted  !== undefined) stage.restartsCompleted  = restartsCompleted;
         },
 
         setPipelineSummary(text) {

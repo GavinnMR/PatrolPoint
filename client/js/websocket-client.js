@@ -16,6 +16,7 @@ let _emptyZoneCount       = 0;     // set by stage 3 handler, used in pipeline_c
 let _overlapEdgeCount     = 0;     // set by stage 4 handler, used in pipeline_complete summary
 let _lastMinPairwiseDist  = null;  // set by stage 2 result, used in comparison capture
 let _lastConfidence       = null;  // set by stage 2 result, used for confidence badge
+let _lastConvergenceCurve = null;  // set by stage 2 result, used for curve chart
 let _lastTotalRuntimeMs   = null;  // set by pipeline_complete, used in comparison capture
 
 const MAX_RECONNECT   = 5;
@@ -240,12 +241,13 @@ function handlePipelineStart(data) {
     window.pipelineRunning  = true;
 
     // Reset per-run tracking
-    pipelineWarnings     = [];
-    _emptyZoneCount      = 0;
-    _overlapEdgeCount    = 0;
-    _lastMinPairwiseDist = null;
-    _lastConfidence      = null;
-    _lastTotalRuntimeMs  = null;
+    pipelineWarnings      = [];
+    _emptyZoneCount       = 0;
+    _overlapEdgeCount     = 0;
+    _lastMinPairwiseDist  = null;
+    _lastConfidence       = null;
+    _lastConvergenceCurve = null;
+    _lastTotalRuntimeMs   = null;
 
     const ui = window.uiApp;
     if (ui) {
@@ -305,12 +307,26 @@ function handleStageComplete(data) {
     if (stage === 3) _emptyZoneCount   = result.emptyZones?.length ?? 0;
     if (stage === 4) _overlapEdgeCount = result.overlapEdges?.length ?? 0;
 
-    // Stage 2: capture confidence + min pairwise dist for comparison mode and badge
+    // Stage 2: capture confidence + min pairwise dist + convergence curve
     if (stage === 2) {
         _lastMinPairwiseDist        = result.bestMinPairwiseDist ?? null;
         _lastConfidence             = result.confidence ?? null;
         window._lastMinPairwiseDist = _lastMinPairwiseDist;
         window._pipelineConfidence  = _lastConfidence;
+
+        // Build convergence curve array for bar chart rendering.
+        // Each entry: { bestSoFar (meters), pct (0–100 relative to final best), improved (bool) }
+        const bsf = result.bestSoFarCurve;
+        if (bsf && bsf.length > 0) {
+            const max = bsf[bsf.length - 1] || 1;
+            _lastConvergenceCurve = bsf.map((val, i) => ({
+                bestSoFar: val,
+                pct:       Math.round((val / max) * 100),
+                improved:  i === 0 ? true : val > bsf[i - 1]
+            }));
+        } else {
+            _lastConvergenceCurve = null;
+        }
     }
 
     const ui = window.uiApp;
@@ -330,9 +346,13 @@ function handleStageComplete(data) {
             fullLog:   combinedLog,
             runtimeMs: Math.round(runtimeMs)
         };
-        // Attach confidence to stage 2 for color-coded display in trace panel
-        if (stage === 2 && _lastConfidence !== null) {
-            stageUpdate.confidence = _lastConfidence;
+        // Attach Stage 2 convergence data for trace panel display
+        if (stage === 2) {
+            if (_lastConfidence !== null)    stageUpdate.confidence        = _lastConfidence;
+            if (_lastConvergenceCurve)       stageUpdate.convergenceCurve  = _lastConvergenceCurve;
+            stageUpdate.convergenceRestart  = result.convergenceRestart  ?? null;
+            stageUpdate.efficiency          = result.efficiency          ?? null;
+            stageUpdate.restartsCompleted   = result.restartsCompleted   ?? null;
         }
         ui.updateTraceStage(stage, stageUpdate);
     }
@@ -530,7 +550,8 @@ function buildTraceSummary(stage, result, runtimeMs) {
         case 2:
             return [
                 `Best min pairwise distance: ${result.bestMinPairwiseDist?.toFixed(1) ?? '—'}m`,
-                `Best restart: #${result.bestRestart ?? '—'}`,
+                `Best restart: #${result.bestRestart ?? '—'} of ${result.restartsCompleted ?? '—'}`,
+                `Convergence restart: #${result.convergenceRestart ?? '—'} | Efficiency: ${result.efficiency?.toFixed(1) ?? '—'}%`,
                 `Confidence: ${result.confidence?.toFixed(1) ?? '—'}%`,
                 result.cappedFrom != null ? `Patrol count capped: ${result.cappedFrom} → ${result.patrols?.length}` : '',
                 `Runtime: ${rt}`

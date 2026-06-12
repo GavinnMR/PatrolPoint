@@ -363,9 +363,11 @@ test('ADAPT01', 'restartsCompleted >= 1', () => {
     return r.data.restartsCompleted >= 1;
 });
 
-test('ADAPT02', 'restartsCompleted <= adaptiveMaxRestarts', () => {
-    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG);
-    return r.data.restartsCompleted <= FAST_CONFIG.hillClimbing.adaptiveMaxRestarts;
+test('ADAPT02', 'restartsCompleted <= effective max (max(adaptiveMaxRestarts, n*3))', () => {
+    const n = 3;
+    const r = runHillClimbing(GRID_20, n, HULL_AREA_M2, FAST_CONFIG);
+    const effectiveMax = Math.max(FAST_CONFIG.hillClimbing.adaptiveMaxRestarts, n * 3);
+    return r.data.restartsCompleted <= effectiveMax;
 });
 
 test('ADAPT03', 'convergence message logged when early stop triggers', () => {
@@ -384,10 +386,12 @@ test('ADAPT03', 'convergence message logged when early stop triggers', () => {
     return log.includes('Converged') || log.includes('Reached maximum');
 });
 
-test('ADAPT04', 'minimum 5 restarts always completed (if enough candidates exist)', () => {
-    // With 20 candidates, adaptiveMaxRestarts=20, should run at least 5
-    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG);
-    return r.data.restartsCompleted >= Math.min(5, FAST_CONFIG.hillClimbing.adaptiveMaxRestarts);
+test('ADAPT04', 'minimum restarts scales with n — at least max(5, n) restarts always run', () => {
+    // n=3: minRestarts = max(5, 3) = 5. n=7: minRestarts = max(5, 7) = 7.
+    const r3 = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG);
+    const r7 = runHillClimbing(GRID_20, 7, HULL_AREA_M2, FAST_CONFIG);
+    return r3.data.restartsCompleted >= Math.max(5, 3) &&
+           r7.data.restartsCompleted >= Math.max(5, 7);
 });
 
 test('ADAPT05', 'traceLog has restart entries', () => {
@@ -420,12 +424,10 @@ test('CONF01', 'confidence is in [0, 100]', () => {
     return r.data.confidence >= 0 && r.data.confidence <= 100;
 });
 
-test('CONF02', 'single restart → confidence = 100 (no variance)', () => {
-    const oneRestartConfig = {
-        ...FAST_CONFIG,
-        hillClimbing: { ...FAST_CONFIG.hillClimbing, adaptiveMaxRestarts: 1, restarts: 1 }
-    };
-    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, oneRestartConfig);
+test('CONF02', 'all restarts identical → confidence = 100 (no variance)', () => {
+    // TWO_NODES with n=2: only one possible configuration — every restart must place
+    // the 2 patrols at the 2 available nodes, so all restart scores are identical.
+    const r = runHillClimbing(TWO_NODES, 2, HULL_AREA_M2, FAST_CONFIG);
     return r.data.confidence === 100;
 });
 
@@ -783,6 +785,79 @@ test('SEED07', 'seed produces same bestRestart index across runs', () => {
     const r1 = runHillClimbing(GRID_20, 4, HULL_AREA_M2, FAST_CONFIG, { seed: 42 });
     const r2 = runHillClimbing(GRID_20, 4, HULL_AREA_M2, FAST_CONFIG, { seed: 42 });
     return r1.data.bestRestart === r2.data.bestRestart;
+});
+
+// ── Section 17: Convergence curve ────────────────────────────────────────────
+console.log('\n── Section 17: Convergence curve ────────────────────────────────────');
+
+test('CONV01', 'bestSoFarCurve is present and length equals restartsCompleted', () => {
+    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG);
+    return Array.isArray(r.data.bestSoFarCurve) &&
+           r.data.bestSoFarCurve.length === r.data.restartsCompleted;
+});
+
+test('CONV02', 'bestSoFarCurve is monotonically non-decreasing', () => {
+    const r = runHillClimbing(GRID_20, 4, HULL_AREA_M2, FAST_CONFIG);
+    const curve = r.data.bestSoFarCurve;
+    for (let i = 1; i < curve.length; i++) {
+        if (curve[i] < curve[i - 1]) return false;
+    }
+    return true;
+});
+
+test('CONV03', 'bestSoFarCurve length equals restartsCompleted', () => {
+    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG);
+    return r.data.bestSoFarCurve.length === r.data.restartsCompleted;
+});
+
+test('CONV04', 'convergenceRestart is 1-indexed and within restartsCompleted', () => {
+    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG);
+    return r.data.convergenceRestart >= 1 &&
+           r.data.convergenceRestart <= r.data.restartsCompleted;
+});
+
+test('CONV05', 'efficiency is a number in (0, 100]', () => {
+    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG);
+    return typeof r.data.efficiency === 'number' &&
+           r.data.efficiency > 0 &&
+           r.data.efficiency <= 100;
+});
+
+test('CONV06', 'bestSoFarCurve last value equals bestMinPairwiseDist', () => {
+    const r = runHillClimbing(GRID_20, 4, HULL_AREA_M2, FAST_CONFIG);
+    const curve = r.data.bestSoFarCurve;
+    return Math.abs(curve[curve.length - 1] - r.data.bestMinPairwiseDist) < 0.001;
+});
+
+test('CONV07', 'n=1 returns empty curve and null convergenceRestart', () => {
+    const r = runHillClimbing(GRID_20, 1, HULL_AREA_M2, CONFIG);
+    return r.data.bestSoFarCurve.length === 0 &&
+           r.data.convergenceRestart === null &&
+           r.data.efficiency === null;
+});
+
+test('CONV08', 'convergenceRestart matches last index where bestSoFar improved', () => {
+    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG, { seed: 42 });
+    const curve = r.data.bestSoFarCurve;
+    // Find last index where value increased
+    let lastImprovement = 1;
+    for (let i = 1; i < curve.length; i++) {
+        if (curve[i] > curve[i - 1]) lastImprovement = i + 1;
+    }
+    return r.data.convergenceRestart === lastImprovement;
+});
+
+test('CONV09', 'max restarts scales with n — max(adaptiveMaxRestarts, n*3)', () => {
+    // n=10 on GRID_20: effectiveMax = max(5, 10*3) = 30. restartsCompleted <= 30.
+    const r = runHillClimbing(GRID_20, 10, HULL_AREA_M2, FAST_CONFIG);
+    const effectiveMax = Math.max(FAST_CONFIG.hillClimbing.adaptiveMaxRestarts, 10 * 3);
+    return r.data.restartsCompleted <= effectiveMax;
+});
+
+test('CONV10', 'traceLog includes convergence restart log line', () => {
+    const r = runHillClimbing(GRID_20, 3, HULL_AREA_M2, FAST_CONFIG);
+    const log = r.data.traceLog.join('\n');
+    return log.includes('Convergence restart:') && log.includes('Efficiency:');
 });
 
 // ── Summary ───────────────────────────────────────────────────────────────────

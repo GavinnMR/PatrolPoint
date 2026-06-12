@@ -661,6 +661,40 @@
                 'text-red-600 dark:text-red-400': stage.confidence < 50
               }" x-text="(stage.confidence >= 80) ? 'High confidence' : (stage.confidence >= 50) ? 'Medium confidence' : 'Low confidence — consider increasing restarts'"></span>
             </div>
+            <!-- Convergence curve — shown only for Stage 2 when curve data is available -->
+            <div x-show="stage.id === 2 && stage.convergenceCurve && stage.convergenceCurve.length > 0" class="pt-2">
+              <div class="text-gray-500 dark:text-gray-400 mb-1">Convergence curve (best-so-far per restart):</div>
+              <template x-for="(item, i) in (stage.convergenceCurve || [])" :key="i">
+                <div class="flex items-center gap-1 mb-0.5">
+                  <span class="w-6 text-right text-gray-400 flex-shrink-0" x-text="'R' + (i + 1)"></span>
+                  <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-sm h-2.5 min-w-0">
+                    <div :style="'width: ' + item.pct + '%'"
+                         :class="item.improved ? 'bg-green-500 dark:bg-green-400' : 'bg-gray-400 dark:bg-gray-500'"
+                         class="h-full rounded-sm transition-all"></div>
+                  </div>
+                  <span class="w-14 text-right text-gray-600 dark:text-gray-300 flex-shrink-0"
+                        x-text="Math.round(item.bestSoFar) + 'm'"></span>
+                  <span class="w-3 text-green-500 dark:text-green-400 flex-shrink-0"
+                        x-text="item.improved ? '↑' : ''"></span>
+                </div>
+              </template>
+              <div class="mt-1.5 flex gap-3 text-gray-500 dark:text-gray-400">
+                <span>Converged: restart
+                  <span class="font-medium text-gray-700 dark:text-gray-200"
+                        x-text="'#' + (stage.convergenceRestart ?? '—')"></span>
+                  of
+                  <span x-text="stage.restartsCompleted ?? '—'"></span>
+                </span>
+                <span>|</span>
+                <span>Efficiency:
+                  <span :class="{
+                    'font-medium text-green-600 dark:text-green-400': stage.efficiency >= 50,
+                    'font-medium text-yellow-600 dark:text-yellow-400': stage.efficiency >= 25 && stage.efficiency < 50,
+                    'font-medium text-red-600 dark:text-red-400': stage.efficiency < 25
+                  }" x-text="(stage.efficiency ?? '—') + '%'"></span>
+                </span>
+              </div>
+            </div>
             <template x-if="stage.fullLog">
               <details class="mt-1">
                 <summary class="cursor-pointer text-blue-500 hover:text-blue-600">Full Log</summary>

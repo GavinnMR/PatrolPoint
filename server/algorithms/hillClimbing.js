@@ -175,7 +175,11 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
                 restartsCompleted:  0,
                 confidence:         100,
                 cappedFrom:         null,
-                traceLog:           log
+                traceLog:           log,
+                restartScores:      [],
+                bestSoFarCurve:     [],
+                convergenceRestart: null,
+                efficiency:         null
             }
         };
     }
@@ -208,8 +212,10 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     log.push(`R = sqrt(${Math.round(hullAreaM2)} / ${validCandidates.length}) × ${config.hillClimbing.radiusMultiplier} = ${Math.round(baseR)}m`);
 
     // ── Adaptive restart parameters ───────────────────────────────────────────
-    const maxRestarts   = config.hillClimbing.adaptiveMaxRestarts; // default 30
-    const minRestarts   = 5;
+    // Both bounds scale with effectiveN — larger patrol counts have exponentially larger
+    // search spaces and need proportionally more exploration before declaring convergence.
+    const maxRestarts   = Math.max(config.hillClimbing.adaptiveMaxRestarts, effectiveN * 3);
+    const minRestarts   = Math.max(5, effectiveN);
     const maxIterations = config.hillClimbing.maxIterations;       // default 500
     const syncMode      = config.hillClimbing.synchronousMode === true;
 
@@ -470,6 +476,29 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         confidence     = Math.max(0, Math.min(100, (1 - stdDev / mean) * 100));
     }
 
+    // ── Convergence curve ─────────────────────────────────────────────────────
+    // restartScores: raw per-restart minDist values.
+    // bestSoFarCurve: monotonically non-decreasing best-so-far at each restart.
+    // convergenceRestart: last restart (1-indexed) that improved the best result.
+    // efficiency: fraction of restarts that actually improved best-so-far, as %.
+    const restartScores   = allRestartResults.map(r => r.minDist);
+    const bestSoFarCurve  = [];
+    let runningBest        = -Infinity;
+    let convergenceRestart = 1;
+    let improvingCount     = 0;
+    for (let i = 0; i < restartScores.length; i++) {
+        if (restartScores[i] > runningBest) {
+            runningBest        = restartScores[i];
+            convergenceRestart = i + 1;
+            improvingCount++;
+        }
+        bestSoFarCurve.push(runningBest);
+    }
+    const efficiency = restartsCompleted > 0
+        ? Math.round((improvingCount / restartsCompleted) * 1000) / 10
+        : null;
+    log.push(`Convergence restart: ${convergenceRestart} of ${restartsCompleted}. Efficiency: ${efficiency}%.`);
+
     const hasWarnings = anyMaxIterWarning || duplicateConfigCount > 0 || totalRadiusExpansions > 0;
 
     return {
@@ -485,7 +514,10 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
             restartsCompleted,
             confidence:          Math.round(confidence * 10) / 10,
             cappedFrom,
-            traceLog:            log
+            traceLog:            log,
+            bestSoFarCurve,
+            convergenceRestart,
+            efficiency
         }
     };
 }
