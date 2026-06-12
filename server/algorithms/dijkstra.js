@@ -222,14 +222,19 @@ export function normalizedCacheKey(idA, idB) {
 //
 // dijkstraCache shape: { [sourceId]: { distances, parents } }
 //
+// Optional hull penalty params (used by Stage 4 when hullExteriorPenalty > 1):
+//   nodeMap:         { nodeId → {lat, lng} } — required for midpoint check
+//   hull:            [{lat, lng}] CCW hull polygon
+//   exteriorPenalty: multiplier for edges whose midpoint falls outside the hull
+//
 // Disconnected nodes:
 //   distances[nodeId] === Infinity   — node unreachable from source
 //   reconstructPath(...)  === null   — no road path exists
-export function runDijkstra(sourceId, adjacencyList, dijkstraCache) {
+export function runDijkstra(sourceId, adjacencyList, dijkstraCache, nodeMap = null, hull = null, exteriorPenalty = 1) {
     if (dijkstraCache[sourceId]) {
         return dijkstraCache[sourceId];
     }
-    const result = dijkstra(sourceId, adjacencyList);
+    const result = dijkstra(sourceId, adjacencyList, nodeMap, hull, exteriorPenalty);
     dijkstraCache[sourceId] = result;
     return result;
 }

@@ -34,7 +34,8 @@ export const DEFAULT_CONFIG = {
     },
     tsp: {
         maxCrimeNodesPerZone: 10,
-        nearestNeighborFallbackThreshold: 12
+        nearestNeighborFallbackThreshold: 12,
+        hullExteriorPenalty: 1
     },
     snapping: {
         boundingBoxEpsilon: 1e-7,
@@ -322,6 +323,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
                 networkData.adjacencyList, // full road network graph
                 dijkstraCache,             // shared — Stage 3 cache hits benefit Stage 4
                 config,
+                hull,                      // CCW hull polygon — used by hull exterior penalty
                 {
                     pushProgress: (progressData) => pushMessage({ type: 'stage_progress', data: progressData })
                 }

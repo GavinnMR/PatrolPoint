@@ -85,8 +85,13 @@ function backtrackingTSP(startId, crimeNodeIds, D) {
 // nodeMap:         { nodeId → {id, lat, lng} }
 // adjacencyList:   road network adjacency list (full graph — all 3,613 nodes)
 // dijkstraCache:   { [sourceId]: { distances, parents } } — shared from Stage 3, mutated in-place
-// config:          CONFIG object — reads tsp.nearestNeighborFallbackThreshold
+// config:          CONFIG object — reads tsp.nearestNeighborFallbackThreshold and tsp.hullExteriorPenalty
+// hull:            [{lat, lng}] CCW hull polygon — passed to penalized Dijkstra when penalty > 1
 // options:         { pushProgress?: function }
+//
+// Hull exterior penalty: when config.tsp.hullExteriorPenalty > 1, TSP Dijkstra calls use a
+// fresh local cache (not the shared Stage 3 cache) to avoid storing penalized distances that
+// would corrupt future unpenalized lookups. The penalty discourages routes from leaving the hull.
 //
 // Return shape:
 // {
@@ -107,7 +112,7 @@ function backtrackingTSP(startId, crimeNodeIds, D) {
 // }
 export function runTSP(
     zones, patrols, multiNodeZones, singleNodeZones,
-    nodeMap, adjacencyList, dijkstraCache, config, options = {}
+    nodeMap, adjacencyList, dijkstraCache, config, hull = null, options = {}
 ) {
     const { pushProgress = null } = options;
     const log       = [];
@@ -115,21 +120,34 @@ export function runTSP(
     const routes    = [];
     const edgeUsage = new Map(); // normalized edge key → count across all patrol routes
     const fallbackThreshold = config.tsp.nearestNeighborFallbackThreshold ?? 12;
+    const exteriorPenalty   = config.tsp.hullExteriorPenalty ?? 1;
+
+    // When penalty is active, use a fresh local cache so penalized distances don't
+    // overwrite the unpenalized distances stored by Stage 3 in the shared cache.
+    const penaltyActive   = exteriorPenalty > 1 && hull && hull.length >= 3;
+    const effectiveCache  = penaltyActive ? {} : dijkstraCache;
+    const effectiveMap    = penaltyActive ? nodeMap : null;
+    const effectiveHull   = penaltyActive ? hull    : null;
+    const effectivePenalty = penaltyActive ? exteriorPenalty : 1;
+
+    if (penaltyActive) {
+        log.push(`Hull exterior penalty active: ×${exteriorPenalty} on edges outside danger zone.`);
+    }
 
     // Cache hit/miss counters
     let totalDijkstraCalls = 0;
     let totalCacheHits     = 0;
 
-    // ── Inner helpers (closures — access nodeMap, adjacencyList, dijkstraCache, edgeUsage) ──
+    // ── Inner helpers (closures — access nodeMap, adjacencyList, effectiveCache, edgeUsage) ──
 
     // Run Dijkstra with hit/miss tracking. Returns { distances, parents }.
     function trackedDijkstra(sourceId) {
-        if (dijkstraCache[sourceId]) {
+        if (effectiveCache[sourceId]) {
             totalCacheHits++;
         } else {
             totalDijkstraCalls++;
         }
-        return runDijkstra(sourceId, adjacencyList, dijkstraCache);
+        return runDijkstra(sourceId, adjacencyList, effectiveCache, effectiveMap, effectiveHull, effectivePenalty);
     }
 
     // Build distance matrix D[sourceId][destId] for a set of node IDs.

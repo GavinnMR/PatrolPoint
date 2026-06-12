@@ -137,7 +137,8 @@ document.addEventListener('alpine:init', () => {
             },
             tsp: {
                 maxCrimeNodesPerZone:                10,
-                nearestNeighborFallbackThreshold:    12
+                nearestNeighborFallbackThreshold:    12,
+                hullExteriorPenalty:                 1
             },
             display: {
                 showZoneLines:          true,
@@ -164,7 +165,8 @@ document.addEventListener('alpine:init', () => {
             },
             tsp: {
                 maxCrimeNodesPerZone:                10,
-                nearestNeighborFallbackThreshold:    12
+                nearestNeighborFallbackThreshold:    12,
+                hullExteriorPenalty:                 1
             },
             display: {
                 showZoneLines:          true,
@@ -743,7 +745,8 @@ document.addEventListener('alpine:init', () => {
                 },
                 tsp: {
                     maxCrimeNodesPerZone:                10,
-                    nearestNeighborFallbackThreshold:    12
+                    nearestNeighborFallbackThreshold:    12,
+                    hullExteriorPenalty:                 1
                 },
                 display: {
                     showZoneLines:          true,
