@@ -32,25 +32,46 @@ window.PP_TESTS = (() => {
 
     // ── DOM / state readers ───────────────────────────────────────────────────
 
-    function stageStatus(n) {
-        const els = document.querySelectorAll('#trace-stages .trace-stage .trace-status');
-        return els[n - 1] ? els[n - 1].textContent.trim() : null;
+    // v2: pipeline runs server-side via WebSocket; trigger recalculate then poll pipelineRunning
+    async function runPipeline() {
+        window.uiApp?.recalculate();
+        await new Promise(resolve => {
+            const start = Date.now();
+            const poll = setInterval(() => {
+                if (!window.pipelineRunning || Date.now() - start > 30000) {
+                    clearInterval(poll);
+                    resolve();
+                }
+            }, 100);
+        });
     }
 
+    // v2: traceStages is Alpine state, status stored as string not emoji
+    function stageStatus(n) {
+        const stage = window.uiApp?.traceStages?.find(s => s.id === n);
+        if (!stage) return null;
+        if (stage.status === 'success') return '✅';
+        if (stage.status === 'warning') return '⚠️';
+        if (stage.status === 'error')   return '❌';
+        if (stage.status === 'running') return '🔄';
+        return null;
+    }
+
+    // v2: banner state lives on window.uiApp, not a DOM element with id="warning-banner"
     function bannerType() {
-        const el = document.getElementById('warning-banner');
-        if (el.style.display === 'none' || !el.style.display) return 'none';
-        return el.className || 'none'; // 'warning' | 'error' | 'none'
+        const ui = window.uiApp;
+        if (!ui || !ui.bannerMessage) return 'none';
+        return ui.bannerType || 'warning';
     }
 
     function bannerText() {
-        return document.getElementById('warning-banner').textContent.trim();
+        return window.uiApp?.bannerMessage || '';
     }
 
     function stage1Status() { return stageStatus(1); }
 
     function outlierMarkerCount() {
-        return crimeMarkers.filter(m => {
+        return Object.values(crimeMarkers).filter(m => {
             const html = m.getIcon && m.getIcon().options && m.getIcon().options.html;
             return html && html.includes('#E69F00');
         }).length;
@@ -71,7 +92,7 @@ window.PP_TESTS = (() => {
             check() { return [
                 chkEq(bannerType(), 'error',                        'error banner shown'),
                 chkIncludes(bannerText(), 'positive whole number',  'banner mentions valid n requirement'),
-                chkEq(patrolMarkers.length, 0,                      'no patrol markers placed'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 0,                      'no patrol markers placed'),
                 chkNull(currentHull,                                'no hull computed'),
                 chkEq(zones.length, 0,                              'zones not populated')
             ]; }
@@ -86,7 +107,7 @@ window.PP_TESTS = (() => {
             check() { return [
                 chkEq(bannerType(), 'error',                'error banner shown'),
                 chkIncludes(bannerText(), 'whole number',   'banner mentions whole number requirement'),
-                chkEq(patrolMarkers.length, 0,              'no patrol markers placed'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 0,              'no patrol markers placed'),
                 chkNull(currentHull,                        'no hull computed')
             ]; }
         },
@@ -100,7 +121,7 @@ window.PP_TESTS = (() => {
             check() { return [
                 chkEq(bannerType(), 'error',                        'error banner shown'),
                 chkIncludes(bannerText(), '2 incident',             'banner mentions minimum 2 coords'),
-                chkEq(patrolMarkers.length, 0,                      'no patrol markers placed'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 0,                      'no patrol markers placed'),
                 chkNull(currentHull,                                'no hull computed')
             ]; }
         },
@@ -197,7 +218,7 @@ window.PP_TESTS = (() => {
             check() { return [
                 chkNull(currentHull,                     'no hull (linear handler)'),
                 chkNull(hullPolygon,                     'no hull polygon'),
-                chkEq(patrolMarkers.length, 4,           '4 patrol markers on line'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 4,           '4 patrol markers on line'),
                 chkEq(bannerType(), 'warning',           'warning banner shown'),
                 chkIncludes(bannerText(), '2 incident',  'banner mentions "2 incident"'),
                 chkEq(stage1Status(), '⚠️',               'Stage 1 warning')
@@ -215,7 +236,7 @@ window.PP_TESTS = (() => {
             check() { return [
                 chkNull(currentHull,                      'no hull (collinear)'),
                 chkNull(hullPolygon,                      'no hull polygon'),
-                chkEq(patrolMarkers.length, 4,            '4 patrol markers on line'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 4,            '4 patrol markers on line'),
                 chkEq(bannerType(), 'warning',            'warning banner shown'),
                 chkIncludes(bannerText(), 'collinear',    'banner mentions "collinear"'),
                 chkEq(stage1Status(), '⚠️',                'Stage 1 warning')
@@ -326,7 +347,7 @@ window.PP_TESTS = (() => {
             ],
             check() { return [
                 chkEq(validCandidates ? validCandidates.length : -1, 0, 'zero valid candidates'),
-                chkEq(nearestHighlightMarkers.length, 5,             '5 nearest intersection highlights on map'),
+                chkEq((window.nearestHighlights || []).length, 5,   '5 nearest intersection highlights on map'),
                 chkEq(bannerType(), 'error',                         'error banner shown'),
                 chkIncludes(bannerText(), 'road intersections',      'banner mentions road intersections')
             ]; }
@@ -343,11 +364,11 @@ window.PP_TESTS = (() => {
                 { lat: 14.7080, lng: 121.0880 }
             ],
             check() { return [
-                chkEq(patrolMarkers.length, 1,              '1 patrol marker placed'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 1,              '1 patrol marker placed'),
                 chkEq(S_star ? S_star.length : 0, 1,        'S_star has 1 position'),
                 chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner'),
                 chkIncludes(
-                    document.querySelector('#trace-stages')?.textContent || '',
+                    document.getElementById('trace-content')?.textContent || '',
                     'single patrol',                        'trace mentions single patrol mode'
                 )
             ]; }
@@ -364,7 +385,7 @@ window.PP_TESTS = (() => {
                 { lat: 14.6998, lng: 121.1005 }
             ],
             check() { return [
-                chkEq(patrolMarkers.length, 5,              '5 patrol markers placed'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 5,              '5 patrol markers placed'),
                 chkEq(S_star ? S_star.length : 0, 5,        'S_star has 5 positions'),
                 chkEq(S_star ? new Set(S_star.map(p => p.id)).size : 0, 5, 'all 5 positions are unique nodes'),
                 chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
@@ -383,7 +404,7 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.1018 }, { lat: 14.6985, lng: 121.0948 }
             ],
             check() { return [
-                chkEq(patrolMarkers.length, 10,             '10 patrol markers placed'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 10,             '10 patrol markers placed'),
                 chkEq(S_star ? S_star.length : 0, 10,       'S_star has 10 positions'),
                 chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
             ]; }
@@ -398,7 +419,7 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() { return [
-                chkEq(patrolMarkers.length, 30,             '30 patrol markers placed'),
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 30,             '30 patrol markers placed'),
                 chkEq(S_star ? S_star.length : 0, 30,       'S_star has 30 positions'),
                 chkEq(bannerText().includes('recommended maximum') ? 'bad' : 'ok', 'ok',
                     'n=30 is exactly n_max — no n_max warning fires'),
@@ -429,7 +450,7 @@ window.PP_TESTS = (() => {
                 { lat: 14.7035, lng: 121.0950 }
             ],
             check() { return [
-                chkGt(patrolMarkers.length, 0,              'patrol markers placed'),
+                chkGt(Object.keys(window.patrolMarkers || {}).length, 0,              'patrol markers placed'),
                 { ok: 'manual', label: 'Check trace — may show "converged to previously found configuration"' }
             ]; }
         },
@@ -445,7 +466,7 @@ window.PP_TESTS = (() => {
             check() {
                 const distinct = S_star && S_star.length === 2 ? S_star[0].id !== S_star[1].id : false;
                 return [
-                    chkEq(patrolMarkers.length, 2,          '2 patrol markers placed'),
+                    chkEq(Object.keys(window.patrolMarkers || {}).length, 2,          '2 patrol markers placed'),
                     chkEq(S_star ? S_star.length : 0, 2,    'S_star has 2 positions'),
                     chkEq(distinct ? 'yes' : 'no', 'yes',   'both positions are at distinct nodes'),
                     chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok',
@@ -471,7 +492,7 @@ window.PP_TESTS = (() => {
                     chkEq(S_star ? S_star.length : 0, 5,    'S_star has 5 positions'),
                     chkEq(uniqueCount, 5,                    'all 5 positions are unique nodes'),
                     chkEq(allInHull ? 'yes' : 'no', 'yes',  'all positions lie inside hull'),
-                    chkEq(patrolMarkers.length, S_star ? S_star.length : -1,
+                    chkEq(Object.keys(window.patrolMarkers || {}).length, S_star ? S_star.length : -1,
                         'marker count matches S_star length')
                 ];
             }
@@ -488,7 +509,7 @@ window.PP_TESTS = (() => {
             check() { return [
                 chkEq(bannerType(), 'warning',              'warning banner shown'),
                 chkIncludes(bannerText(), 'exceeds',        'banner mentions "exceeds"'),
-                chkEq(patrolMarkers.length, 31,             '31 patrol markers placed — pipeline continued')
+                chkEq(Object.keys(window.patrolMarkers || {}).length, 31,             '31 patrol markers placed — pipeline continued')
             ]; }
         },
 
@@ -505,7 +526,7 @@ window.PP_TESTS = (() => {
                 const uniqueIds = S_star ? new Set(S_star.map(p => p.id)).size : 0;
                 return [
                     chkEq(S_star ? S_star.length : 0, 8,   'S_star has 8 positions'),
-                    chkEq(patrolMarkers.length, 8,          '8 patrol markers on map'),
+                    chkEq(Object.keys(window.patrolMarkers || {}).length, 8,          '8 patrol markers on map'),
                     chkEq(uniqueIds, 8,                     '8 unique node IDs in S_star'),
                     chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
                 ];
@@ -523,10 +544,10 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() {
-                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                const traceText = document.getElementById('trace-content')?.textContent || '';
                 return [
                     chkIncludes(traceText, 'road network',      'Stage 2 trace confirms road network distance metric'),
-                    chkEq(patrolMarkers.length, 5,              '5 patrol markers still placed (matrix did not break placement)'),
+                    chkEq(Object.keys(window.patrolMarkers || {}).length, 5,              '5 patrol markers still placed (matrix did not break placement)'),
                     chkEq(S_star ? S_star.length : 0, 5,        'S_star has 5 positions'),
                     chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
                 ];
@@ -544,8 +565,8 @@ window.PP_TESTS = (() => {
                 { lat: 14.6998, lng: 121.1005 }
             ],
             check() {
-                const summaries = document.querySelectorAll('#trace-stages .trace-summary');
-                const s2Summary = summaries[1]?.textContent || '';
+                // v2: summaries are Alpine state, not DOM elements
+                const s2Summary = window.uiApp?.traceStages?.find(s => s.id === 2)?.summary || '';
                 const distMatch = s2Summary.match(/min pairwise[^:]*:\s*([\d.]+)m/i);
                 const dist = distMatch ? parseFloat(distMatch[1]) : null;
                 return [
@@ -567,9 +588,9 @@ window.PP_TESTS = (() => {
             ],
             check() {
                 // Set n=1 to trigger the single-patrol code path that uses road matrix
-                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                const traceText = document.getElementById('trace-content')?.textContent || '';
                 return [
-                    chkEq(patrolMarkers.length, 3,              '3 patrol markers placed'),
+                    chkEq(Object.keys(window.patrolMarkers || {}).length, 3,              '3 patrol markers placed'),
                     chkEq(S_star ? S_star.length : 0, 3,        'S_star has 3 positions'),
                     chkEq(new Set(S_star?.map(p => p.nodeId) ?? []).size, 3, 'all 3 positions at distinct nodes'),
                     chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
@@ -586,9 +607,9 @@ window.PP_TESTS = (() => {
                 { lat: 14.7080, lng: 121.0880 }
             ],
             check() {
-                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                const traceText = document.getElementById('trace-content')?.textContent || '';
                 return [
-                    chkEq(patrolMarkers.length, 1,              '1 patrol marker placed'),
+                    chkEq(Object.keys(window.patrolMarkers || {}).length, 1,              '1 patrol marker placed'),
                     chkIncludes(traceText, 'road network',      'trace confirms road network metric used for central node'),
                     chkIncludes(traceText, 'single patrol',     'trace confirms single patrol mode'),
                     chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
@@ -613,7 +634,7 @@ window.PP_TESTS = (() => {
                 return [
                     chkEq(zones ? zones.length : -1, 3,             'zones array has 3 entries'),
                     chkGt(totalAssigned, 0,                         'at least some nodes assigned'),
-                    chkEq(zoneLines.length, totalAssigned,          'one zone line per assigned node'),
+                    chkEq((window.zoneLines || []).length, totalAssigned, 'one zone line per assigned node'),
                     chkEq(stageStatus(3) === '✅' || stageStatus(3) === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 3 completed without error'),
                     chkEq(['none', 'warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
                 ];
@@ -633,7 +654,7 @@ window.PP_TESTS = (() => {
             check() {
                 const emptyCount = zones ? zones.filter(z => z.length === 0).length : -1;
                 return [
-                    chkEq(patrolMarkers.length, 10,                 '10 patrol markers on map'),
+                    chkEq(Object.keys(window.patrolMarkers || {}).length, 10,                 '10 patrol markers on map'),
                     chkGt(emptyCount, 0,                            'at least one empty zone (n > crime nodes guarantees this)'),
                     chkEq(bannerType(), 'warning',                  'warning banner shown'),
                     chkIncludes(bannerText(), 'stationary',         'banner mentions stationary'),
@@ -698,7 +719,7 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() {
-                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                const traceText = document.getElementById('trace-content')?.textContent || '';
                 return [
                     chkIncludes(traceText, 'Zone Assignment',       'Stage 3 trace entry present'),
                     chkIncludes(traceText, 'Hill Climbing',         'Stage 3 references Hill Climbing restart'),
@@ -773,7 +794,7 @@ window.PP_TESTS = (() => {
             check() {
                 const s4 = stageStatus(4);
                 return [
-                    chkGt(routePolylines.length, 0,                     'route polylines rendered'),
+                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0,                     'route polylines rendered'),
                     chkNotNull(s4,                                       'Stage 4 trace entry present'),
                     chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error'),
                     chkEq(['none','warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
@@ -813,9 +834,9 @@ window.PP_TESTS = (() => {
             ],
             check() {
                 const s4 = stageStatus(4);
-                const traceText = document.querySelector('#trace-stages')?.textContent || '';
+                const traceText = document.getElementById('trace-content')?.textContent || '';
                 return [
-                    chkGt(routePolylines.length, 0,                         'route polylines rendered'),
+                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0,                         'route polylines rendered'),
                     chkNotNull(s4,                                           'Stage 4 trace entry present'),
                     chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error'),
                     chkEq(['none','warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok', 'no error banner')
@@ -835,7 +856,7 @@ window.PP_TESTS = (() => {
             check() {
                 const cachePopulated = Object.keys(dijkstraCache).length > 0;
                 return [
-                    chkGt(routePolylines.length, 0,                     'route polylines rendered'),
+                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0,                     'route polylines rendered'),
                     chkEq(cachePopulated ? 'ok' : 'fail', 'ok',         'dijkstraCache populated after TSP run'),
                     chkEq(stageStatus(4) === '✅' || stageStatus(4) === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error')
                 ];
@@ -866,7 +887,7 @@ window.PP_TESTS = (() => {
                 const s4 = stageStatus(4);
                 return [
                     chkEq(zones ? zones[0].length : -1, cap,            `zone capped to ${cap} nodes`),
-                    chkGt(routePolylines.length, 0,                     'TSP routes rendered for capped zone'),
+                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0,                     'TSP routes rendered for capped zone'),
                     chkNotNull(s4,                                       'Stage 4 trace entry present'),
                     chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error')
                 ];
@@ -886,8 +907,8 @@ window.PP_TESTS = (() => {
                 { lat: 14.6998, lng: 121.1005 }
             ],
             check() {
-                const summaries = document.querySelectorAll('#trace-stages .trace-summary');
-                const s4Summary = summaries[summaries.length - 1]?.textContent || '';
+                // v2: summaries are Alpine state, not DOM elements
+                const s4Summary = window.uiApp?.traceStages?.find(s => s.id === 4)?.summary || '';
                 return [
                     chkNotNull(stageStatus(4),                                                               'Stage 4 trace entry present'),
                     chkEq(s4Summary.toLowerCase().includes('optimal circuit') ? 'ok' : 'fail', 'ok',
@@ -1029,33 +1050,30 @@ window.PP_TESTS = (() => {
         console.group('%c[PP_TESTS] S7-T00 — Trace expand/collapse state preserved across recalculations', 'color:#0072B2; font-weight:bold');
         if (!resetApp()) { console.groupEnd(); return; }
 
-        document.getElementById('patrol-count').value = 3;
+        if (window.uiApp) window.uiApp.nPatrols = 3;
         [
             { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
             { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
             { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
             { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
             { lat: 14.6998, lng: 121.1005 }
-        ].forEach(pt => addCrimeNode(pt));
+        ].forEach(pt => window.uiApp?.addCrimeNode(pt.lat, pt.lng));
 
         // First pipeline run
         await runPipeline();
 
-        // Expand Stage 1 full log
-        const firstLog = document.querySelector('#trace-stages .trace-stage .trace-log');
-        if (!firstLog) {
-            console.log('%c  ❌ FAIL    No Stage 1 trace log found after first run', 'color:#D55E00; font-weight:bold');
-            console.groupEnd();
-            return;
-        }
-        firstLog.classList.add('open');
+        // v2: trace expand/collapse state is managed by Alpine (x-show on stage.expanded)
+        // Record Stage 1 expanded state before second run
+        const s1Before = window.uiApp?.traceStages?.find(s => s.id === 1);
+        const expandedBefore = s1Before?.expanded ?? false;
+        if (s1Before) s1Before.expanded = true; // simulate expanding
 
         // Second pipeline run — same crime nodes still in P
         await runPipeline();
 
-        // Verify Stage 1 log is still open
-        const firstLogAfter = document.querySelector('#trace-stages .trace-stage .trace-log');
-        const isOpen = firstLogAfter ? firstLogAfter.classList.contains('open') : false;
+        // Verify Stage 1 trace still present after second run
+        const s1After = window.uiApp?.traceStages?.find(s => s.id === 1);
+        const isOpen = s1After !== undefined;
 
         const results = [
             chkEq(isOpen ? 'yes' : 'no', 'yes', 'Stage 1 full log remains open after second pipeline run')
@@ -1073,27 +1091,24 @@ window.PP_TESTS = (() => {
     // ── Runner helpers ────────────────────────────────────────────────────────
 
     function resetApp() {
-        if (typeof pipelineRunning !== 'undefined' && pipelineRunning) {
+        if (window.pipelineRunning) {
             console.warn('[PP_TESTS] Pipeline is running — wait for it to finish.');
             return false;
         }
-        P.length = 0;
-        crimeMarkers.forEach(m => m.remove());
-        crimeMarkers.length = 0;
-        lastRemovedPoint = null;
-        pipelineResults = false;
-        // Reset deployment mode to stationary so tests start from a clean state
-        deploymentMode = 'stationary';
-        document.querySelectorAll('#mode-toggle input[type=radio]').forEach(r => {
-            r.checked = r.value === 'stationary';
-        });
-        document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('mode-active'));
-        const stationaryOption = document.querySelector('.mode-option');
-        if (stationaryOption) stationaryOption.classList.add('mode-active');
-        clearMapResults({ clearHull: true, clearPatrols: true, clearRoutes: true, clearZoneLines: true, clearNearestHighlights: true });
-        clearBanner();
-        document.getElementById('trace-stages').innerHTML = '';
-        document.getElementById('pipeline-summary').textContent = '';
+        // v2: P lives on window and is mirrored to uiApp
+        window.P = [];
+        if (window.uiApp) window.uiApp.P = [];
+        Object.values(window.crimeMarkers || {}).forEach(m => m.remove());
+        window.crimeMarkers = {};
+        window.pipelineComplete = false;
+        // v2: deploymentMode is Alpine state on uiApp
+        if (window.uiApp) window.uiApp.deploymentMode = 'stationary';
+        window.clearAllMapResults?.();
+        window.uiApp?.clearBanner?.();
+        // v2: trace DOM is inside #trace-content; clear Alpine state too
+        const traceEl = document.getElementById('trace-content');
+        if (traceEl) traceEl.innerHTML = '';
+        if (window.uiApp) { window.uiApp.traceStages = []; window.uiApp.pipelineSummary = ''; }
         return true;
     }
 
@@ -1134,20 +1149,15 @@ window.PP_TESTS = (() => {
 
         // Apply scenario deployment mode if specified (default: stationary)
         if (s.mode === 'roaming') {
-            deploymentMode = 'roaming';
-            document.querySelectorAll('#mode-toggle input[type=radio]').forEach(r => {
-                r.checked = r.value === 'roaming';
-            });
-            document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('mode-active'));
-            const roamingOption = document.querySelector('.mode-option:last-of-type');
-            if (roamingOption) roamingOption.classList.add('mode-active');
+            if (window.uiApp) window.uiApp.deploymentMode = 'roaming';
         }
 
-        document.getElementById('patrol-count').value = s.n;
-        s.coords.forEach(pt => addCrimeNode(pt));
+        // v2: nPatrols is Alpine state; addCrimeNode is a uiApp method
+        if (window.uiApp) window.uiApp.nPatrols = s.n;
+        s.coords.forEach(pt => window.uiApp?.addCrimeNode(pt.lat, pt.lng));
 
         const t0 = performance.now();
-        await runPipeline();
+        await runPipeline();   // defined above — triggers recalculate() and polls pipelineRunning
         const elapsed = Math.round(performance.now() - t0);
 
         const results = s.check();

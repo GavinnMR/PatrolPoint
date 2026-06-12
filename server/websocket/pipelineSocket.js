@@ -42,6 +42,8 @@ const RATE_LIMIT_MAX     = 20;
 const RATE_LIMIT_WINDOW  = 5 * 60 * 1000; // 5 minutes in ms
 
 function checkComputeRateLimit(ip) {
+    // Bypass rate limit for localhost in development — lets automated test suites run without hitting cap
+    if (process.env.NODE_ENV !== 'production' && (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1')) return true;
     const now = Date.now();
     const entry = computeRateLimiter.get(ip);
 

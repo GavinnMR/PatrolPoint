@@ -237,6 +237,7 @@ function handlePipelineStart(data) {
     window.S_star           = [];
     window.zones            = [];
     window.routes           = [];
+    window.validCandidates  = null;
     window.pipelineComplete = false;
     window.pipelineRunning  = true;
 
@@ -294,6 +295,9 @@ function handleStageComplete(data) {
     let resultSummary;
     if (stage === 1) {
         resultSummary = `hull vertices: ${result.hull?.length ?? 0}, candidates: ${result.validCandidateCount ?? 0}`;
+        // expose for test runner — synthetic array-like with .length matching server count
+        const count = result.validCandidateCount ?? 0;
+        window.validCandidates = count > 0 ? { length: count } : null;
     } else if (stage === 2) {
         resultSummary = `patrols: ${result.patrols?.length ?? 0}, minDist: ${result.bestMinPairwiseDist?.toFixed(1) ?? '—'}m`;
     } else if (stage === 3) {
