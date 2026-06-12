@@ -79,7 +79,8 @@
       </div>
 
 <!-- Bottom-left row: legend toggle + coordinate display -->
-      <div class="absolute bottom-3 left-3 z-[1000] flex items-center gap-2">
+      <div :class="showPlayback ? 'bottom-14' : 'bottom-3'"
+           class="absolute left-3 z-[1000] flex items-center gap-2 transition-all duration-200">
 
       <!-- Map legend (collapsible) -->
       <div x-data="{ open: false }" class="relative">
