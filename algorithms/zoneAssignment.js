@@ -27,7 +27,7 @@ function _za_snapToNearest(p, validCandidates, hullDiameter, config) {
     return null;
 }
 
-function computeZoneAssignment(P, S_star, validCandidates, hullVertices, config) {
+function computeZoneAssignment(P, S_star, validCandidates, hullVertices, config, adjacencyList, nodeMap, dijkstraCache) {
     const log = [];
     const warnings = [];
 
@@ -104,13 +104,56 @@ function computeZoneAssignment(P, S_star, validCandidates, hullVertices, config)
         }
     }
 
-    // Step 4: Zone assignment — nearest patrol by Haversine, tiebreaker = lower index (loop order)
+    // Pre-compute road distances from each patrol to every deduped crime node via Dijkstra.
+    // Results are stored in dijkstraCache (same format as Stage 4) so Stage 4 gets 100% cache
+    // hits for patrol→crime pairs and skips those Dijkstra runs entirely.
+    const allDedupedIds = deduped.map(sn => sn.id);
+    const patrolDistances = []; // patrolDistances[i] = Map<nodeId → road dist in metres>
+
+    for (let i = 0; i < S_star.length; i++) {
+        const patrol = S_star[i];
+        const needsCompute = allDedupedIds.some(
+            nodeId => dijkstraCache[normalizeEdgeKey(patrol.id, nodeId)] === undefined
+        );
+
+        if (needsCompute) {
+            const { distances, parents } = runDijkstra(patrol.id, adjacencyList, nodeMap);
+            const patrolNum = parseInt(patrol.id.slice(1), 10);
+            for (const nodeId of allDedupedIds) {
+                const key = normalizeEdgeKey(patrol.id, nodeId);
+                if (dijkstraCache[key] !== undefined) continue;
+                const d = distances.get(nodeId) ?? Infinity;
+                if (d < Infinity) {
+                    const path = reconstructPath(patrol.id, nodeId, parents);
+                    const nodeNum = parseInt(nodeId.slice(1), 10);
+                    dijkstraCache[key] = {
+                        distance: d,
+                        path: path ? (patrolNum < nodeNum ? path : [...path].reverse()) : null
+                    };
+                } else {
+                    dijkstraCache[key] = { distance: Infinity, path: null };
+                }
+            }
+            log.push(`Patrol ${i + 1} (${patrol.id}): Dijkstra run — road distances cached for ${allDedupedIds.length} crime node${allDedupedIds.length !== 1 ? 's' : ''}`);
+        } else {
+            log.push(`Patrol ${i + 1} (${patrol.id}): all road distances from cache`);
+        }
+
+        const distMap = new Map();
+        for (const nodeId of allDedupedIds) {
+            const key = normalizeEdgeKey(patrol.id, nodeId);
+            distMap.set(nodeId, dijkstraCache[key]?.distance ?? Infinity);
+        }
+        patrolDistances.push(distMap);
+    }
+
+    // Step 4: Zone assignment — nearest patrol by road distance, tiebreaker = lower index
     const zones = Array.from({ length: S_star.length }, () => []);
     for (const sn of deduped) {
         let bestIdx = 0;
         let bestDist = Infinity;
         for (let i = 0; i < S_star.length; i++) {
-            const d = haversineDistance(sn.lat, sn.lng, S_star[i].lat, S_star[i].lng);
+            const d = patrolDistances[i].get(sn.id) ?? Infinity;
             if (d < bestDist) { bestDist = d; bestIdx = i; }
         }
         zones[bestIdx].push(sn);
@@ -124,8 +167,8 @@ function computeZoneAssignment(P, S_star, validCandidates, hullVertices, config)
     for (let i = 0; i < zones.length; i++) {
         if (zones[i].length > max) {
             zones[i].sort((a, b) =>
-                haversineDistance(a.lat, a.lng, S_star[i].lat, S_star[i].lng) -
-                haversineDistance(b.lat, b.lng, S_star[i].lat, S_star[i].lng)
+                (patrolDistances[i].get(a.id) ?? Infinity) -
+                (patrolDistances[i].get(b.id) ?? Infinity)
             );
             const excluded = zones[i].splice(max);
             excluded.forEach(sn => cappedExcludedPIndices.push(sn.pIdx));

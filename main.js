@@ -851,7 +851,7 @@ async function runPipeline() {
         await yieldControl();
 
         const t3 = performance.now();
-        const r3 = computeZoneAssignment(P, S_star, validCandidates, currentHull, CONFIG);
+        const r3 = computeZoneAssignment(P, S_star, validCandidates, currentHull, CONFIG, adjacencyList, nodeMap, dijkstraCache);
         const t3ms = Math.round(performance.now() - t3);
 
         if (r3.warnings.length > 0) {
@@ -987,7 +987,27 @@ async function runPipeline() {
 
         for (let i = 0; i < S_star.length; i++) {
             if (zoneTypes[i] === 'empty') { stationaryCount4++; continue; }
-            if (zoneTypes[i] === 'single') { directCount4++; continue; }
+            if (zoneTypes[i] === 'single') {
+                directCount4++;
+                // Compute Dijkstra road distance for popup — avoids Haversine underestimate
+                const sn = zones[i][0];
+                const key = normalizeEdgeKey(S_star[i].id, sn.id);
+                if (!dijkstraCache[key]) {
+                    const { distances, parents } = runDijkstra(S_star[i].id, adjacencyList, nodeMap, removedNodes);
+                    const path = reconstructPath(S_star[i].id, sn.id, parents);
+                    const srcNum = parseInt(S_star[i].id.slice(1), 10);
+                    const destNum = parseInt(sn.id.slice(1), 10);
+                    dijkstraCache[key] = path && distances.get(sn.id) < Infinity
+                        ? { distance: distances.get(sn.id), path: srcNum < destNum ? path : [...path].reverse() }
+                        : { distance: Infinity, path: null };
+                    totalDijkstraCalls++;
+                } else {
+                    totalCacheHits++;
+                }
+                const entry = dijkstraCache[key];
+                patrolCircuitDistances[i] = entry.distance < Infinity ? 2 * entry.distance : null;
+                continue;
+            }
             // zoneTypes[i] === 'multiple'
 
             const r4 = computeTSP(i, S_star[i], zones[i], nodeMap, adjacencyList, dijkstraCache, CONFIG, removedNodes);
@@ -1160,9 +1180,8 @@ function buildPatrolPopupHTML(i) {
     let routeLine = '';
     if (type === 'empty') {
         routeLine = `<div style="color:#9ca3af;margin-bottom:4px;">No incidents assigned</div>`;
-    } else if (type === 'single' && zones[i] && zones[i][0]) {
-        const sn = zones[i][0];
-        const d = Math.round(2 * haversineDistance(pos.lat, pos.lng, sn.lat, sn.lng));
+    } else if (type === 'single' && patrolCircuitDistances[i] != null) {
+        const d = Math.round(patrolCircuitDistances[i]);
         routeLine = `<div style="color:#374151;margin-bottom:4px;">Direct visit: <strong>${d.toLocaleString()} m</strong></div>`;
     } else if (isRoaming && patrolCircuitDistances[i] != null) {
         const d = Math.round(patrolCircuitDistances[i]);
