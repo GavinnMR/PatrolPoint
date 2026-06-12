@@ -118,6 +118,8 @@ window.addEventListener('resize', () => map.invalidateSize());
 
 // boundaryBounds is set once the boundary file loads; Reset View uses it.
 let boundaryBounds = null;
+// boundaryPolygon stores the raw vertex array for point-in-polygon checks.
+let boundaryPolygon = null;
 
 // Road Graph Edit controls (topleft)
 let graphEditBtnEl = null;
@@ -181,6 +183,7 @@ map.addControl(new ResetViewControl());
 fetch('./data/commonwealth_boundary.json')
     .then(r => r.json())
     .then(pts => {
+        boundaryPolygon = pts; // store for point-in-polygon checks
         const latlngs = pts.map(p => [p.lat, p.lng]);
         const layer = L.polygon(latlngs, {
             color: '#888888',
@@ -204,6 +207,12 @@ function onMapClick(e) {
     clearPatrolHighlight();
     if (pipelineRunning || graphEditMode) return;
     const { lat, lng } = e.latlng;
+
+    // Barangay boundary check — hard block
+    if (!isInsideBarangay({ lat, lng })) {
+        showBanner('warning', 'Incident plotted outside Barangay Commonwealth boundary. Point ignored.');
+        return;
+    }
 
     // Duplicate check: within 1e-7 degrees
     const isDuplicate = P.some(p =>
@@ -332,6 +341,12 @@ function isPointInHull(point, hull) {
     if (point.lat < Math.min(...lats) - eps || point.lat > Math.max(...lats) + eps ||
         point.lng < Math.min(...lngs) - eps || point.lng > Math.max(...lngs) + eps) return false;
     return rayCast(point, hull);
+}
+
+function isInsideBarangay(point) {
+    // If boundary hasn't loaded yet, allow all points (fail-open).
+    if (!boundaryPolygon || boundaryPolygon.length < 3) return true;
+    return rayCast(point, boundaryPolygon);
 }
 
 // Pre-filter all intersection nodes against hull using bounding box + ray casting
@@ -1398,18 +1413,15 @@ document.getElementById('import-btn').addEventListener('click', () => {
         return;
     }
 
-    // Commonwealth bounding box check — warn but still import
-    // Buffer of 0.005° (~550m) accounts for road network not reaching barangay edges
-    const BB_BUFFER = 0.005;
-    const outsideCount = parsed.filter(p =>
-        p.lat < barangayBounds.minLat - BB_BUFFER || p.lat > barangayBounds.maxLat + BB_BUFFER ||
-        p.lng < barangayBounds.minLng - BB_BUFFER || p.lng > barangayBounds.maxLng + BB_BUFFER
-    ).length;
+    // Barangay boundary check — hard filter, reject outside points
+    const outsideCount = parsed.filter(p => !isInsideBarangay(p)).length;
+    const inside = parsed.filter(p => isInsideBarangay(p));
     if (outsideCount > 0) {
-        showBanner('warning',
-            `${outsideCount} coordinate${outsideCount !== 1 ? 's' : ''} fall outside Barangay Commonwealth. ` +
-            `These points may produce no valid patrol positions.`
-        );
+        skipped += outsideCount;
+    }
+    if (inside.length === 0) {
+        showImportMessage('No coordinates fall inside Barangay Commonwealth boundary. Nothing imported.', 'error');
+        return;
     }
 
     const existingCount = P.length;
@@ -1424,15 +1436,15 @@ document.getElementById('import-btn').addEventListener('click', () => {
     updateUndoButton();
 
     // Plot imported points
-    parsed.forEach(pt => addCrimeNode(pt));
+    inside.forEach(pt => addCrimeNode(pt));
 
     // Outlier detection — restyle flagged markers after all are plotted
-    const outlierCount = detectAndMarkOutliers(parsed, crimeMarkers);
+    const outlierCount = detectAndMarkOutliers(inside, crimeMarkers);
 
     document.getElementById('coord-input').value = '';
 
-    let msg = `${parsed.length} point${parsed.length !== 1 ? 's' : ''} imported successfully.`;
-    if (skipped > 0) msg += ` ${skipped} line${skipped !== 1 ? 's' : ''} skipped due to invalid format.`;
+    let msg = `${inside.length} point${inside.length !== 1 ? 's' : ''} imported successfully.`;
+    if (skipped > 0) msg += ` ${skipped} line${skipped !== 1 ? 's' : ''} skipped (invalid format or outside boundary).`;
     if (outlierCount > 0) msg += ` ${outlierCount} flagged as potential outlier${outlierCount !== 1 ? 's' : ''} (orange markers).`;
     showImportMessage(msg, 'success');
     setTimeout(() => { document.getElementById('import-message').style.display = 'none'; }, 3000);
