@@ -46,7 +46,8 @@ export const DEFAULT_CONFIG = {
     convexHull: {
         areaThresholdDivisor: 100,
         outlierMultiplier: 2.5,
-        collinearityEpsilon: 1e-10
+        collinearityEpsilon: 1e-10,
+        includeOutliers: true
     },
     tsp: {
         maxCrimeNodesPerZone: 10,

@@ -69,12 +69,24 @@ function runRayCastPreFilter(hull, nodeMap, eps) {
     minLat -= eps; maxLat += eps; minLng -= eps; maxLng += eps;
 
     const candidates = [];
+    let totalNodes   = 0;
+    let bboxRejected = 0;
+    let rayCastRejected = 0;
+
     for (const id in nodeMap) {
+        totalNodes++;
         const node = nodeMap[id];
-        if (node.lat < minLat || node.lat > maxLat || node.lng < minLng || node.lng > maxLng) continue;
-        if (rayCast(node, hull)) candidates.push(node);
+        if (node.lat < minLat || node.lat > maxLat || node.lng < minLng || node.lng > maxLng) {
+            bboxRejected++;
+            continue;
+        }
+        if (rayCast(node, hull)) {
+            candidates.push(node);
+        } else {
+            rayCastRejected++;
+        }
     }
-    return candidates;
+    return { candidates, totalNodes, bboxRejected, rayCastRejected };
 }
 
 // ── Linear placement ──────────────────────────────────────────────────────────
@@ -478,7 +490,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     const centroidLat = hull.reduce((s, v) => s + v.lat, 0) / hull.length;
     const lngScale    = 111000 * Math.cos(centroidLat * Math.PI / 180);
     const hullAreaM2  = hullAreaDeg * 111000 * lngScale;
-    log.push(`Hull area: ${Math.round(hullAreaM2)} m²`);
+    log.push(`Hull area (approx.): ${Math.round(hullAreaM2)} m² — Shoelace flat-plane estimate, accurate to <1% at barangay scale`);
 
     // Area threshold check — warn if hull is much smaller than the barangay
     let areaWarning = false;
@@ -504,13 +516,19 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
         updatedHullCache = hullCache;
         log.push(`Valid candidates: cache hit - reusing ${validCandidates.length} cached candidates (hull unchanged)`);
     } else {
-        validCandidates  = runRayCastPreFilter(hull, nodeMap, eps);
+        const rcResult   = runRayCastPreFilter(hull, nodeMap, eps);
+        validCandidates  = rcResult.candidates;
         // Deep-copy hull vertices into cache to prevent mutation by downstream code
         updatedHullCache = {
             hull:       hull.map(v => ({ lat: v.lat, lng: v.lng })),
             candidates: validCandidates
         };
-        log.push(`Valid candidates: ${validCandidates.length} of ${Object.keys(nodeMap).length} road nodes inside hull`);
+        log.push(
+            `Ray Cast: ${rcResult.totalNodes} nodes checked — ` +
+            `${rcResult.bboxRejected} rejected by bbox pre-filter, ` +
+            `${rcResult.rayCastRejected} failed ray cast, ` +
+            `${validCandidates.length} passed (valid candidates)`
+        );
     }
 
     // WebSocket progress callback — called after pre-filtering with hull metrics (V2 feature)
@@ -565,7 +583,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     return {
         status: areaWarning ? 'warning' : 'success',
         message: areaWarning
-            ? 'Danger zone computed — incident coordinates are tightly clustered.'
+            ? 'Danger zone computed: incident coordinates are tightly clustered.'
             : 'Danger zone boundary computed successfully.',
         warnings,
         data: {

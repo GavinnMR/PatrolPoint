@@ -578,7 +578,7 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
                 `Runtime          : ${rt}`,
                 `Outliers flagged : ${outliers} (threshold: ${window.uiApp?.activeConfig?.convexHull?.outlierMultiplier ?? 2.5}x avg distance from centroid)`,
                 `Hull vertices    : ${vertexCount}`,
-                `Hull area        : ${areaM2} m²  (${areaKm2} km²)`,
+                `Hull area        : ~${areaM2} m²  (~${areaKm2} km²)  [Shoelace approx.]`,
                 `Road intersections inside hull : ${candidates} of ${window._intersectionCount ?? '?'} total`,
                 result.linearHandlerTriggered ? 'Linear handler   : TRIGGERED (patrols placed along incident line)' : 'Collinearity     : passed (full hull computed)',
                 result.skipped ? 'Cache            : hull unchanged (valid candidates reused from previous run)' : '',
@@ -678,7 +678,7 @@ function buildTraceSummary(stage, result, runtimeMs) {
             return [
                 result.skipped
                     ? 'Hull unchanged (incremental skip).'
-                    : `Hull: ${result.hull?.length ?? 0} vertices, area: ${result.hullArea != null ? (result.hullArea / 1e6).toFixed(4) + ' km2' : 'N/A'}`,
+                    : `Hull: ${result.hull?.length ?? 0} vertices, area: ${result.hullArea != null ? '~' + (result.hullArea / 1e6).toFixed(4) + ' km²' : 'N/A'} (approx.)`,
                 `Outliers detected: ${result.outlierCount ?? 0}`,
                 `Valid candidates inside hull: ${result.validCandidateCount ?? 0}`,
                 result.linearHandlerTriggered ? 'Linear handler triggered.' : '',
@@ -734,9 +734,9 @@ function buildTraceMetrics(stage, result) {
                     tooltip: 'Number of corner points that form the convex danger zone boundary.'
                 },
                 {
-                    label:   'Area',
-                    value:   result.hullArea != null ? (result.hullArea / 1e6).toFixed(3) + ' km²' : 'N/A',
-                    tooltip: 'Total area enclosed by the danger zone polygon, in square kilometers.'
+                    label:   'Area (approx.)',
+                    value:   result.hullArea != null ? '~' + (result.hullArea / 1e6).toFixed(3) + ' km²' : 'N/A',
+                    tooltip: 'Approximate area enclosed by the danger zone polygon. Computed using the Shoelace formula with a flat-plane projection — accurate to under 1% at barangay scale, not a geodetic measurement.'
                 },
                 {
                     label:   'Candidate nodes',

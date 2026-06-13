@@ -156,7 +156,7 @@ document.addEventListener('alpine:init', () => {
             convexHull: {
                 areaThresholdDivisor:   100,
                 outlierMultiplier:      2.5,
-                includeOutliers:        false
+                includeOutliers:        true
             },
             tsp: {
                 maxCrimeNodesPerZone:                10,
@@ -188,7 +188,7 @@ document.addEventListener('alpine:init', () => {
             convexHull: {
                 areaThresholdDivisor:   100,
                 outlierMultiplier:      2.5,
-                includeOutliers:        false
+                includeOutliers:        true
             },
             tsp: {
                 maxCrimeNodesPerZone:                10,
@@ -784,7 +784,7 @@ document.addEventListener('alpine:init', () => {
                 convexHull: {
                     areaThresholdDivisor:   100,
                     outlierMultiplier:      2.5,
-                    includeOutliers:        false
+                    includeOutliers:        true
                 },
                 tsp: {
                     maxCrimeNodesPerZone:                10,
