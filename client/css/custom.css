@@ -131,17 +131,18 @@
 }
 .patrol-marker-roaming { position: relative; }
 
-/* Patrol info popup */
-.patrol-popup-wrapper .leaflet-popup-content-wrapper {
-    padding: 0;
+/* Patrol info panel — fixed top-right L.Control */
+.patrol-info-panel {
+    background: #fff;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0,0,0,0.35);
-    min-width: 210px;
-}
-.patrol-popup-wrapper .leaflet-popup-content {
-    margin: 0;
+    min-width: 220px;
+    max-width: 280px;
+    max-height: 50vh;
+    overflow-y: auto;
     line-height: 1.4;
+    font-family: inherit;
 }
 .pp-header {
     display: flex;
@@ -149,6 +150,9 @@
     justify-content: space-between;
     padding: 8px 12px;
     color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 .pp-title {
     font-size: 13px;
@@ -163,7 +167,20 @@
     padding: 1px 6px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin-left: auto;
+    margin-right: 8px;
 }
+.pp-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+}
+.pp-close:hover { color: #fff; }
 .pp-body {
     padding: 6px 12px 8px;
     background: #fff;
@@ -193,6 +210,19 @@
     text-align: right;
     font-family: monospace;
 }
+.pp-crime-list {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+}
+.pp-crime-item {
+    font-size: 10px;
+    font-family: monospace;
+    color: #374151;
+    padding: 3px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+.pp-crime-item:last-child { border-bottom: none; }
 
 /* Mobile bottom sheet — touch targets */
 @media (max-width: 767px) {

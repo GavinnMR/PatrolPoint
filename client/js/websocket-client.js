@@ -352,6 +352,7 @@ function handleStageComplete(data) {
         const stageUpdate = {
             status:    existStatus === 'warning' ? 'warning' : 'success',
             summary:   buildTraceSummary(stage, result, runtimeMs),
+            metrics:   buildTraceMetrics(stage, result),
             fullLog:   combinedLog,
             runtimeMs: Math.round(runtimeMs)
         };
@@ -490,6 +491,16 @@ function handlePipelineComplete(data) {
         summaryLines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         ui.setPipelineSummary(summaryLines.join('\n'));
 
+        // Structured summary for the redesigned pipeline summary card
+        ui.pipelineSummaryData = {
+            totalRuntimeMs:       Math.round(totalRuntimeMs),
+            roamingCount:         roamingCount,
+            stationaryCount:      stationaryCount,
+            overlapEdges:         overlapEdges,
+            verificationPass:     verificationReport ? verificationReport.overallPass : null,
+            verificationFailCount: verificationReport ? (verificationReport.failureCount || 0) : 0
+        };
+
         // Auto-scroll trace panel after summary is written — must fire after setPipelineSummary
         if (typeof ui.scrollTracePanelToBottom === 'function') {
             ui.scrollTracePanelToBottom();
@@ -586,6 +597,49 @@ function buildTraceSummary(stage, result, runtimeMs) {
 
         default:
             return `Runtime: ${rt}`;
+    }
+}
+
+// ── Trace metrics builder ──────────────────────────────────────────────────────
+// Returns a structured array of {label, value, warn?} for each stage.
+// These drive the metrics grid in the trace panel rather than raw summary text.
+function buildTraceMetrics(stage, result) {
+    switch (stage) {
+        case 1:
+            return [
+                { label: 'Hull vertices',              value: result.hull?.length ?? 0 },
+                { label: 'Area',                       value: result.hullArea != null ? (result.hullArea / 1e6).toFixed(3) + ' km²' : '—' },
+                { label: 'Intersections in zone',      value: result.validCandidateCount ?? 0 },
+                { label: 'Outliers flagged',            value: result.outlierCount ?? 0 },
+                ...(result.linearHandlerTriggered ? [{ label: 'Linear handler', value: 'Triggered', warn: true }] : []),
+            ];
+        case 2: {
+            const n = result.patrols?.length ?? 0;
+            return [
+                { label: 'Patrols placed',          value: n },
+                { label: 'Min pairwise distance',   value: result.bestMinPairwiseDist != null ? Math.round(result.bestMinPairwiseDist) + ' m' : '—' },
+                { label: 'Restarts completed',      value: result.restartsCompleted ?? '—' },
+                { label: 'Best at restart',         value: result.convergenceRestart != null ? '#' + result.convergenceRestart : '—' },
+                ...(result.cappedFrom != null ? [{ label: 'Count capped', value: `${result.cappedFrom} → ${n}`, warn: true }] : []),
+            ];
+        }
+        case 3:
+            return [
+                { label: 'Patrol zones',            value: result.zones?.length ?? 0 },
+                { label: 'Empty zones',             value: result.emptyZones?.length ?? 0 },
+                { label: 'Single-incident zones',   value: result.singleNodeZones?.length ?? 0 },
+                { label: 'Avg snap distance',       value: result.avgSnappingDist != null ? result.avgSnappingDist.toFixed(1) + ' m' : '—' },
+                { label: 'Max snap distance',       value: result.maxSnappingDist != null ? result.maxSnappingDist.toFixed(1) + ' m' : '—', warn: (result.maxSnappingDist ?? 0) > 200 },
+            ];
+        case 4:
+            return [
+                { label: 'TSP circuits',    value: result.routes?.length ?? 0 },
+                { label: 'Dijkstra calls',  value: result.totalDijkstraCalls ?? '—' },
+                { label: 'Cache hits',      value: result.totalCacheHits ?? '—' },
+                { label: 'Overlap edges',   value: result.overlapEdges?.length ?? 0, warn: (result.overlapEdges?.length ?? 0) > 0 },
+            ];
+        default:
+            return [];
     }
 }
 

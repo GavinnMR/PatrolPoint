@@ -43,7 +43,7 @@ let _lastRoutes       = null;   // stored for zoom-level redraw
 let _lastPatrols      = null;   // stored for patrol popup content
 let _lastZones        = null;   // stored for patrol popup content
 let _selectedPatrolId = null;   // currently highlighted patrol
-let _activePopup      = null;   // standalone L.popup instance (not bound to marker)
+let _patrolInfoControl = null;  // L.Control panel anchored top-right (replaces L.popup)
 
 // Comparison overlay layers
 let comparisonLayersA = [];   // Leaflet layers for Run A
@@ -62,6 +62,31 @@ function pointInHull(lat, lng, hull) {
     }
     return inside;
 }
+
+// ── Patrol info panel (fixed top-right L.Control) ─────────────────────────────
+const PatrolInfoPanel = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd() {
+        this._div = L.DomUtil.create('div', 'patrol-info-panel');
+        L.DomEvent.disableClickPropagation(this._div);
+        L.DomEvent.disableScrollPropagation(this._div);
+        this._div.style.display = 'none';
+        return this._div;
+    },
+    show(content) {
+        this._div.innerHTML = content;
+        this._div.style.display = '';
+        const btn = this._div.querySelector('.pp-close');
+        if (btn) btn.addEventListener('click', () => {
+            this.hide();
+            clearPatrolHighlight();
+        });
+    },
+    hide() {
+        this._div.style.display = 'none';
+        this._div.innerHTML = '';
+    }
+});
 
 // ── Map initialization ─────────────────────────────────────────────────────────
 function initMap(ui) {
@@ -155,6 +180,9 @@ function initMap(ui) {
         })
     });
     map.addLayer(patrolClusterGroup);
+
+    _patrolInfoControl = new PatrolInfoPanel();
+    _patrolInfoControl.addTo(map);
 
     // Load Commonwealth boundary from bundled data file and render darkening mask
     fetch('./data/commonwealth_boundary.json')
@@ -530,7 +558,7 @@ function renderPatrolMarkers(patrols) {
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 if (window.pipelineRunning) return;
-                _onPatrolClick(patrolId, marker);
+                _onPatrolClick(patrolId);
             });
             patrolClusterGroup.addLayer(marker);
             patrolMarkerMap[patrolId] = { marker, color, num, style: 'roaming', coverageCircle: null };
@@ -567,7 +595,7 @@ function updatePatrolPositionsInstant(positions) {
             marker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 if (window.pipelineRunning) return;
-                _onPatrolClick(patrolId, marker);
+                _onPatrolClick(patrolId);
             });
             patrolClusterGroup.addLayer(marker);
             patrolMarkerMap[patrolId] = { marker, color, num, style: 'roaming', coverageCircle: null };
@@ -686,14 +714,6 @@ function _buildPatrolPopupContent(patrolId) {
         <span class="pp-value">${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}</span>
       </div>`;
 
-    if (zone !== null) {
-        rows += `
-      <div class="pp-row">
-        <span class="pp-label">Crime nodes</span>
-        <span class="pp-value">${zone.length}</span>
-      </div>`;
-    }
-
     if (route && route.totalDistance != null) {
         rows += `
       <div class="pp-row">
@@ -702,37 +722,41 @@ function _buildPatrolPopupContent(patrolId) {
       </div>`;
     }
 
+    if (zone !== null) {
+        const nodeCount = zone.length;
+        rows += `
+      <div class="pp-row">
+        <span class="pp-label">Crime nodes</span>
+        <span class="pp-value">${nodeCount}</span>
+      </div>`;
+
+        if (nodeCount > 0) {
+            const items = zone.map((node, i) =>
+                `<li class="pp-crime-item">${i + 1}. ${node.lat.toFixed(5)}, ${node.lng.toFixed(5)}</li>`
+            ).join('');
+            rows += `<ul class="pp-crime-list">${items}</ul>`;
+        }
+    }
+
     return `
       <div class="pp-header" style="background:${color}">
         <span class="pp-title">Patrol ${num}</span>
         <span class="pp-badge">${modeLabel}</span>
+        <button class="pp-close" title="Close">&#x2715;</button>
       </div>
       <div class="pp-body">${rows}</div>`;
 }
 
-function _onPatrolClick(patrolId, marker) {
+function _onPatrolClick(patrolId) {
     // Toggle: same patrol clicked again → close and deselect
     if (_selectedPatrolId === patrolId) {
-        if (_activePopup) { _activePopup.remove(); _activePopup = null; }
+        _patrolInfoControl?.hide();
         clearPatrolHighlight();
         return;
     }
 
-    // Close any popup from a previously selected patrol
-    if (_activePopup) { _activePopup.remove(); _activePopup = null; }
-
     highlightPatrolRoute(patrolId);
-
-    // Standalone popup — NOT bound to the marker so Leaflet adds no competing click handler
-    _activePopup = L.popup({ maxWidth: 260, className: 'patrol-popup-wrapper', closeButton: true })
-        .setLatLng(marker.getLatLng())
-        .setContent(_buildPatrolPopupContent(patrolId))
-        .openOn(map);
-
-    _activePopup.on('remove', () => {
-        _activePopup = null;
-        if (_selectedPatrolId === patrolId) clearPatrolHighlight();
-    });
+    _patrolInfoControl?.show(_buildPatrolPopupContent(patrolId));
 }
 
 function highlightPatrolRoute(patrolId) {
@@ -749,6 +773,7 @@ function highlightPatrolRoute(patrolId) {
 
 function clearPatrolHighlight() {
     _selectedPatrolId = null;
+    _patrolInfoControl?.hide();
     Object.values(routePolylines).forEach(entry => {
         entry.lines.forEach(line => line.setStyle({ weight: 4, opacity: 0.9 }));
     });
@@ -934,7 +959,7 @@ function clearAllMapResults() {
     _lastPatrols      = null;
     _lastZones        = null;
     _selectedPatrolId = null;
-    if (_activePopup) { _activePopup.remove(); _activePopup = null; }
+    _patrolInfoControl?.hide();
 }
 
 // ── Algorithm comparison overlay ──────────────────────────────────────────────
@@ -1236,6 +1261,11 @@ window.updatePlaybackSpeed        = updatePlaybackSpeed;
 
 window.highlightPatrolRoute       = highlightPatrolRoute;
 window.clearPatrolHighlight       = clearPatrolHighlight;
+window.showPatrolInfoPanel        = function(patrolId) {
+    if (!patrolMarkerMap[patrolId] || !_patrolInfoControl) return;
+    highlightPatrolRoute(patrolId);
+    _patrolInfoControl.show(_buildPatrolPopupContent(patrolId));
+};
 
 window.renderComparisonResults    = renderComparisonResults;
 window.showComparisonRunA         = showComparisonRunA;

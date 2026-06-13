@@ -15,6 +15,26 @@ function _haversine(lat1, lng1, lat2, lng2) {
     return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// Algorithm descriptions shown in the trace panel — educational, not data-driven.
+const STAGE_INFO = {
+    1: {
+        description: 'Finds the smallest convex polygon enclosing all plotted crime incidents. This polygon defines the operational danger zone — all patrols and routes are constrained within it.',
+        algorithmNote: 'For every directed pair of points (A→B), checks whether all remaining points lie to the left of the line. If yes, A→B is a valid hull edge. Valid edges are chained into an ordered polygon. Time complexity: O(n³) — tractable at n ≤ 30 incidents. Outliers are detected by mean distance from centroid before hull computation begins.'
+    },
+    2: {
+        description: 'Places n patrol units at road intersection nodes inside the danger zone, maximizing the minimum pairwise distance between any two patrols.',
+        algorithmNote: 'Each patrol iteratively moves to the neighbor intersection within radius R that most improves the global minimum pairwise distance (the objective). Multiple random restarts avoid local optima. When all patrols are stuck with no valid neighbors, R expands by 50% and the search resumes. The best result across all restarts becomes S★.'
+    },
+    3: {
+        description: 'Assigns each crime incident to its nearest patrol using shortest road-network distance, forming n distinct patrol responsibility zones.',
+        algorithmNote: 'Each incident snaps silently to the nearest road intersection inside the hull. Dijkstra runs once per snapped node — a single source gives distances to all patrol positions simultaneously. The incident is assigned to the patrol with minimum road distance; straight-line Haversine is the fallback only when road distances are unavailable.'
+    },
+    4: {
+        description: 'Computes the optimal closed-loop visiting circuit for each patrol through its assigned incidents. Routes follow actual road edges — never straight lines through buildings.',
+        algorithmNote: 'Backtracking explores all k! visiting permutations. Branch-and-bound pruning cuts any partial path whose accumulated distance already exceeds the current best complete circuit. Dijkstra paths between waypoints are cached — each node pair is computed at most once and reused across all patrol zones in the same pipeline run.'
+    }
+};
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('patrolPointApp', () => ({
 
@@ -61,9 +81,10 @@ document.addEventListener('alpine:init', () => {
         bannerCollapsed: false,
 
         // ── Algorithm trace panel ─────────────────────────────────────────────
-        showTracePanel:  false,
-        traceStages:     [],   // {id, name, status, summary, fullLog, expanded, runtimeMs}
-        pipelineSummary: '',
+        showTracePanel:      false,
+        traceStages:         [],   // {id, name, description, algorithmNote, status, summary, metrics, fullLog, expanded, runtimeMs}
+        pipelineSummary:     '',
+        pipelineSummaryData: null, // structured summary for rich display
 
         // ── Panels / modals ───────────────────────────────────────────────────
         showSettings:      false,
@@ -433,6 +454,7 @@ document.addEventListener('alpine:init', () => {
             this.clearBanner();
             this.traceStages = [];
             this.pipelineSummary = '';
+            this.pipelineSummaryData = null;
             this.networkInfo = '';
 
             if (typeof clearAllMapResults === 'function') clearAllMapResults();
@@ -465,6 +487,7 @@ document.addEventListener('alpine:init', () => {
             this.clearBanner();
             this.traceStages = [];
             this.pipelineSummary = '';
+            this.pipelineSummaryData = null;
 
             if (typeof clearAllMapResults === 'function') {
                 clearAllMapResults();
@@ -995,6 +1018,9 @@ document.addEventListener('alpine:init', () => {
             if (this.routePlaybackActive) {
                 startRoutePlayback(this.playbackPatrolId, this.playbackSpeed);
             }
+            if (this.playbackPatrolId && window.showPatrolInfoPanel) {
+                window.showPatrolInfoPanel(this.playbackPatrolId);
+            }
         },
 
         onPlaybackSpeedChange() {
@@ -1095,17 +1121,22 @@ document.addEventListener('alpine:init', () => {
         // ── Trace panel helpers (called by websocket-client.js) ───────────────
 
         initTracePanel() {
-            this.traceStages       = [];
-            this.pipelineSummary   = '';
-            this.verificationReport = null;
+            this.traceStages        = [];
+            this.pipelineSummary    = '';
+            this.pipelineSummaryData = null;
+            this.verificationReport  = null;
         },
 
         addTraceStage(id, name) {
+            const info = STAGE_INFO[id] || {};
             this.traceStages.push({
                 id,
                 name,
+                description:        info.description   || '',
+                algorithmNote:      info.algorithmNote  || '',
                 status:             'running',
                 summary:            '',
+                metrics:            [],
                 fullLog:            '',
                 expanded:           true,
                 runtimeMs:          null,
@@ -1118,7 +1149,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         updateTraceStage(id, { status, summary, fullLog, runtimeMs, confidence,
-                                convergenceCurve, convergenceRestart, redundancy, restartsCompleted }) {
+                                convergenceCurve, convergenceRestart, redundancy,
+                                restartsCompleted, metrics }) {
             const stage = this.traceStages.find(s => s.id === id);
             if (!stage) return;
             if (status             !== undefined) stage.status             = status;
@@ -1130,6 +1162,7 @@ document.addEventListener('alpine:init', () => {
             if (convergenceRestart !== undefined) stage.convergenceRestart = convergenceRestart;
             if (redundancy         !== undefined) stage.redundancy         = redundancy;
             if (restartsCompleted  !== undefined) stage.restartsCompleted  = restartsCompleted;
+            if (metrics            !== undefined) stage.metrics            = metrics;
         },
 
         setPipelineSummary(text) {

@@ -615,141 +615,261 @@
   <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showTracePanel" x-cloak
        class="trace-panel fixed h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-20 flex flex-col shadow-2xl overflow-hidden"
-       :class="isMobile ? 'inset-0 w-full' : 'top-0 right-80 w-96'">
+       :class="isMobile ? 'inset-0 w-full' : 'top-0 right-80 w-[26rem]'">
 
+    <!-- Panel header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-      <h2 class="font-semibold text-sm">Algorithm Trace</h2>
+      <div>
+        <h2 class="font-semibold text-sm text-gray-900 dark:text-gray-100">Pipeline Trace</h2>
+        <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Algorithm-by-algorithm breakdown</p>
+      </div>
       <button @click="showTracePanel = false"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-4">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
     </div>
 
-    <div id="trace-content" class="flex-1 overflow-y-auto px-3 py-2 text-xs space-y-2 font-mono">
-      <p class="text-gray-400" x-show="traceStages.length === 0">No pipeline run yet.</p>
+    <div id="trace-content" class="flex-1 overflow-y-auto px-3 py-3 space-y-3 text-xs">
+      <p class="text-gray-400 dark:text-gray-500 text-center py-6"
+         x-show="traceStages.length === 0">
+        No pipeline run yet. Plot incidents and click Recalculate.
+      </p>
 
       <template x-for="stage in traceStages" :key="stage.id">
-        <div class="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
+        <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+
+          <!-- Stage header row -->
           <button @click="stage.expanded = !stage.expanded"
-                  class="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-left">
-            <div class="flex items-center gap-2">
-              <span :class="{
-                'w-2 h-2 rounded-full bg-green-500': stage.status === 'success',
-                'w-2 h-2 rounded-full bg-yellow-400': stage.status === 'warning',
-                'w-2 h-2 rounded-full bg-red-500': stage.status === 'error',
-                'w-2 h-2 rounded-full bg-gray-300 animate-pulse': stage.status === 'running'
-              }"></span>
-              <span class="font-semibold" x-text="'Stage ' + stage.id + ' — ' + stage.name"></span>
+                  class="w-full flex items-center gap-2.5 px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-left">
+
+            <!-- Status icon -->
+            <span class="flex-shrink-0 text-sm leading-none font-bold"
+                  :class="{
+                    'text-green-500':              stage.status === 'success',
+                    'text-yellow-500':             stage.status === 'warning',
+                    'text-red-500':                stage.status === 'error',
+                    'text-gray-400 animate-pulse': stage.status === 'running'
+                  }"
+                  x-text="{ success: '✓', warning: '⚠', error: '✗', running: '◌' }[stage.status] || '◌'">
+            </span>
+
+            <!-- Stage label -->
+            <div class="flex-1 min-w-0">
+              <div class="text-[9px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 leading-none mb-0.5">
+                Stage <span x-text="stage.id"></span>
+              </div>
+              <div class="font-semibold text-sm text-gray-800 dark:text-gray-100 leading-tight" x-text="stage.name"></div>
             </div>
-            <span class="text-gray-400" x-text="stage.runtimeMs ? stage.runtimeMs + 'ms' : ''"></span>
+
+            <!-- Runtime + chevron -->
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <span class="text-[10px] font-mono text-gray-400" x-show="stage.runtimeMs" x-text="stage.runtimeMs + 'ms'"></span>
+              <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-150 flex-shrink-0"
+                   :class="stage.expanded ? 'rotate-180' : ''"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
           </button>
-          <div x-show="stage.expanded" class="px-3 py-2 space-y-1 bg-white dark:bg-gray-800">
-            <p class="text-gray-600 dark:text-gray-300 whitespace-pre-wrap" x-text="stage.summary"></p>
-            <!-- Confidence indicator — shown only for Stage 2 when confidence data is available -->
-            <div x-show="stage.id === 2 && stage.confidence !== null" class="flex items-center gap-2 pt-1">
-              <span class="text-gray-500">Confidence:</span>
-              <span :class="{
-                'font-medium text-green-600 dark:text-green-400': stage.confidence >= 80,
-                'font-medium text-yellow-600 dark:text-yellow-400': stage.confidence >= 50 && stage.confidence < 80,
-                'font-medium text-red-600 dark:text-red-400': stage.confidence < 50
-              }" x-text="Math.round(stage.confidence || 0) + '%'"></span>
+
+          <!-- Expanded body — sections divided by hairline rules -->
+          <div x-show="stage.expanded"
+               class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/40">
+
+            <!-- What this stage does -->
+            <div class="px-4 py-3" x-show="stage.description">
+              <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed" x-text="stage.description"></p>
             </div>
-            <!-- Convergence curve — shown only for Stage 2 when curve data is available -->
-            <div x-show="stage.id === 2 && stage.convergenceCurve && stage.convergenceCurve.length > 0" class="pt-2">
-              <div class="text-gray-500 dark:text-gray-400 mb-1">Convergence curve (best-so-far per restart):</div>
-              <template x-for="(item, i) in (stage.convergenceCurve || [])" :key="i">
-                <div class="flex items-center gap-1 mb-0.5">
-                  <span class="w-6 text-right text-gray-400 flex-shrink-0" x-text="'R' + (i + 1)"></span>
-                  <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-sm h-2.5 min-w-0">
-                    <div :style="'width: ' + item.pct + '%'"
-                         :class="item.improved ? 'bg-green-500 dark:bg-green-400' : 'bg-gray-400 dark:bg-gray-500'"
-                         class="h-full rounded-sm transition-all"></div>
+
+            <!-- Key metrics grid -->
+            <div class="px-4 py-3" x-show="stage.metrics && stage.metrics.length > 0">
+              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2.5">Results</div>
+              <div class="grid grid-cols-2 gap-x-6 gap-y-3">
+                <template x-for="m in (stage.metrics || [])" :key="m.label">
+                  <div>
+                    <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5"
+                         x-text="m.label"></div>
+                    <div class="text-sm font-bold leading-tight"
+                         :class="m.warn ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-800 dark:text-gray-100'"
+                         x-text="m.value"></div>
                   </div>
-                  <span class="w-14 text-right text-gray-600 dark:text-gray-300 flex-shrink-0"
+                </template>
+              </div>
+            </div>
+
+            <!-- Stage 2: Solution confidence bar -->
+            <div x-show="stage.id === 2 && stage.confidence !== null" class="px-4 py-3">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500">Solution confidence</span>
+                <span class="text-xs font-bold"
+                      :class="{
+                        'text-green-600 dark:text-green-400':  stage.confidence >= 80,
+                        'text-yellow-600 dark:text-yellow-400': stage.confidence >= 50 && stage.confidence < 80,
+                        'text-red-600 dark:text-red-400':      stage.confidence < 50
+                      }"
+                      x-text="Math.round(stage.confidence || 0) + '%'"></span>
+              </div>
+              <div class="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500"
+                     :style="'width: ' + Math.round(stage.confidence || 0) + '%'"
+                     :class="{
+                       'bg-green-500':  stage.confidence >= 80,
+                       'bg-yellow-400': stage.confidence >= 50 && stage.confidence < 80,
+                       'bg-red-400':    stage.confidence < 50
+                     }"></div>
+              </div>
+              <p class="text-[9px] text-gray-400 dark:text-gray-500 mt-1.5 leading-snug">
+                Fraction of restarts that converged to the same best result. Higher = more reliable solution.
+              </p>
+            </div>
+
+            <!-- Stage 2: Restart convergence chart -->
+            <div x-show="stage.id === 2 && stage.convergenceCurve && stage.convergenceCurve.length > 0" class="px-4 py-3">
+              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2">Best result per restart</div>
+              <template x-for="(item, i) in (stage.convergenceCurve || [])" :key="i">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-[9px] font-mono text-gray-400 w-5 text-right flex-shrink-0" x-text="'R' + (i + 1)"></span>
+                  <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-sm h-2 min-w-0">
+                    <div :style="'width: ' + item.pct + '%'"
+                         :class="item.improved ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-300 dark:bg-gray-600'"
+                         class="h-full rounded-sm"></div>
+                  </div>
+                  <span class="text-[9px] font-mono text-gray-500 dark:text-gray-400 w-12 text-right flex-shrink-0"
                         x-text="Math.round(item.bestSoFar) + 'm'"></span>
-                  <span class="w-3 text-green-500 dark:text-green-400 flex-shrink-0"
+                  <span class="text-[9px] text-blue-500 dark:text-blue-400 w-3 flex-shrink-0"
                         x-text="item.improved ? '↑' : ''"></span>
                 </div>
               </template>
-              <div class="mt-1.5 space-y-0.5 text-gray-500 dark:text-gray-400">
-                <div>Converged at restart
-                  <span class="font-medium text-gray-700 dark:text-gray-200"
+              <div class="mt-2 space-y-1 text-[9px] text-gray-400 dark:text-gray-500">
+                <div>
+                  Best at restart
+                  <span class="font-semibold text-gray-700 dark:text-gray-200"
                         x-text="'#' + (stage.convergenceRestart ?? '—')"></span>
                   of
                   <span x-text="stage.restartsCompleted ?? '—'"></span>
                 </div>
-                <div>Redundancy:
+                <div>
+                  Redundancy:
                   <span :class="{
-                    'font-medium text-green-600 dark:text-green-400': stage.redundancy >= 75,
-                    'font-medium text-yellow-600 dark:text-yellow-400': stage.redundancy >= 50 && stage.redundancy < 75,
-                    'font-medium text-red-600 dark:text-red-400': stage.redundancy < 50
-                  }" x-text="(stage.redundancy ?? '—') + '%'"></span>
+                    'font-semibold text-green-600 dark:text-green-400':  stage.redundancy >= 75,
+                    'font-semibold text-yellow-600 dark:text-yellow-400': stage.redundancy >= 50 && stage.redundancy < 75,
+                    'font-semibold text-red-600 dark:text-red-400':      stage.redundancy < 50
+                  }" x-text="(stage.redundancy != null ? stage.redundancy.toFixed(1) : '—') + '%'"></span>
+                  — fraction of patrols that improved over their previous best
                 </div>
               </div>
             </div>
+
+            <!-- Algorithm note -->
+            <div class="px-4 py-3" x-show="stage.algorithmNote">
+              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-1.5">How the algorithm works</div>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed" x-text="stage.algorithmNote"></p>
+            </div>
+
+            <!-- Debug log (collapsible) -->
             <template x-if="stage.fullLog">
-              <details class="mt-1">
-                <summary class="cursor-pointer text-blue-500 hover:text-blue-600">Full Log</summary>
-                <pre class="mt-1 p-2 text-gray-500 dark:text-gray-400 text-xs whitespace-pre-wrap overflow-x-auto leading-relaxed bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
-                     x-text="stage.fullLog"></pre>
+              <details class="group">
+                <summary class="px-4 py-2.5 cursor-pointer list-none flex items-center gap-2 text-[9px] uppercase tracking-widest font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none">
+                  <svg class="w-2.5 h-2.5 transition-transform group-open:rotate-90 flex-shrink-0"
+                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                  </svg>
+                  Debug log
+                </summary>
+                <div class="px-4 pb-3">
+                  <pre class="p-2 text-[10px] font-mono text-gray-500 dark:text-gray-400 whitespace-pre-wrap overflow-x-auto leading-relaxed bg-gray-50 dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-700"
+                       x-text="stage.fullLog"></pre>
+                </div>
               </details>
             </template>
+
           </div>
         </div>
       </template>
 
-      <!-- Pipeline summary -->
-      <div x-show="pipelineSummary"
-           class="border-t border-gray-300 dark:border-gray-600 pt-2 text-gray-600 dark:text-gray-400">
-        <pre class="whitespace-pre-wrap" x-text="pipelineSummary"></pre>
-      </div>
+      <!-- Pipeline summary card -->
+      <template x-if="pipelineSummaryData">
+        <div class="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+          <div class="px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
+            <span class="text-[9px] uppercase tracking-widest font-semibold text-gray-500 dark:text-gray-400">Pipeline complete</span>
+            <span class="text-[10px] font-mono text-gray-400" x-text="pipelineSummaryData.totalRuntimeMs + 'ms total'"></span>
+          </div>
+          <div class="px-4 py-3 grid grid-cols-3 gap-4 bg-white dark:bg-gray-800">
+            <div>
+              <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5">Roaming</div>
+              <div class="text-xl font-bold text-gray-800 dark:text-gray-100" x-text="pipelineSummaryData.roamingCount"></div>
+            </div>
+            <div>
+              <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5">Stationary</div>
+              <div class="text-xl font-bold text-gray-800 dark:text-gray-100" x-text="pipelineSummaryData.stationaryCount"></div>
+            </div>
+            <div>
+              <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5">Overlap edges</div>
+              <div class="text-xl font-bold"
+                   :class="pipelineSummaryData.overlapEdges > 0 ? 'text-orange-500' : 'text-gray-800 dark:text-gray-100'"
+                   x-text="pipelineSummaryData.overlapEdges"></div>
+            </div>
+          </div>
+          <div x-show="pipelineSummaryData.verificationPass !== null"
+               class="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2">
+            <span class="text-sm flex-shrink-0"
+                  :class="pipelineSummaryData.verificationPass ? 'text-green-500' : 'text-yellow-500'"
+                  x-text="pipelineSummaryData.verificationPass ? '✓' : '⚠'"></span>
+            <span class="text-[10px] text-gray-500 dark:text-gray-400"
+                  x-text="pipelineSummaryData.verificationPass
+                    ? 'All algorithm checks passed'
+                    : pipelineSummaryData.verificationFailCount + ' verification check(s) failed'"></span>
+          </div>
+        </div>
+      </template>
 
-      <!-- Verification report -->
+      <!-- Verification report detail -->
       <template x-if="verificationReport">
-        <div class="mt-2 border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
-          <div class="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 flex items-center gap-2">
-            <span :class="verificationReport.overallPass
-              ? 'w-2 h-2 rounded-full bg-green-500 flex-shrink-0'
-              : 'w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0'"></span>
-            <span class="font-semibold text-xs"
+        <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div class="px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
+            <span class="text-sm flex-shrink-0"
+                  :class="verificationReport.overallPass ? 'text-green-500' : 'text-yellow-500'"
+                  x-text="verificationReport.overallPass ? '✓' : '⚠'"></span>
+            <span class="font-semibold text-xs text-gray-700 dark:text-gray-200"
                   x-text="'Verification — ' + (verificationReport.overallPass ? 'All checks passed' : verificationReport.failureCount + ' issue(s) found')"></span>
           </div>
-          <div class="px-3 py-2 space-y-1">
-            <!-- Convex Hull check -->
-            <div class="flex items-start gap-2 text-xs">
-              <span :class="verificationReport.convexHull?.pass
-                ? 'w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-0.5'
-                : 'w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-0.5'"></span>
-              <span class="text-gray-600 dark:text-gray-400" x-text="'Hull: ' + (verificationReport.convexHull?.message || '')"></span>
+          <div class="px-3 py-2 space-y-1.5 bg-white dark:bg-gray-800">
+            <div class="flex items-start gap-2">
+              <span class="text-sm flex-shrink-0 mt-px"
+                    :class="verificationReport.convexHull?.pass ? 'text-green-500' : 'text-red-500'"
+                    x-text="verificationReport.convexHull?.pass ? '✓' : '✗'"></span>
+              <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
+                    x-text="'Hull: ' + (verificationReport.convexHull?.message || '')"></span>
             </div>
-            <!-- Patrol Positions check -->
-            <div class="flex items-start gap-2 text-xs">
-              <span :class="verificationReport.patrolPositions?.pass
-                ? 'w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-0.5'
-                : 'w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-0.5'"></span>
-              <span class="text-gray-600 dark:text-gray-400" x-text="'Positions: ' + (verificationReport.patrolPositions?.message || '')"></span>
+            <div class="flex items-start gap-2">
+              <span class="text-sm flex-shrink-0 mt-px"
+                    :class="verificationReport.patrolPositions?.pass ? 'text-green-500' : 'text-red-500'"
+                    x-text="verificationReport.patrolPositions?.pass ? '✓' : '✗'"></span>
+              <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
+                    x-text="'Positions: ' + (verificationReport.patrolPositions?.message || '')"></span>
             </div>
-            <!-- Zone Assignment check -->
-            <div class="flex items-start gap-2 text-xs">
-              <span :class="verificationReport.zoneAssignment?.pass
-                ? 'w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-0.5'
-                : 'w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-0.5'"></span>
-              <span class="text-gray-600 dark:text-gray-400" x-text="'Zones: ' + (verificationReport.zoneAssignment?.message || '')"></span>
+            <div class="flex items-start gap-2">
+              <span class="text-sm flex-shrink-0 mt-px"
+                    :class="verificationReport.zoneAssignment?.pass ? 'text-green-500' : 'text-red-500'"
+                    x-text="verificationReport.zoneAssignment?.pass ? '✓' : '✗'"></span>
+              <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
+                    x-text="'Zones: ' + (verificationReport.zoneAssignment?.message || '')"></span>
             </div>
-            <!-- TSP Routes per patrol -->
             <template x-for="r in (verificationReport.tspRoutes || [])" :key="r.patrolId">
-              <div class="flex items-start gap-2 text-xs">
-                <span :class="r.pass
-                  ? 'w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0 mt-0.5'
-                  : 'w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 mt-0.5'"></span>
-                <span class="text-gray-600 dark:text-gray-400" x-text="'Route ' + r.patrolId + ': ' + (r.message || '')"></span>
+              <div class="flex items-start gap-2">
+                <span class="text-sm flex-shrink-0 mt-px"
+                      :class="r.pass ? 'text-green-500' : 'text-red-500'"
+                      x-text="r.pass ? '✓' : '✗'"></span>
+                <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
+                      x-text="'Route ' + r.patrolId + ': ' + (r.message || '')"></span>
               </div>
             </template>
           </div>
         </div>
       </template>
+
     </div>
   </div>
 
