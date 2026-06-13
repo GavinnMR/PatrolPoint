@@ -276,7 +276,7 @@ function handleStageStart(data) {
 
     const ui = window.uiApp;
     if (ui) {
-        ui.pipelineStageText = `Running Stage ${data.stage} — ${data.name}…`;
+        ui.pipelineStageText = `Running Stage ${data.stage}: ${data.name}...`;
         ui.updateTraceStage(data.stage, { status: 'running' });
     }
 }
@@ -337,6 +337,11 @@ function handleStageComplete(data) {
         }
     }
 
+    // Cache hull area from Stage 1 so Stage 2 metrics can compute spread quality
+    if (stage === 1 && result.hullArea != null) {
+        window._lastHullArea = result.hullArea;
+    }
+
     const ui = window.uiApp;
     if (ui) {
         // Preserve 'warning' status if already set by a preceding warning message for this stage.
@@ -347,7 +352,8 @@ function handleStageComplete(data) {
         const existLog    = existing?.fullLog || '';
         const rawLog      = trace?.log ?? '';
         const serverLog   = Array.isArray(rawLog) ? rawLog.join('\n') : rawLog;
-        const combinedLog = [existLog, serverLog].filter(Boolean).join('\n');
+        const preamble    = buildFullLogPreamble(stage, result, runtimeMs);
+        const combinedLog = [existLog, preamble, serverLog].filter(Boolean).join('\n');
 
         const stageUpdate = {
             status:    existStatus === 'warning' ? 'warning' : 'success',
@@ -386,8 +392,8 @@ function handleWarning(data) {
             const stage = ui.traceStages.find(s => s.id === data.stage);
             if (stage) {
                 stage.fullLog = stage.fullLog
-                    ? `${stage.fullLog}\n⚠ ${data.message}`
-                    : `⚠ ${data.message}`;
+                    ? `${stage.fullLog}\n[WARN] ${data.message}`
+                    : `[WARN] ${data.message}`;
                 stage.status = 'warning';
             }
         }
@@ -426,8 +432,8 @@ function handleServerError(data) {
             const stage = ui.traceStages.find(s => s.id === data.stage);
             if (stage) {
                 stage.fullLog = stage.fullLog
-                    ? `${stage.fullLog}\n✗ ${data.message}`
-                    : `✗ ${data.message}`;
+                    ? `${stage.fullLog}\n[FAIL] ${data.message}`
+                    : `[FAIL] ${data.message}`;
             }
         }
     }
@@ -476,7 +482,7 @@ function handlePipelineComplete(data) {
 
         const summaryLines = [
             '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-            `Pipeline Complete — Total time: ${Math.round(totalRuntimeMs)}ms`,
+            `Pipeline Complete  Total time: ${Math.round(totalRuntimeMs)}ms`,
             `${roamingCount} roaming patrol${roamingCount !== 1 ? 's' : ''} · ${stationaryCount} stationary · ${overlapEdges} overlapping edge${overlapEdges !== 1 ? 's' : ''}`
         ];
 
@@ -552,15 +558,127 @@ function handlePong() {
     console.log(`PONG: received at ${new Date(lastPongTimestamp).toISOString()}`);
 }
 
+// ── Full log preamble builder ──────────────────────────────────────────────────
+// Adds a structured header before the raw server trace log so the full log
+// reads as a complete account of what the algorithm received and produced.
+function buildFullLogPreamble(stage, result, runtimeMs) {
+    const rt = runtimeMs != null ? `${Math.round(runtimeMs)} ms` : 'unknown';
+    const hr = '─'.repeat(48);
+    switch (stage) {
+        case 1: {
+            const vertexCount    = result.hull?.length ?? 0;
+            const areaKm2        = result.hullArea != null ? (result.hullArea / 1e6).toFixed(4) : '—';
+            const areaM2         = result.hullArea != null ? Math.round(result.hullArea).toLocaleString() : '—';
+            const candidates     = result.validCandidateCount ?? 0;
+            const outliers       = result.outlierCount ?? 0;
+            return [
+                hr,
+                'STAGE 1  Brute Force Convex Hull',
+                hr,
+                `Runtime          : ${rt}`,
+                `Outliers flagged : ${outliers} (threshold: ${window.uiApp?.activeConfig?.convexHull?.outlierMultiplier ?? 2.5}x avg distance from centroid)`,
+                `Hull vertices    : ${vertexCount}`,
+                `Hull area        : ${areaM2} m²  (${areaKm2} km²)`,
+                `Road intersections inside hull : ${candidates} of ${window._intersectionCount ?? '?'} total`,
+                result.linearHandlerTriggered ? 'Linear handler   : TRIGGERED (patrols placed along incident line)' : 'Collinearity     : passed (full hull computed)',
+                result.skipped ? 'Cache            : hull unchanged (valid candidates reused from previous run)' : '',
+                hr
+            ].filter(Boolean).join('\n');
+        }
+        case 2: {
+            const n              = result.patrols?.length ?? 0;
+            const candidates     = result.validCandidateCount ?? result.patrols?.length ?? '?';
+            const best           = result.bestMinPairwiseDist != null ? result.bestMinPairwiseDist.toFixed(1) + ' m' : 'N/A';
+            const restartBest    = result.convergenceRestart ?? 'N/A';
+            const totalRestarts  = result.restartsCompleted ?? 'N/A';
+            const redundancy     = result.redundancy != null ? result.redundancy.toFixed(1) + '%' : 'N/A';
+            const confidence     = result.confidence != null ? result.confidence.toFixed(1) + '%' : 'N/A';
+            const cappedNote     = result.cappedFrom != null ? `(capped from ${result.cappedFrom})` : '';
+            return [
+                hr,
+                'STAGE 2  Hill Climbing Patrol Placement',
+                hr,
+                `Runtime               : ${rt}`,
+                `Patrols requested     : ${n} ${cappedNote}`,
+                `Candidate nodes       : ${candidates}`,
+                `Restarts completed    : ${totalRestarts}`,
+                `Best result at restart: #${restartBest}`,
+                `Best min pairwise dist: ${best}`,
+                `Redundancy            : ${redundancy}  (% of restarts that confirmed without improving)`,
+                `Confidence            : ${confidence}  (60% consistency + 40% confirmation)`,
+                hr
+            ].filter(Boolean).join('\n');
+        }
+        case 3: {
+            const zoneCount      = result.zones?.length ?? 0;
+            const emptyCount     = result.emptyZones?.length ?? 0;
+            const singleCount    = result.singleNodeZones?.length ?? 0;
+            const multiCount     = zoneCount - emptyCount - singleCount;
+            const avgSnap        = result.avgSnappingDist != null ? result.avgSnappingDist.toFixed(1) + ' m' : 'N/A';
+            const maxSnap        = result.maxSnappingDist != null ? result.maxSnappingDist.toFixed(1) + ' m' : 'N/A';
+            const nonEmptyZones  = (result.zones || []).filter(z => z && z.length > 0);
+            const zoneSizes      = nonEmptyZones.map(z => z.length);
+            const minZone        = zoneSizes.length > 0 ? Math.min(...zoneSizes) : 0;
+            const maxZone        = zoneSizes.length > 0 ? Math.max(...zoneSizes) : 0;
+            const balance        = maxZone > 0 ? Math.round((minZone / maxZone) * 100) : 100;
+            const zoneBreakdown  = (result.zones || []).map((z, i) =>
+                `  Patrol s${i + 1}: ${z?.length ?? 0} crime node(s)`
+            ).join('\n');
+            return [
+                hr,
+                'STAGE 3  Zone Assignment',
+                hr,
+                `Runtime              : ${rt}`,
+                `Total zones          : ${zoneCount}  (${emptyCount} empty, ${singleCount} single-node, ${multiCount} multi-node)`,
+                `Avg snapping distance: ${avgSnap}`,
+                `Max snapping distance: ${maxSnap}`,
+                `Zone balance ratio   : ${balance}%  (min zone / max zone; 100% = perfectly even)`,
+                'Zone breakdown:',
+                zoneBreakdown,
+                hr
+            ].filter(Boolean).join('\n');
+        }
+        case 4: {
+            const routeCount     = result.routes?.length ?? 0;
+            const dijkstraCalls  = result.totalDijkstraCalls ?? 'N/A';
+            const cacheHits      = result.totalCacheHits ?? 'N/A';
+            const cacheRate      = (result.totalDijkstraCalls > 0)
+                ? Math.round((result.totalCacheHits / result.totalDijkstraCalls) * 100) + '%'
+                : 'N/A';
+            const overlapEdges   = result.overlapEdges?.length ?? 0;
+            const routeLines     = (result.routes || []).map(r => {
+                const dist = r.circuitDistanceM != null ? Math.round(r.circuitDistanceM) + ' m' : 'N/A';
+                const seq  = (r.sequence || []).join(' → ');
+                return `  Patrol ${r.patrolId}: circuit = ${seq || '(no sequence)'}  total = ${dist}`;
+            }).join('\n');
+            return [
+                hr,
+                'STAGE 4  Backtracking TSP + Dijkstra Road Paths',
+                hr,
+                `Runtime           : ${rt}`,
+                `TSP circuits built: ${routeCount}`,
+                `Dijkstra calls    : ${dijkstraCalls}`,
+                `Cache hits        : ${cacheHits}  (${cacheRate} hit rate)`,
+                `Overlapping edges : ${overlapEdges}`,
+                'Optimal circuits:',
+                routeLines || '  (none)',
+                hr
+            ].filter(Boolean).join('\n');
+        }
+        default:
+            return '';
+    }
+}
+
 // ── Trace summary builder ──────────────────────────────────────────────────────
 function buildTraceSummary(stage, result, runtimeMs) {
-    const rt = runtimeMs != null ? `${Math.round(runtimeMs)}ms` : '—';
+    const rt = runtimeMs != null ? `${Math.round(runtimeMs)}ms` : 'N/A';
     switch (stage) {
         case 1:
             return [
                 result.skipped
                     ? 'Hull unchanged (incremental skip).'
-                    : `Hull: ${result.hull?.length ?? 0} vertices, area: ${result.hullArea != null ? (result.hullArea / 1e6).toFixed(4) + ' km²' : '—'}`,
+                    : `Hull: ${result.hull?.length ?? 0} vertices, area: ${result.hullArea != null ? (result.hullArea / 1e6).toFixed(4) + ' km2' : 'N/A'}`,
                 `Outliers detected: ${result.outlierCount ?? 0}`,
                 `Valid candidates inside hull: ${result.validCandidateCount ?? 0}`,
                 result.linearHandlerTriggered ? 'Linear handler triggered.' : '',
@@ -569,11 +687,11 @@ function buildTraceSummary(stage, result, runtimeMs) {
 
         case 2:
             return [
-                `Best min pairwise distance: ${result.bestMinPairwiseDist?.toFixed(1) ?? '—'}m`,
-                `Converged at restart #${result.convergenceRestart ?? '—'} of ${result.restartsCompleted ?? '—'}`,
-                `Redundancy: ${result.redundancy?.toFixed(1) ?? '—'}%`,
-                `Confidence: ${result.confidence?.toFixed(1) ?? '—'}%`,
-                result.cappedFrom != null ? `Patrol count capped: ${result.cappedFrom} → ${result.patrols?.length}` : '',
+                `Best min pairwise distance: ${result.bestMinPairwiseDist?.toFixed(1) ?? 'N/A'}m`,
+                `Converged at restart #${result.convergenceRestart ?? 'N/A'} of ${result.restartsCompleted ?? 'N/A'}`,
+                `Redundancy: ${result.redundancy?.toFixed(1) ?? 'N/A'}%`,
+                `Confidence: ${result.confidence?.toFixed(1) ?? 'N/A'}%`,
+                result.cappedFrom != null ? `Patrol count capped: ${result.cappedFrom} to ${result.patrols?.length}` : '',
                 `Runtime: ${rt}`
             ].filter(Boolean).join('\n');
 
@@ -582,15 +700,15 @@ function buildTraceSummary(stage, result, runtimeMs) {
                 `Zones: ${result.zones?.length ?? 0} total`,
                 `Empty zones: ${result.emptyZones?.length ?? 0}`,
                 `Single-node zones: ${result.singleNodeZones?.length ?? 0}`,
-                `Avg snapping distance: ${result.avgSnappingDist?.toFixed(1) ?? '—'}m`,
-                `Max snapping distance: ${result.maxSnappingDist?.toFixed(1) ?? '—'}m`,
+                `Avg snapping distance: ${result.avgSnappingDist?.toFixed(1) ?? 'N/A'}m`,
+                `Max snapping distance: ${result.maxSnappingDist?.toFixed(1) ?? 'N/A'}m`,
                 `Runtime: ${rt}`
             ].filter(Boolean).join('\n');
 
         case 4:
             return [
                 `Routes: ${result.routes?.length ?? 0} patrol circuits`,
-                `Dijkstra calls: ${result.totalDijkstraCalls ?? '—'}, cache hits: ${result.totalCacheHits ?? '—'}`,
+                `Dijkstra calls: ${result.totalDijkstraCalls ?? 'N/A'}, cache hits: ${result.totalCacheHits ?? 'N/A'}`,
                 `Overlap edges: ${result.overlapEdges?.length ?? 0}`,
                 `Runtime: ${rt}`
             ].filter(Boolean).join('\n');
@@ -601,43 +719,178 @@ function buildTraceSummary(stage, result, runtimeMs) {
 }
 
 // ── Trace metrics builder ──────────────────────────────────────────────────────
-// Returns a structured array of {label, value, warn?} for each stage.
-// These drive the metrics grid in the trace panel rather than raw summary text.
+// Returns a structured array of {label, value, warn?, tooltip} for each stage.
+// Tooltips show simplified definitions when user hovers the label.
 function buildTraceMetrics(stage, result) {
     switch (stage) {
-        case 1:
+        case 1: {
+            const totalIntersections = window._intersectionCount ?? null;
+            const inside = result.validCandidateCount ?? 0;
+            const coveragePct = totalIntersections > 0 ? Math.round((inside / totalIntersections) * 100) : null;
             return [
-                { label: 'Hull vertices',              value: result.hull?.length ?? 0 },
-                { label: 'Area',                       value: result.hullArea != null ? (result.hullArea / 1e6).toFixed(3) + ' km²' : '—' },
-                { label: 'Intersections in zone',      value: result.validCandidateCount ?? 0 },
-                { label: 'Outliers flagged',            value: result.outlierCount ?? 0 },
-                ...(result.linearHandlerTriggered ? [{ label: 'Linear handler', value: 'Triggered', warn: true }] : []),
-            ];
-        case 2: {
-            const n = result.patrols?.length ?? 0;
-            return [
-                { label: 'Patrols placed',          value: n },
-                { label: 'Min pairwise distance',   value: result.bestMinPairwiseDist != null ? Math.round(result.bestMinPairwiseDist) + ' m' : '—' },
-                { label: 'Restarts completed',      value: result.restartsCompleted ?? '—' },
-                { label: 'Best at restart',         value: result.convergenceRestart != null ? '#' + result.convergenceRestart : '—' },
-                ...(result.cappedFrom != null ? [{ label: 'Count capped', value: `${result.cappedFrom} → ${n}`, warn: true }] : []),
+                {
+                    label:   'Hull vertices',
+                    value:   result.hull?.length ?? 0,
+                    tooltip: 'Number of corner points that form the convex danger zone boundary.'
+                },
+                {
+                    label:   'Area',
+                    value:   result.hullArea != null ? (result.hullArea / 1e6).toFixed(3) + ' km²' : 'N/A',
+                    tooltip: 'Total area enclosed by the danger zone polygon, in square kilometers.'
+                },
+                {
+                    label:   'Candidate nodes',
+                    value:   coveragePct != null ? `${inside} (${coveragePct}% of all)` : inside,
+                    tooltip: 'Road intersection nodes inside the danger zone. The only positions eligible for patrol placement.'
+                },
+                {
+                    label:   'Outliers flagged',
+                    value:   result.outlierCount ?? 0,
+                    tooltip: 'Incident coordinates much farther from the group centroid than average. Shown with a distinct marker. Adjust sensitivity in Settings.'
+                },
+                ...(result.linearHandlerTriggered ? [{
+                    label:   'Linear handler',
+                    value:   'Triggered',
+                    warn:    true,
+                    tooltip: 'All incident points were collinear (on a straight line), so no 2D polygon could be formed. Patrols were placed along the line instead.'
+                }] : []),
             ];
         }
-        case 3:
+        case 2: {
+            const n = result.patrols?.length ?? 0;
+            // Spread quality: achieved min pairwise dist vs. theoretical sqrt(A/n) ideal spacing
+            const hullArea = window._lastHullArea;
+            let spreadQuality = null;
+            if (hullArea != null && n > 1 && result.bestMinPairwiseDist != null) {
+                const idealSpacing = Math.sqrt(hullArea / n);
+                spreadQuality = Math.min(100, Math.round((result.bestMinPairwiseDist / idealSpacing) * 100));
+            }
             return [
-                { label: 'Patrol zones',            value: result.zones?.length ?? 0 },
-                { label: 'Empty zones',             value: result.emptyZones?.length ?? 0 },
-                { label: 'Single-incident zones',   value: result.singleNodeZones?.length ?? 0 },
-                { label: 'Avg snap distance',       value: result.avgSnappingDist != null ? result.avgSnappingDist.toFixed(1) + ' m' : '—' },
-                { label: 'Max snap distance',       value: result.maxSnappingDist != null ? result.maxSnappingDist.toFixed(1) + ' m' : '—', warn: (result.maxSnappingDist ?? 0) > 200 },
+                {
+                    label:   'Patrols placed',
+                    value:   n,
+                    tooltip: 'Number of patrol units successfully positioned inside the danger zone.'
+                },
+                {
+                    label:   'Min pairwise dist',
+                    value:   result.bestMinPairwiseDist != null ? Math.round(result.bestMinPairwiseDist) + ' m' : 'N/A',
+                    tooltip: 'Shortest straight-line distance between any two patrols. Hill Climbing maximizes this to spread patrols as far apart as possible.'
+                },
+                {
+                    label:   'Spread quality',
+                    value:   spreadQuality != null ? spreadQuality + '%' : 'N/A',
+                    tooltip: 'How close the achieved patrol spread is to the theoretical ideal spacing for this zone area and patrol count. 100% = perfect grid-like distribution.'
+                },
+                {
+                    label:   'Confidence',
+                    value:   result.confidence != null ? result.confidence.toFixed(1) + '%' : 'N/A',
+                    tooltip: 'How reliable this result is: 60% weighted by restart consistency (do all restarts agree?) + 40% by confirmation rate (how many restarts confirmed the best without improving it?).'
+                },
+                {
+                    label:   'Restarts',
+                    value:   result.restartsCompleted ?? 'N/A',
+                    tooltip: 'Number of independent Hill Climbing runs performed. More restarts reduce the chance of being stuck in a local optimum.'
+                },
+                {
+                    label:   'Best at restart',
+                    value:   result.convergenceRestart != null ? '#' + result.convergenceRestart : 'N/A',
+                    tooltip: 'The restart number that found the overall best patrol configuration. If this is early (e.g. #2 of 10), later restarts confirmed it.'
+                },
+                {
+                    label:   'Redundancy',
+                    value:   result.redundancy != null ? result.redundancy.toFixed(1) + '%' : 'N/A',
+                    tooltip: 'Percentage of restarts that confirmed the best result without finding anything better. Higher redundancy means the solution is stable and well-verified.'
+                },
+                ...(result.cappedFrom != null ? [{
+                    label:   'Count capped',
+                    value:   `${result.cappedFrom} → ${n}`,
+                    warn:    true,
+                    tooltip: 'Requested patrol count exceeded the number of eligible positions inside the zone, so it was reduced to the maximum possible.'
+                }] : []),
             ];
-        case 4:
+        }
+        case 3: {
+            const nonEmptyZones = (result.zones || []).filter(z => z && z.length > 0);
+            const zoneSizes     = nonEmptyZones.map(z => z.length);
+            const minZone       = zoneSizes.length > 0 ? Math.min(...zoneSizes) : 0;
+            const maxZone       = zoneSizes.length > 0 ? Math.max(...zoneSizes) : 0;
+            const balance       = maxZone > 0 ? Math.round((minZone / maxZone) * 100) : 100;
+            const totalPlotted  = (result.zones || []).reduce((s, z) => s + (z?.length ?? 0), 0) + (result.excludedCount ?? 0);
+            const covered       = (result.zones || []).reduce((s, z) => s + (z?.length ?? 0), 0);
+            const coverageRate  = totalPlotted > 0 ? Math.round((covered / totalPlotted) * 100) : 100;
             return [
-                { label: 'TSP circuits',    value: result.routes?.length ?? 0 },
-                { label: 'Dijkstra calls',  value: result.totalDijkstraCalls ?? '—' },
-                { label: 'Cache hits',      value: result.totalCacheHits ?? '—' },
-                { label: 'Overlap edges',   value: result.overlapEdges?.length ?? 0, warn: (result.overlapEdges?.length ?? 0) > 0 },
+                {
+                    label:   'Coverage rate',
+                    value:   coverageRate + '%',
+                    tooltip: 'Percentage of plotted incidents that were successfully assigned to a patrol zone. Incidents too far from any road intersection are excluded.'
+                },
+                {
+                    label:   'Zone balance',
+                    value:   balance + '%',
+                    tooltip: 'How evenly incidents are distributed across patrols. 100% = all patrols have the same number of incidents. Low values mean some patrols are overloaded.'
+                },
+                {
+                    label:   'Patrol zones',
+                    value:   result.zones?.length ?? 0,
+                    tooltip: 'Total number of patrol zones, one per patrol unit.'
+                },
+                {
+                    label:   'Empty zones',
+                    value:   result.emptyZones?.length ?? 0,
+                    tooltip: 'Patrols with no assigned incidents. These patrols remain stationary at their computed position.'
+                },
+                {
+                    label:   'Single-incident',
+                    value:   result.singleNodeZones?.length ?? 0,
+                    tooltip: 'Zones with exactly one incident. These patrols make a direct out-and-back visit rather than a full TSP circuit.'
+                },
+                {
+                    label:   'Avg snap dist',
+                    value:   result.avgSnappingDist != null ? result.avgSnappingDist.toFixed(1) + ' m' : 'N/A',
+                    tooltip: 'Average distance between a plotted incident coordinate and the nearest road intersection it was snapped to. Snapping aligns incidents to the road network.'
+                },
+                {
+                    label:   'Max snap dist',
+                    value:   result.maxSnappingDist != null ? result.maxSnappingDist.toFixed(1) + ' m' : 'N/A',
+                    warn:    (result.maxSnappingDist ?? 0) > 200,
+                    tooltip: 'Largest individual snapping distance. Values above 200m indicate an incident was plotted far from any road. Its assigned road position may not match the original intent.'
+                },
             ];
+        }
+        case 4: {
+            const totalCalls = result.totalDijkstraCalls ?? 0;
+            const cacheHits  = result.totalCacheHits ?? 0;
+            const cacheRate  = totalCalls > 0 ? Math.round((cacheHits / totalCalls) * 100) : null;
+            const totalCircuitDist = (result.routes || []).reduce((s, r) => s + (r.circuitDistanceM || 0), 0);
+            return [
+                {
+                    label:   'TSP circuits',
+                    value:   result.routes?.length ?? 0,
+                    tooltip: 'Number of closed-loop patrol routes generated. Each route visits all assigned incidents and returns to the starting position.'
+                },
+                {
+                    label:   'Total circuit dist',
+                    value:   totalCircuitDist > 0 ? (totalCircuitDist / 1000).toFixed(2) + ' km' : 'N/A',
+                    tooltip: 'Sum of all patrol circuit lengths following actual road paths. Represents the total distance all patrols would travel on one complete round.'
+                },
+                {
+                    label:   'Dijkstra calls',
+                    value:   totalCalls,
+                    tooltip: 'Number of shortest-path computations run against the full road network graph.'
+                },
+                {
+                    label:   'Cache hit rate',
+                    value:   cacheRate != null ? cacheRate + '%' : 'N/A',
+                    tooltip: 'Percentage of required paths found in the Dijkstra result cache rather than recomputed. Higher is better. Shared road segments between patrol zones are reused automatically.'
+                },
+                {
+                    label:   'Overlap edges',
+                    value:   result.overlapEdges?.length ?? 0,
+                    warn:    (result.overlapEdges?.length ?? 0) > 0,
+                    tooltip: 'Road segments used by more than one patrol circuit. Shown as orange (2 patrols) or red (3+) overlays on the map. High overlap may indicate patrol territory consolidation could help.'
+                },
+            ];
+        }
         default:
             return [];
     }

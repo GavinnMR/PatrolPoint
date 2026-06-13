@@ -181,10 +181,10 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
 
                 if (!anyRemoved) {
                     // Incident set is identical — hull is guaranteed unchanged
-                    log.push('Incremental hull update: incident set identical to previous run — skipping full computation.');
+                    log.push('Incremental hull update: incident set identical to previous run - skipping full computation.');
                     return {
                         status: 'success',
-                        message: 'Hull unchanged — incident set identical to previous run.',
+                        message: 'Hull unchanged - incident set identical to previous run.',
                         warnings: [],
                         data: {
                             hull: previousHull,
@@ -203,16 +203,16 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
                     };
                 }
                 // Points were removed — hull may have shrunk; must recompute
-                log.push('Incremental hull update: incident(s) removed since last run — hull may have changed. Recomputing.');
+                log.push('Incremental hull update: incident(s) removed since last run - hull may have changed. Recomputing.');
 
             } else {
                 // New points exist — check if all fall inside previousHull
                 const allNewInside = newPoints.every(p => isPointInHull(p, previousHull, eps));
                 if (allNewInside) {
-                    log.push(`Incremental hull update: ${newPoints.length} new incident(s) all inside previous hull — hull unchanged. Skipping full computation.`);
+                    log.push(`Incremental hull update: ${newPoints.length} new incident(s) all inside previous hull - hull unchanged. Skipping full computation.`);
                     return {
                         status: 'success',
-                        message: 'Hull unchanged — all new incidents fall inside previous danger zone.',
+                        message: 'Hull unchanged - all new incidents fall inside previous danger zone.',
                         warnings: [],
                         data: {
                             hull: previousHull,
@@ -230,7 +230,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
                         }
                     };
                 }
-                log.push(`Incremental hull update: new incident(s) outside previous hull — recomputing.`);
+                log.push(`Incremental hull update: new incident(s) outside previous hull - recomputing.`);
             }
 
         } else {
@@ -240,10 +240,10 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
             // Pipeline should pass previousIncidents for correct behavior.
             const allInside = incidents.every(p => isPointInHull(p, previousHull, eps));
             if (allInside) {
-                log.push('Incremental hull update (conservative): all current incidents inside previous hull — skipping recomputation.');
+                log.push('Incremental hull update (conservative): all current incidents inside previous hull - skipping recomputation.');
                 return {
                     status: 'success',
-                    message: 'Hull unchanged — all current incidents inside previous danger zone.',
+                    message: 'Hull unchanged - all current incidents inside previous danger zone.',
                     warnings: [],
                     data: {
                         hull: previousHull,
@@ -261,7 +261,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
                     }
                 };
             }
-            log.push('Incremental hull update: incident(s) outside previous hull — recomputing.');
+            log.push('Incremental hull update: incident(s) outside previous hull - recomputing.');
         }
     }
 
@@ -294,7 +294,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
         }
 
         if (filtered.length < 3) {
-            log.push(`Only ${filtered.length} non-outlier incident(s) remain — insufficient for hull`);
+            log.push(`Only ${filtered.length} non-outlier incident(s) remain - insufficient for hull`);
             return {
                 status: 'warning',
                 message: 'Outlier removal reduced incident points below minimum required for danger zone computation. Either plot more points or adjust the outlier sensitivity in Settings.',
@@ -323,7 +323,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
 
     // ── Step 2: Validity check ────────────────────────────────────────────────
     if (filtered.length === 2) {
-        log.push('Only 2 non-outlier incidents — triggering linear handler');
+        log.push('Only 2 non-outlier incidents - triggering linear handler');
         return makeLinearResult(
             filtered, n, 'two_points',
             'Only 2 incident coordinates plotted. Patrols placed along incident line. Plot at least 3 non-collinear points for full danger zone analysis.',
@@ -343,7 +343,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     }
 
     if (allCollinear) {
-        log.push('Collinearity check: all incidents collinear — triggering linear handler');
+        log.push('Collinearity check: all incidents collinear - triggering linear handler');
         return makeLinearResult(
             filtered, n, 'collinear',
             'All incident coordinates are collinear. Patrols placed along the incident line. Plot points in different directions for full danger zone analysis.',
@@ -379,7 +379,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
 
     // ── Step 5: Edge count validation ────────────────────────────────────────
     if (validEdges.length < 3) {
-        log.push('Fewer than 3 valid hull edges — triggering linear handler');
+        log.push('Fewer than 3 valid hull edges - triggering linear handler');
         return makeLinearResult(
             filtered, n, 'few_edges',
             'Incident coordinates are too nearly collinear to form a valid danger zone. Patrols placed along incident line.',
@@ -400,7 +400,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
             Math.abs(e.from.lng - last.to.lng) < 1e-9
         );
         if (nextIdx === -1) {
-            log.push('Edge ordering failed — no connecting edge found');
+            log.push('Edge ordering failed - no connecting edge found');
             return {
                 status: 'error',
                 message: 'Danger zone boundary could not be constructed. Please try different incident coordinates.',
@@ -425,7 +425,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     }
 
     const hull = ordered.map(e => ({ lat: e.from.lat, lng: e.from.lng }));
-    log.push(`Edge ordering: success — ${hull.length} hull vertices`);
+    log.push(`Edge ordering: success - ${hull.length} hull vertices`);
 
     // ── Step 7: Shoelace area ─────────────────────────────────────────────────
     // Shoelace convention: lng is x, lat is y — must be consistent throughout this file.
@@ -487,7 +487,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
         if (hullAreaM2 < areaThreshold) {
             warnings.push('Incident coordinates are tightly clustered. Patrol spread may be limited. Consider spreading incident coordinates across a wider area.');
             areaWarning = true;
-            log.push(`Area threshold: WARNING — ${Math.round(hullAreaM2)} m² < ${Math.round(areaThreshold)} m²`);
+            log.push(`Area threshold: WARNING - ${Math.round(hullAreaM2)} m² < ${Math.round(areaThreshold)} m²`);
         } else {
             log.push(`Area threshold: passed (${Math.round(hullAreaM2)} m² >= ${Math.round(areaThreshold)} m²)`);
         }
@@ -502,7 +502,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     if (hullCache && hullsEqual(hull, hullCache.hull, colEps)) {
         validCandidates  = hullCache.candidates;
         updatedHullCache = hullCache;
-        log.push(`Valid candidates: cache hit — reusing ${validCandidates.length} cached candidates (hull unchanged)`);
+        log.push(`Valid candidates: cache hit - reusing ${validCandidates.length} cached candidates (hull unchanged)`);
     } else {
         validCandidates  = runRayCastPreFilter(hull, nodeMap, eps);
         // Deep-copy hull vertices into cache to prevent mutation by downstream code
@@ -526,7 +526,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     // ── Empty valid candidates ────────────────────────────────────────────────
     // Keep hull polygon in result so pipeline can highlight nearest outside intersections.
     if (validCandidates.length === 0) {
-        log.push('No intersection nodes found inside hull — cannot place any patrols');
+        log.push('No intersection nodes found inside hull - cannot place any patrols');
 
         // Find 5 nearest intersection nodes to hull centroid — all are outside the hull
         const centLat = hull.reduce((s, v) => s + v.lat, 0) / hull.length;
@@ -560,7 +560,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
         };
     }
 
-    log.push(`Stage 1 complete — ${hull.length} hull vertices, ${Math.round(hullAreaM2)} m², ${validCandidates.length} valid candidates`);
+    log.push(`Stage 1 complete - ${hull.length} hull vertices, ${Math.round(hullAreaM2)} m², ${validCandidates.length} valid candidates`);
 
     return {
         status: areaWarning ? 'warning' : 'success',

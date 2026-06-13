@@ -182,7 +182,7 @@ async function handleCompute(ws, data, clientIp) {
             pushToClient(ws, {
                 type: 'error',
                 data: {
-                    message: `Server is busy — too many users running at once (max ${MAX_CONCURRENT_PIPELINES} concurrent). Try again in a moment, or run it locally: clone the repo and run DEMO_MODE=true npm start.`,
+                    message: `Server is at capacity (${MAX_CONCURRENT_PIPELINES} concurrent pipelines running). PatrolPoint is computationally intensive and each active pipeline consumes significant RAM, so live deployment capacity is intentionally limited. Please try again in a moment. To run without limits on your own machine: (1) clone the repository, (2) install dependencies with "npm install", (3) start the server with "DEMO_MODE=true npm start", (4) open http://localhost:3000 in your browser.`,
                     fatal: true
                 }
             });

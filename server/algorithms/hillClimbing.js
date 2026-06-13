@@ -162,7 +162,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     // Skip Hill Climbing — place sole patrol at most central valid candidate.
     // Most central = minimum average Haversine distance to all other valid candidates.
     if (n === 1) {
-        log.push('Single patrol mode — finding most central intersection node.');
+        log.push('Single patrol mode - finding most central intersection node.');
         let bestNode   = null;
         let bestAvgDist = Infinity;
         for (const candidate of validCandidates) {
@@ -181,7 +181,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         log.push(`Single patrol placed at most central node: ${bestNode.id} (${bestNode.lat.toFixed(6)}, ${bestNode.lng.toFixed(6)}), avg dist to others: ${Math.round(bestAvgDist)}m`);
         return {
             status:   'success',
-            message:  'Single patrol mode — placed at most central intersection node.',
+            message:  'Single patrol mode - placed at most central intersection node.',
             warnings,
             data: {
                 patrols: [{ id: 's1', nodeId: bestNode.id, lat: bestNode.lat, lng: bestNode.lng, color: PATROL_COLORS[0] }],
@@ -431,7 +431,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
                 [...nodeIdSet].every(id => prev.nodeIdSet.has(id))) {
                 isDuplicate = true;
                 duplicateConfigCount++;
-                log.push(`  Restart ${restartIdx + 1} converged to previously found configuration. Solution diversity low — consider increasing radius R in Settings.`);
+                log.push(`  Restart ${restartIdx + 1} converged to previously found configuration. Solution diversity low - consider increasing radius R in Settings.`);
                 break;
             }
         }
@@ -483,23 +483,10 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         log.push(`Total radius expansions across all restarts: ${totalRadiusExpansions}.`);
     }
 
-    // ── Confidence indicator ──────────────────────────────────────────────────
-    // confidence = (1 - stdDev/mean) × 100, clamped to [0, 100].
-    // High confidence means restarts consistently converged to similar results.
-    const allMinDists = allRestartResults.map(r => r.minDist);
-    const mean        = allMinDists.reduce((s, d) => s + d, 0) / allMinDists.length;
-    let confidence    = 100;
-    if (allMinDists.length > 1 && mean > 0) {
-        const variance = allMinDists.reduce((s, d) => s + (d - mean) ** 2, 0) / allMinDists.length;
-        const stdDev   = Math.sqrt(variance);
-        confidence     = Math.max(0, Math.min(100, (1 - stdDev / mean) * 100));
-    }
-
     // ── Convergence curve ─────────────────────────────────────────────────────
     // restartScores: raw per-restart minDist values.
     // bestSoFarCurve: monotonically non-decreasing best-so-far at each restart.
     // convergenceRestart: last restart (1-indexed) that improved the best result.
-    // efficiency: fraction of restarts that actually improved best-so-far, as %.
     const restartScores   = allRestartResults.map(r => r.minDist);
     const bestSoFarCurve  = [];
     let runningBest        = -Infinity;
@@ -513,10 +500,34 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         }
         bestSoFarCurve.push(runningBest);
     }
+    // redundancy: % of restarts that confirmed the best without improving it.
+    // High redundancy = the algorithm kept verifying the same answer = stable solution.
     const redundancy = restartsCompleted > 0
         ? Math.round((1 - improvingCount / restartsCompleted) * 1000) / 10
         : null;
+
+    // ── Confidence indicator ──────────────────────────────────────────────────
+    // Weighted composite of two independent signals:
+    //   60% consistency  — how tightly clustered are restart results?
+    //                      Low coefficient of variation (stdDev/mean) → high consistency.
+    //   40% confirmation — what fraction of restarts confirmed the best without improving?
+    //                      High redundancy → the solution is stable and well-verified.
+    // This addresses a weakness of consistency alone: if all restarts consistently find a
+    // poor local optimum, stdDev/mean is low but the result is untrustworthy. Adding
+    // confirmation penalises solutions that kept improving until the last restart.
+    const allMinDists = allRestartResults.map(r => r.minDist);
+    const mean        = allMinDists.reduce((s, d) => s + d, 0) / allMinDists.length;
+    let confidence    = 100;
+    if (allMinDists.length > 1 && mean > 0) {
+        const variance      = allMinDists.reduce((s, d) => s + (d - mean) ** 2, 0) / allMinDists.length;
+        const stdDev        = Math.sqrt(variance);
+        const consistency   = Math.max(0, Math.min(100, (1 - stdDev / mean) * 100));
+        const confirmation  = redundancy ?? 0;
+        confidence = Math.max(0, Math.min(100, 0.6 * consistency + 0.4 * confirmation));
+    }
+
     log.push(`Convergence restart: ${convergenceRestart} of ${restartsCompleted}. Redundancy: ${redundancy}%.`);
+    log.push(`Confidence: ${confidence.toFixed(1)}% (60% consistency + 40% confirmation).`);
 
     const hasWarnings = anyMaxIterWarning || duplicateConfigCount > 0 || totalRadiusExpansions > 0;
 

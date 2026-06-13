@@ -69,7 +69,7 @@ export function verifyConvexHull(hull, incidents) {
 // Check: all patrols inside hull (Ray Casting), unique nodes, valid candidate membership.
 export function verifyPatrolPositions(patrols, hull, validCandidates) {
     if (!hull || hull.length < 3) {
-        return { pass: false, message: 'Hull is null — cannot verify patrol positions.' };
+        return { pass: false, message: 'Hull is null - cannot verify patrol positions.' };
     }
 
     if (!patrols || patrols.length === 0) {
@@ -208,10 +208,10 @@ export function verifyZoneAssignment(zones, patrols, allCrimeNodes, dijkstraCach
 // k:             number of crime nodes in this patrol's zone
 export function verifyTSPRoute(route, dijkstraCache, k) {
     if (!route || route.isEmpty) {
-        return { pass: true, message: `Patrol ${route?.patrolId ?? '?'}: empty zone — stationary, no route to verify.` };
+        return { pass: true, message: `Patrol ${route?.patrolId ?? '?'}: empty zone - stationary, no route to verify.` };
     }
     if (route.isSingleNode) {
-        return { pass: true, message: `Patrol ${route.patrolId}: single-node zone — direct visit route, no TSP to verify.` };
+        return { pass: true, message: `Patrol ${route.patrolId}: single-node zone - direct visit route, no TSP to verify.` };
     }
 
     const { patrolId, sequence, circuitDistanceM, approximate } = route;
@@ -348,7 +348,7 @@ export function verifyAll(pipelineResult) {
                 tspRouteResults.push({
                     patrolId: patrols[pi].id,
                     pass:     true,
-                    message:  `Patrol ${patrols[pi].id}: no route entry — stationary.`
+                    message:  `Patrol ${patrols[pi].id}: no route entry - stationary.`
                 });
                 continue;
             }

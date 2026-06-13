@@ -210,6 +210,8 @@ function initMap(ui) {
     });
 
     replacePlaceholder('onHullComplete', (result) => {
+        _clearRoutePolylines();
+        clearZoneLines();
         if (result.hull && result.hull.length >= 3) renderHull(result.hull);
         if (result.nearestHighlights) renderNearestHighlights(result.nearestHighlights);
     });
@@ -701,7 +703,7 @@ function _buildPatrolPopupContent(patrolId) {
 
     const { color, num, style } = entry;
     const latlng = entry.marker.getLatLng();
-    const idx    = parseInt(patrolId.replace(/\D/g, ''), 10);
+    const idx    = parseInt(patrolId.replace(/\D/g, ''), 10) - 1; // s1 → 0, s2 → 1 (zones array is 0-based)
 
     const zone  = _lastZones  ? (_lastZones[idx]  || []) : null;
     const route = _lastRoutes ? _lastRoutes.find(r => r.patrolId === patrolId) : null;

@@ -297,7 +297,7 @@ export function runZoneAssignment(
     for (const node of snappedNodes) {
         if (seenSnappedIds.has(node.snappedNodeId)) {
             mergedCount++;
-            log.push(`Crime node ${node.crimeId} merged with nearby incident at node ${node.snappedNodeId} — duplicate snapped position.`);
+            log.push(`Crime node ${node.crimeId} merged with nearby incident at node ${node.snappedNodeId} - duplicate snapped position.`);
             warnings.push(`Crime node ${node.crimeId} merged with nearby incident at node ${node.snappedNodeId}.`);
         } else {
             seenSnappedIds.set(node.snappedNodeId, node);
@@ -314,7 +314,7 @@ export function runZoneAssignment(
         for (const patrol of patrols) {
             if (node.snappedNodeId === patrol.nodeId) {
                 zeroDistWaypoints++;
-                log.push(`Crime node ${node.crimeId} already at patrol ${patrol.id} position (${patrol.nodeId}) — zero distance waypoint.`);
+                log.push(`Crime node ${node.crimeId} already at patrol ${patrol.id} position (${patrol.nodeId}) - zero distance waypoint.`);
             }
         }
     }
@@ -375,8 +375,8 @@ export function runZoneAssignment(
                     assignedIdx = pi;
                 }
             }
-            log.push(`Crime node ${node.crimeId} (${node.lat.toFixed(6)}, ${node.lng.toFixed(6)}): all road network distances Infinity — Euclidean Haversine fallback → patrol ${patrols[assignedIdx].id}`);
-            warnings.push(`Crime node ${node.crimeId}: road network disconnected from all patrols — using straight-line distance for assignment.`);
+            log.push(`Crime node ${node.crimeId} (${node.lat.toFixed(6)}, ${node.lng.toFixed(6)}): all road network distances Infinity - Euclidean Haversine fallback → patrol ${patrols[assignedIdx].id}`);
+            warnings.push(`Crime node ${node.crimeId}: road network disconnected from all patrols - using straight-line distance for assignment.`);
         } else {
             log.push(`Crime node ${node.crimeId} (${node.lat.toFixed(6)}, ${node.lng.toFixed(6)}) → patrol ${patrols[assignedIdx].id} (road dist: ${Math.round(minDist)}m)`);
         }
@@ -429,7 +429,7 @@ export function runZoneAssignment(
         const size = zones[pi].length;
         if (size === 0) {
             emptyZones.push(pi);
-            log.push(`Patrol ${patrols[pi].id}: empty zone — stationary deployment`);
+            log.push(`Patrol ${patrols[pi].id}: empty zone - stationary deployment`);
         } else if (size === 1) {
             const crimeNode = zones[pi][0];
             const roadDist = distanceMatrix[crimeNode.snappedNodeId]?.[pi] ?? Infinity;
@@ -437,10 +437,10 @@ export function runZoneAssignment(
                 ? 2 * roadDist
                 : 2 * haversineDistance(patrols[pi].lat, patrols[pi].lng, crimeNode.snappedLat, crimeNode.snappedLng);
             singleNodeZones.push(pi);
-            log.push(`Patrol ${patrols[pi].id}: single node zone — direct visit route. Distance: ${Math.round(directDistM)}m`);
+            log.push(`Patrol ${patrols[pi].id}: single node zone - direct visit route. Distance: ${Math.round(directDistM)}m`);
         } else {
             multiNodeZones.push(pi);
-            log.push(`Patrol ${patrols[pi].id}: ${size} nodes — proceeding to TSP`);
+            log.push(`Patrol ${patrols[pi].id}: ${size} nodes - proceeding to TSP`);
         }
     }
 
@@ -488,7 +488,7 @@ export function runZoneAssignment(
         if (status === 'success') status = 'warning';
     }
 
-    log.push(`Stage 3 complete — status: ${status}`);
+    log.push(`Stage 3 complete - status: ${status}`);
 
     return {
         status,

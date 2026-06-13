@@ -192,7 +192,7 @@ export function runTSP(
         const pathIds = getPathIds(fromId, toId);
 
         if (!pathIds || pathIds.length === 0) {
-            log.push(`Warning: no road path ${fromId} → ${toId} — segment omitted (road graph disconnected).`);
+            log.push(`Warning: no road path ${fromId} → ${toId} - segment omitted (road graph disconnected).`);
             return { coords: [], noPath: true };
         }
 
@@ -227,8 +227,8 @@ export function runTSP(
         // Reachability guard: if crime node is unreachable from patrol via road network,
         // treat zone as empty (stationary) rather than drawing a straight-line route.
         if (distStoC === Infinity) {
-            log.push(`Patrol ${patrol.id}: single-node zone — crime node ${crimeNode.crimeId} unreachable via road network — patrol remains stationary.`);
-            warnings.push(`Crime node ${crimeNode.crimeId} unreachable from patrol ${patrol.id} via road network — single-node zone treated as stationary.`);
+            log.push(`Patrol ${patrol.id}: single-node zone - crime node ${crimeNode.crimeId} unreachable via road network - patrol remains stationary.`);
+            warnings.push(`Crime node ${crimeNode.crimeId} unreachable from patrol ${patrol.id} via road network - single-node zone treated as stationary.`);
             routes.push({
                 patrolId: patrol.id, patrolIndex: pi,
                 sequence: [], circuitDistanceM: 0,
@@ -243,7 +243,7 @@ export function runTSP(
         const leg1 = processLeg(sId, cId); // si → c1 (outbound)
         const leg2 = processLeg(cId, sId); // c1 → si (return leg — explicit)
 
-        log.push(`Patrol ${patrol.id}: single-node circuit — ${sId} → ${cId} → ${sId}, distance: ${Math.round(circuitDistanceM)}m`);
+        log.push(`Patrol ${patrol.id}: single-node circuit - ${sId} → ${cId} → ${sId}, distance: ${Math.round(circuitDistanceM)}m`);
 
         routes.push({
             patrolId:         patrol.id,
@@ -277,16 +277,16 @@ export function runTSP(
         // Step 2: Remove unreachable crime nodes — if D[si][c] = Infinity, c is unreachable
         const reachable = zone.filter(c => {
             if ((D[sId]?.[c.snappedNodeId] ?? Infinity) === Infinity) {
-                log.push(`Crime node ${c.crimeId} unreachable from patrol ${patrol.id} via road network — excluded from route.`);
-                warnings.push(`Crime node ${c.crimeId} unreachable from patrol ${patrol.id} via road network — excluded from route.`);
+                log.push(`Crime node ${c.crimeId} unreachable from patrol ${patrol.id} via road network - excluded from route.`);
+                warnings.push(`Crime node ${c.crimeId} unreachable from patrol ${patrol.id} via road network - excluded from route.`);
                 return false;
             }
             return true;
         });
 
         if (reachable.length === 0) {
-            log.push(`Patrol ${patrol.id}: all crime nodes unreachable — patrol remains stationary.`);
-            warnings.push(`All crime nodes unreachable from patrol ${patrol.id} — patrol remains stationary.`);
+            log.push(`Patrol ${patrol.id}: all crime nodes unreachable - patrol remains stationary.`);
+            warnings.push(`All crime nodes unreachable from patrol ${patrol.id} - patrol remains stationary.`);
             routes.push({
                 patrolId: patrol.id, patrolIndex: pi,
                 sequence: [], circuitDistanceM: 0,
@@ -309,7 +309,7 @@ export function runTSP(
             totalDist = (D[sId]?.[crimeIds[0]] ?? 0) +
                         (D[crimeIds[0]]?.[crimeIds[1]] ?? 0) +
                         (D[crimeIds[1]]?.[sId] ?? 0);
-            log.push(`Patrol ${patrol.id}: 2 crime nodes in zone — both visiting sequences are equivalent. First sequence selected.`);
+            log.push(`Patrol ${patrol.id}: 2 crime nodes in zone - both visiting sequences are equivalent. First sequence selected.`);
 
         } else if (actualK > fallbackThreshold) {
             const result = nearestNeighborTSP(sId, crimeIds, D);
@@ -331,7 +331,7 @@ export function runTSP(
                 sequence       = fallback.sequence;
                 totalDist      = fallback.totalDist;
                 approximate    = true;
-                warnings.push(`Patrol ${patrol.id}: backtracking TSP found no feasible circuit — nearest neighbor fallback used.`);
+                warnings.push(`Patrol ${patrol.id}: backtracking TSP found no feasible circuit - nearest neighbor fallback used.`);
             }
         }
 

@@ -652,7 +652,7 @@
                     'text-red-500':                stage.status === 'error',
                     'text-gray-400 animate-pulse': stage.status === 'running'
                   }"
-                  x-text="{ success: '✓', warning: '⚠', error: '✗', running: '◌' }[stage.status] || '◌'">
+                  x-text="{ success: 'OK', warning: 'WARN', error: 'FAIL', running: '...' }[stage.status] || '...'">
             </span>
 
             <!-- Stage label -->
@@ -688,12 +688,20 @@
               <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2.5">Results</div>
               <div class="grid grid-cols-2 gap-x-6 gap-y-3">
                 <template x-for="m in (stage.metrics || [])" :key="m.label">
-                  <div>
-                    <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5"
-                         x-text="m.label"></div>
+                  <div x-data="{ ttVisible: false }" class="relative">
+                    <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5 select-none"
+                         :class="m.tooltip ? 'cursor-help underline decoration-dotted underline-offset-2' : ''"
+                         x-text="m.label"
+                         @mouseenter="m.tooltip ? ttVisible = true : null"
+                         @mouseleave="ttVisible = false"></div>
                     <div class="text-sm font-bold leading-tight"
                          :class="m.warn ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-800 dark:text-gray-100'"
                          x-text="m.value"></div>
+                    <!-- Tooltip -->
+                    <div x-show="ttVisible && m.tooltip"
+                         x-cloak
+                         class="absolute bottom-full left-0 mb-1.5 w-52 bg-gray-900 dark:bg-gray-950 text-white text-[10px] leading-snug px-2.5 py-1.5 rounded shadow-lg z-[9999] pointer-events-none"
+                         x-text="m.tooltip"></div>
                   </div>
                 </template>
               </div>
@@ -721,7 +729,7 @@
                      }"></div>
               </div>
               <p class="text-[9px] text-gray-400 dark:text-gray-500 mt-1.5 leading-snug">
-                Fraction of restarts that converged to the same best result. Higher = more reliable solution.
+                Composite score: 60% restart consistency + 40% confirmation rate. Higher means the algorithm repeatedly agreed on the same result.
               </p>
             </div>
 
@@ -746,9 +754,9 @@
                 <div>
                   Best at restart
                   <span class="font-semibold text-gray-700 dark:text-gray-200"
-                        x-text="'#' + (stage.convergenceRestart ?? '—')"></span>
+                        x-text="'#' + (stage.convergenceRestart ?? 'N/A')"></span>
                   of
-                  <span x-text="stage.restartsCompleted ?? '—'"></span>
+                  <span x-text="stage.restartsCompleted ?? 'N/A'"></span>
                 </div>
                 <div>
                   Redundancy:
@@ -756,8 +764,8 @@
                     'font-semibold text-green-600 dark:text-green-400':  stage.redundancy >= 75,
                     'font-semibold text-yellow-600 dark:text-yellow-400': stage.redundancy >= 50 && stage.redundancy < 75,
                     'font-semibold text-red-600 dark:text-red-400':      stage.redundancy < 50
-                  }" x-text="(stage.redundancy != null ? stage.redundancy.toFixed(1) : '—') + '%'"></span>
-                  — fraction of patrols that improved over their previous best
+                  }" x-text="(stage.redundancy != null ? stage.redundancy.toFixed(1) : 'N/A') + '%'"></span>
+                  - fraction of restarts that confirmed the best result
                 </div>
               </div>
             </div>
@@ -816,7 +824,7 @@
                class="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2">
             <span class="text-sm flex-shrink-0"
                   :class="pipelineSummaryData.verificationPass ? 'text-green-500' : 'text-yellow-500'"
-                  x-text="pipelineSummaryData.verificationPass ? '✓' : '⚠'"></span>
+                  x-text="pipelineSummaryData.verificationPass ? 'PASS' : 'WARN'"></span>
             <span class="text-[10px] text-gray-500 dark:text-gray-400"
                   x-text="pipelineSummaryData.verificationPass
                     ? 'All algorithm checks passed'
@@ -831,29 +839,29 @@
           <div class="px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
             <span class="text-sm flex-shrink-0"
                   :class="verificationReport.overallPass ? 'text-green-500' : 'text-yellow-500'"
-                  x-text="verificationReport.overallPass ? '✓' : '⚠'"></span>
+                  x-text="verificationReport.overallPass ? 'PASS' : 'WARN'"></span>
             <span class="font-semibold text-xs text-gray-700 dark:text-gray-200"
-                  x-text="'Verification — ' + (verificationReport.overallPass ? 'All checks passed' : verificationReport.failureCount + ' issue(s) found')"></span>
+                  x-text="'Verification: ' + (verificationReport.overallPass ? 'All checks passed' : verificationReport.failureCount + ' issue(s) found')"></span>
           </div>
           <div class="px-3 py-2 space-y-1.5 bg-white dark:bg-gray-800">
             <div class="flex items-start gap-2">
               <span class="text-sm flex-shrink-0 mt-px"
                     :class="verificationReport.convexHull?.pass ? 'text-green-500' : 'text-red-500'"
-                    x-text="verificationReport.convexHull?.pass ? '✓' : '✗'"></span>
+                    x-text="verificationReport.convexHull?.pass ? 'OK' : 'FAIL'"></span>
               <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
                     x-text="'Hull: ' + (verificationReport.convexHull?.message || '')"></span>
             </div>
             <div class="flex items-start gap-2">
               <span class="text-sm flex-shrink-0 mt-px"
                     :class="verificationReport.patrolPositions?.pass ? 'text-green-500' : 'text-red-500'"
-                    x-text="verificationReport.patrolPositions?.pass ? '✓' : '✗'"></span>
+                    x-text="verificationReport.patrolPositions?.pass ? 'OK' : 'FAIL'"></span>
               <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
                     x-text="'Positions: ' + (verificationReport.patrolPositions?.message || '')"></span>
             </div>
             <div class="flex items-start gap-2">
               <span class="text-sm flex-shrink-0 mt-px"
                     :class="verificationReport.zoneAssignment?.pass ? 'text-green-500' : 'text-red-500'"
-                    x-text="verificationReport.zoneAssignment?.pass ? '✓' : '✗'"></span>
+                    x-text="verificationReport.zoneAssignment?.pass ? 'OK' : 'FAIL'"></span>
               <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
                     x-text="'Zones: ' + (verificationReport.zoneAssignment?.message || '')"></span>
             </div>
@@ -861,7 +869,7 @@
               <div class="flex items-start gap-2">
                 <span class="text-sm flex-shrink-0 mt-px"
                       :class="r.pass ? 'text-green-500' : 'text-red-500'"
-                      x-text="r.pass ? '✓' : '✗'"></span>
+                      x-text="r.pass ? 'OK' : 'FAIL'"></span>
                 <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
                       x-text="'Route ' + r.patrolId + ': ' + (r.message || '')"></span>
               </div>
@@ -946,31 +954,36 @@
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Hill Climbing</h3>
           <div class="space-y-2">
             <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Restarts</span>
+              <span class="text-gray-600 dark:text-gray-400 cursor-help"
+                    title="Number of independent Hill Climbing runs. More restarts explore different starting positions, reducing the chance of getting stuck in a poor local optimum. Increases compute time.">Restarts</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.restarts"
                      min="1" max="30"
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Max iterations</span>
+              <span class="text-gray-600 dark:text-gray-400 cursor-help"
+                    title="Maximum number of move attempts per restart. Higher values let each run explore further before stopping. Increase if patrols seem poorly spread.">Max iterations</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.maxIterations"
                      min="50" max="2000"
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Radius multiplier k</span>
+              <span class="text-gray-600 dark:text-gray-400 cursor-help"
+                    title="Controls how far each patrol can search for a better position per iteration. Higher = wider search range, lower = finer local refinement. Formula: R = sqrt(area / candidates) × k.">Radius multiplier k</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.radiusMultiplier"
                      min="1" max="5" step="0.5"
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Adaptive max restarts</span>
+              <span class="text-gray-600 dark:text-gray-400 cursor-help"
+                    title="Upper limit on restarts when the algorithm automatically determines it needs more than the base restart count. Prevents infinite computation on complex configurations.">Adaptive max restarts</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.adaptiveMaxRestarts"
                      min="5" max="50"
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Synchronous mode</span>
+              <span class="text-gray-600 dark:text-gray-400 cursor-help"
+                    title="When on, the algorithm runs all iterations before sending any results. When off, progress is streamed back to the browser after each restart so you see live updates.">Synchronous mode</span>
               <button @click="settingsDraft.hillClimbing.synchronousMode = !settingsDraft.hillClimbing.synchronousMode"
                       :class="settingsDraft.hillClimbing.synchronousMode ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
                       class="relative w-10 h-5 rounded-full transition-colors">
@@ -996,7 +1009,7 @@
                       class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
               </button>
             </label>
-            <p class="text-xs text-gray-400 dark:text-gray-500" x-text="settingsDraft.candidateNodes === 'all' ? 'All nodes — max recommended updates to √total' : 'Intersection nodes only — max recommended updates to √junctions'"></p>
+            <p class="text-xs text-gray-400 dark:text-gray-500" x-text="settingsDraft.candidateNodes === 'all' ? 'All nodes: max recommended patrols updates to sqrt(total nodes)' : 'Intersection nodes only: max recommended updates to sqrt(junctions)'"></p>
           </div>
         </div>
 
@@ -1005,19 +1018,22 @@
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Convex Hull</h3>
           <div class="space-y-2">
             <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Area threshold divisor</span>
+              <span class="text-gray-600 dark:text-gray-400 cursor-help"
+                    title="If the computed danger zone area is smaller than barangay area divided by this number, a 'tightly clustered' warning is shown. Lower value = more sensitive to small zones.">Area threshold divisor</span>
               <input type="number" x-model.number="settingsDraft.convexHull.areaThresholdDivisor"
                      min="10" max="500"
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Outlier multiplier</span>
+              <span class="text-gray-600 dark:text-gray-400 cursor-help"
+                    title="Incidents farther from the group centroid than this multiplier times the average distance are flagged as outliers. Lower = stricter flagging. Default 2.5 flags only extreme outliers.">Outlier multiplier</span>
               <input type="number" x-model.number="settingsDraft.convexHull.outlierMultiplier"
                      min="1" max="5" step="0.1"
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Include outliers</span>
+              <span class="text-gray-600 dark:text-gray-400 cursor-help"
+                    title="When on, all plotted incidents are used in the hull computation regardless of distance from the cluster. Outlier markers are shown but not excluded from the algorithm.">Include outliers</span>
               <button @click="settingsDraft.convexHull.includeOutliers = !settingsDraft.convexHull.includeOutliers"
                       :class="settingsDraft.convexHull.includeOutliers ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
                       class="relative w-10 h-5 rounded-full transition-colors">
@@ -1033,7 +1049,8 @@
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Patrol Routes</h3>
           <div class="space-y-2">
             <label class="flex items-center justify-between gap-2">
-              <span class="text-gray-600 dark:text-gray-400 leading-tight">Max incidents per patrol
+              <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
+                    title="Maximum number of incidents any one patrol visits per circuit. Zones with more are trimmed to the nearest incidents. Higher values produce longer routes and slower computation.">Max incidents per patrol
                 <span class="block text-xs text-gray-400 dark:text-gray-500">Cap on how many incidents one patrol visits</span>
               </span>
               <input type="number" x-model.number="settingsDraft.tsp.maxCrimeNodesPerZone"
@@ -1041,7 +1058,8 @@
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
             </label>
             <label class="flex items-center justify-between gap-2">
-              <span class="text-gray-600 dark:text-gray-400 leading-tight">Fast route above N incidents
+              <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
+                    title="Zones with more incidents than this threshold use nearest-neighbor heuristic instead of exact backtracking TSP. Exact TSP is O(k!) and becomes impractically slow above 10-12 nodes.">Fast route above N incidents
                 <span class="block text-xs text-gray-400 dark:text-gray-500">Zones larger than this use a quick estimate instead of exact optimal</span>
               </span>
               <input type="number" x-model.number="settingsDraft.tsp.nearestNeighborFallbackThreshold"
@@ -1049,7 +1067,8 @@
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
             </label>
             <label class="flex items-center justify-between gap-2">
-              <span class="text-gray-600 dark:text-gray-400 leading-tight">Stay-inside penalty
+              <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
+                    title="Road segments outside the danger zone boundary have their cost multiplied by this value. Set to 1 to allow any road. Higher values strongly discourage routes that leave the zone.">Stay-inside penalty
                 <span class="block text-xs text-gray-400 dark:text-gray-500">1 = off · higher values push routes to stay within the danger zone</span>
               </span>
               <input type="number" x-model.number="settingsDraft.tsp.hullExteriorPenalty"
@@ -1064,8 +1083,9 @@
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Zone Assignment</h3>
           <div class="space-y-2">
             <label class="flex items-center justify-between gap-2">
-              <span class="text-gray-600 dark:text-gray-400 leading-tight">Strong rebalancing
-                <span class="block text-xs text-gray-400 dark:text-gray-500">Off: light rebalancing (default) — only corrects extreme imbalance · On: redistributes until all patrols have equal workload</span>
+              <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
+                    title="Light mode (off): only corrects extreme zone imbalance where one patrol has far more incidents than others. Strong mode (on): redistributes incidents iteratively until all active patrols have equal workloads.">Strong rebalancing
+                <span class="block text-xs text-gray-400 dark:text-gray-500">Off: light rebalancing (default) - only corrects extreme imbalance. On: redistributes until all patrols have equal workload</span>
               </span>
               <button @click="settingsDraft.zoneAssignment.strongRebalancing = !settingsDraft.zoneAssignment.strongRebalancing"
                       :class="settingsDraft.zoneAssignment.strongRebalancing ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
@@ -1081,18 +1101,18 @@
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Display</h3>
           <div class="space-y-2">
-            <template x-for="[key, label] in [
-              ['showZoneLines','Zone assignment lines'],
-              ['showRouteArrows','Route direction arrows'],
-              ['showOverlapColoring','Overlap coloring'],
-              ['showCoverageRadius','Patrol coverage radius']
-            ]" :key="key">
+            <template x-for="item in [
+              { key: 'showZoneLines',       label: 'Zone assignment lines',   tip: 'Show dashed lines connecting each incident to its assigned patrol. Useful for verifying zone boundaries after deployment.' },
+              { key: 'showRouteArrows',     label: 'Route direction arrows',  tip: 'Show travel direction indicators along patrol routes in roaming mode. Arrows indicate the order in which incidents are visited.' },
+              { key: 'showOverlapColoring', label: 'Overlap coloring',        tip: 'Highlight road segments used by more than one patrol circuit. Orange = 2 patrols share the segment, red = 3 or more.' },
+              { key: 'showCoverageRadius',  label: 'Patrol coverage radius',  tip: 'Draw an estimated coverage area circle around each patrol position based on the minimum pairwise distance between patrols.' }
+            ]" :key="item.key">
               <label class="flex items-center justify-between">
-                <span class="text-gray-600 dark:text-gray-400" x-text="label"></span>
-                <button @click="settingsDraft.display[key] = !settingsDraft.display[key]"
-                        :class="settingsDraft.display[key] ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
+                <span class="text-gray-600 dark:text-gray-400 cursor-help" x-text="item.label" :title="item.tip"></span>
+                <button @click="settingsDraft.display[item.key] = !settingsDraft.display[item.key]"
+                        :class="settingsDraft.display[item.key] ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
                         class="relative w-10 h-5 rounded-full transition-colors">
-                  <span :class="settingsDraft.display[key] ? 'translate-x-5' : 'translate-x-0'"
+                  <span :class="settingsDraft.display[item.key] ? 'translate-x-5' : 'translate-x-0'"
                         class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
                 </button>
               </label>
@@ -1269,11 +1289,11 @@
             </div>
             <template x-if="comparisonRunA">
               <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                <p x-text="'Barangay: ' + (comparisonRunA.barangay || '—')"></p>
+                <p x-text="'Barangay: ' + (comparisonRunA.barangay || 'N/A')"></p>
                 <p x-text="'Patrols: ' + (comparisonRunA.patrols?.length || 0)"></p>
-                <p x-text="'Mode: ' + (comparisonRunA.mode || '—')"></p>
-                <p x-text="'Min dist: ' + (comparisonRunA.minPairwiseDist ? Math.round(comparisonRunA.minPairwiseDist) + 'm' : '—')"></p>
-                <p x-text="'Runtime: ' + (comparisonRunA.totalRuntimeMs ? comparisonRunA.totalRuntimeMs + 'ms' : '—')"></p>
+                <p x-text="'Mode: ' + (comparisonRunA.mode || 'N/A')"></p>
+                <p x-text="'Min dist: ' + (comparisonRunA.minPairwiseDist ? Math.round(comparisonRunA.minPairwiseDist) + 'm' : 'N/A')"></p>
+                <p x-text="'Runtime: ' + (comparisonRunA.totalRuntimeMs ? comparisonRunA.totalRuntimeMs + 'ms' : 'N/A')"></p>
               </div>
             </template>
             <p x-show="!comparisonRunA" class="text-xs text-gray-400">Not stored yet.</p>
@@ -1291,11 +1311,11 @@
             </div>
             <template x-if="comparisonRunB">
               <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-                <p x-text="'Barangay: ' + (comparisonRunB.barangay || '—')"></p>
+                <p x-text="'Barangay: ' + (comparisonRunB.barangay || 'N/A')"></p>
                 <p x-text="'Patrols: ' + (comparisonRunB.patrols?.length || 0)"></p>
-                <p x-text="'Mode: ' + (comparisonRunB.mode || '—')"></p>
-                <p x-text="'Min dist: ' + (comparisonRunB.minPairwiseDist ? Math.round(comparisonRunB.minPairwiseDist) + 'm' : '—')"></p>
-                <p x-text="'Runtime: ' + (comparisonRunB.totalRuntimeMs ? comparisonRunB.totalRuntimeMs + 'ms' : '—')"></p>
+                <p x-text="'Mode: ' + (comparisonRunB.mode || 'N/A')"></p>
+                <p x-text="'Min dist: ' + (comparisonRunB.minPairwiseDist ? Math.round(comparisonRunB.minPairwiseDist) + 'm' : 'N/A')"></p>
+                <p x-text="'Runtime: ' + (comparisonRunB.totalRuntimeMs ? comparisonRunB.totalRuntimeMs + 'ms' : 'N/A')"></p>
               </div>
             </template>
             <p x-show="!comparisonRunB" class="text-xs text-gray-400">Not stored yet.</p>
