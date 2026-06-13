@@ -158,7 +158,7 @@ export function verifyZoneAssignment(zones, patrols, allCrimeNodes, dijkstraCach
             const snappedId = node.snappedNodeId;
             if (!dijkstraCache[snappedId]) {
                 // Dijkstra not run from this node — cannot verify assignment
-                assignmentWarnings.push(`Cannot verify assignment for ${node.crimeId} — Dijkstra not cached from ${snappedId}.`);
+                assignmentWarnings.push(`Cannot verify assignment for ${node.crimeId}: Dijkstra not cached from ${snappedId}.`);
                 continue;
             }
 
@@ -272,8 +272,8 @@ export function verifyTSPRoute(route, dijkstraCache, k) {
 
     // k > 6 or approximate — skip exhaustive check
     const note = approximate
-        ? `Nearest neighbor heuristic used (k=${k} > threshold) — optimality not guaranteed.`
-        : `k=${k} > 6 — exhaustive optimality check skipped.`;
+        ? `Nearest neighbor heuristic used (k=${k} > threshold): optimality not guaranteed.`
+        : `k=${k} > 6: exhaustive optimality check skipped.`;
 
     return {
         pass:    true,

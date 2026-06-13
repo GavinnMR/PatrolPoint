@@ -35,10 +35,21 @@ window.PP_TESTS = (() => {
     // v2: pipeline runs server-side via WebSocket; trigger recalculate then poll pipelineRunning
     async function runPipeline() {
         window.uiApp?.recalculate();
+        // Phase 1: wait for pipeline to START (pipelineRunning → true), up to 3s
         await new Promise(resolve => {
             const start = Date.now();
             const poll = setInterval(() => {
-                if (!window.pipelineRunning || Date.now() - start > 30000) {
+                if (window.pipelineRunning || Date.now() - start > 3000) {
+                    clearInterval(poll);
+                    resolve();
+                }
+            }, 50);
+        });
+        // Phase 2: wait for pipeline to COMPLETE (pipelineRunning → false), up to 60s
+        await new Promise(resolve => {
+            const start = Date.now();
+            const poll = setInterval(() => {
+                if (!window.pipelineRunning || Date.now() - start > 60000) {
                     clearInterval(poll);
                     resolve();
                 }
@@ -686,7 +697,7 @@ window.PP_TESTS = (() => {
                 const cap = (typeof CONFIG !== 'undefined' && CONFIG.tsp) ? CONFIG.tsp.maxCrimeNodesPerZone : 10;
                 return [
                     chkEq(zones ? zones.length : -1, 1,             '1 zone for 1 patrol'),
-                    chkEq(zones ? zones[0].length : -1, cap,        `zone capped to ${cap} nodes`),
+                    chkEq(zones && zones[0] ? zones[0].length : -1, cap, `zone capped to ${cap} nodes`),
                     chkEq(bannerType(), 'warning',                  'warning banner shown'),
                     chkIncludes(bannerText(), 'capped',             'banner mentions capped')
                 ];
@@ -795,10 +806,13 @@ window.PP_TESTS = (() => {
                 { lat: 14.6998, lng: 121.1005 }
             ],
             check() {
-                const cacheSize = Object.keys(dijkstraCache).length;
+                // dijkstraCache lives server-side; verify Stage 3 ran road distances via trace
+                const s3 = window.uiApp?.traceStages?.find(s => s.id === 3);
+                const s3Log = s3?.fullLog || '';
                 return [
-                    chkNull(stageStatus(4),     'Stage 4 did not run (stationary mode)'),
-                    chkGt(cacheSize, 0,         `dijkstraCache has ${cacheSize} entries — Stage 3 ran Dijkstra without Stage 4`)
+                    chkNull(stageStatus(4), 'Stage 4 did not run (stationary mode)'),
+                    chkNotNull(s3, 'Stage 3 trace entry present'),
+                    chkEq(s3?.status !== 'error' ? 'ok' : 'fail', 'ok', 'Stage 3 completed without error')
                 ];
             }
         },
@@ -815,23 +829,16 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() {
-                const singleIdx = zoneTypes ? zoneTypes.findIndex(t => t === 'single') : -1;
-                if (singleIdx < 0) {
+                // dijkstraCache and normalizeEdgeKey are server-side; verify via client trace text
+                const s3 = window.uiApp?.traceStages?.find(s => s.id === 3);
+                const traceText = s3?.fullLog || '';
+                const hasSingleZone = zones ? zones.some(z => z && z.length === 1) : false;
+                if (!hasSingleZone) {
                     return [{ ok: 'manual', label: 'No single-node zone produced — re-run or check zone distribution' }];
                 }
-                const patrol = S_star[singleIdx];
-                const crime  = zones[singleIdx][0];
-                const cacheKey = (typeof normalizeEdgeKey === 'function')
-                    ? normalizeEdgeKey(patrol.id, crime.id) : null;
-                const entry = cacheKey ? dijkstraCache[cacheKey] : undefined;
-                const traceText = document.getElementById('trace-content')?.textContent || '';
                 return [
-                    chkEq(entry !== undefined ? 'ok' : 'fail', 'ok',
-                        'dijkstraCache has patrol→crime entry for single-node zone (Stage 3 populated it)'),
-                    chkEq(entry && entry.distance < Infinity ? 'ok' : 'fail', 'ok',
-                        'cached road distance is finite'),
-                    chkIncludes(traceText, 'direct visit, round trip',
-                        'Stage 3 trace contains "direct visit, round trip" entry'),
+                    chkIncludes(traceText, 'direct visit',
+                        'Stage 3 trace contains "direct visit" for single-node zone'),
                     chkEq(!traceText.includes('round trip undefinedm') ? 'ok' : 'fail', 'ok',
                         'round trip distance resolved to a number, not undefined')
                 ];
@@ -913,10 +920,13 @@ window.PP_TESTS = (() => {
                 { lat: 14.7082, lng: 121.0892 }
             ],
             check() {
-                const cachePopulated = Object.keys(dijkstraCache).length > 0;
+                // dijkstraCache lives server-side; verify TSP ran via routes on map + Stage 4 trace
+                const s4 = window.uiApp?.traceStages?.find(s => s.id === 4);
+                const s4Metrics = s4?.metrics || [];
+                const cacheMetric = s4Metrics.find(m => m.label?.toLowerCase().includes('cache hit'));
                 return [
-                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0,                     'route polylines rendered'),
-                    chkEq(cachePopulated ? 'ok' : 'fail', 'ok',         'dijkstraCache populated after TSP run'),
+                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0, 'route polylines rendered'),
+                    chkNotNull(cacheMetric, 'Stage 4 cache hit rate metric present'),
                     chkEq(stageStatus(4) === '✅' || stageStatus(4) === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error')
                 ];
             }
@@ -945,8 +955,8 @@ window.PP_TESTS = (() => {
                 const cap = (typeof CONFIG !== 'undefined' && CONFIG.tsp) ? CONFIG.tsp.maxCrimeNodesPerZone : 10;
                 const s4 = stageStatus(4);
                 return [
-                    chkEq(zones ? zones[0].length : -1, cap,            `zone capped to ${cap} nodes`),
-                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0,                     'TSP routes rendered for capped zone'),
+                    chkEq(zones && zones[0] ? zones[0].length : -1, cap, `zone capped to ${cap} nodes`),
+                    chkGt(Object.keys(window.patrolRoutes || {}).length, 0, 'TSP routes rendered for capped zone'),
                     chkNotNull(s4,                                       'Stage 4 trace entry present'),
                     chkEq(s4 === '✅' || s4 === '⚠️' ? 'ok' : 'fail', 'ok', 'Stage 4 not error')
                 ];
@@ -977,6 +987,316 @@ window.PP_TESTS = (() => {
                         'Stage 4 summary contains "Dijkstra calls avoided (cache): X"'),
                     chkGt(cacheHits ?? -1, 0,
                         `Stage 4 reports >0 cache hits — Stage 3 pre-populated patrol→crime pairs (got: ${cacheHits})`)
+                ];
+            }
+        },
+
+        // ══ Session Fixes — Bug fixes and new feature verification ══════════════
+        //    Bug 5: patrol popup shows correct crime node count (off-by-one fix)
+        //    Bug 7: routes cleared when switching from roaming to stationary
+        //    Confidence: weighted composite formula (0-100 range check)
+        //    New metrics: spread quality (S2), zone balance + coverage rate (S3),
+        //                 cache hit rate + total circuit dist (S4)
+        //    Em-dash removal: no '—' in any user-visible trace text
+        //    Full log preamble: structured header present in each stage's full log
+        //    Emoji removal: stage status is text-based in DOM
+
+        {
+            id: 'SF-T01', stage: 8, n: 2,
+            name: 'Bug 5 fix — patrol popup shows correct crime node count for patrol s1',
+            // s1 maps to zones[0] (0-based). Before fix: zones[idx] where idx=1 (wrong). After: zones[idx-1]=zones[0] (correct).
+            // Use an asymmetric incident distribution so zones[0].length != zones[1].length and we can detect the error.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.6965, lng: 121.0860 },
+                { lat: 14.6970, lng: 121.0865 },
+                { lat: 14.7120, lng: 121.1042 }, { lat: 14.7115, lng: 121.1038 },
+                { lat: 14.7110, lng: 121.1034 }, { lat: 14.7105, lng: 121.1030 },
+                { lat: 14.7100, lng: 121.1026 }
+            ],
+            check() {
+                // Helper: read the crime node count shown in the patrol info popup
+                function getPopupCrimeCount(patrolId) {
+                    window.showPatrolInfoPanel?.(patrolId);
+                    const panel = document.querySelector('.patrol-info-panel');
+                    if (!panel) return null;
+                    const rows = panel.querySelectorAll('.pp-row');
+                    for (const row of rows) {
+                        const label = row.querySelector('.pp-label');
+                        if (label && label.textContent.includes('Crime nodes')) {
+                            const val = row.querySelector('.pp-value');
+                            return val ? parseInt(val.textContent, 10) : null;
+                        }
+                    }
+                    return null;
+                }
+
+                const s1ZoneCount = zones ? (zones[0]?.length ?? -1) : -1;
+                const s2ZoneCount = zones ? (zones[1]?.length ?? -1) : -1;
+
+                if (s1ZoneCount === s2ZoneCount) {
+                    return [{ ok: 'manual', label: 'Both zones have same size — cannot distinguish correct from wrong index. Re-run with coordinates that produce different zone sizes.' }];
+                }
+
+                const popupCountForS1 = getPopupCrimeCount('s1');
+                const popupCountForS2 = getPopupCrimeCount('s2');
+
+                return [
+                    chkGt(Math.abs(s1ZoneCount - s2ZoneCount), 0,
+                        `zones[0].length (${s1ZoneCount}) differs from zones[1].length (${s2ZoneCount}) — test is meaningful`),
+                    chkEq(popupCountForS1, s1ZoneCount,
+                        `popup for s1 shows zones[0].length (${s1ZoneCount}), not zones[1].length (${s2ZoneCount})`),
+                    chkEq(popupCountForS2, s2ZoneCount,
+                        `popup for s2 shows zones[1].length (${s2ZoneCount})`),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T02', stage: 8, n: 3, mode: 'roaming',
+            name: 'Bug 7 fix — stationary re-run clears route polylines left by prior roaming run',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            // check() is async — the runner must await it (runner updated below to support this)
+            async check() {
+                const routeCountAfterRoaming = Object.keys(window.patrolRoutes || {}).length;
+
+                // Switch mode and re-run with the same crime nodes still in P
+                if (window.uiApp) window.uiApp.deploymentMode = 'stationary';
+                await runPipeline();
+
+                const routeCountAfterStationary = Object.keys(window.patrolRoutes || {}).length;
+                return [
+                    chkGt(routeCountAfterRoaming, 0,
+                        'roaming run produced route polylines on map'),
+                    chkEq(routeCountAfterStationary, 0,
+                        'switching to stationary and re-running cleared all route polylines'),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T03', stage: 8, n: 3,
+            name: 'Confidence — improved formula produces value in [0, 100]',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }
+            ],
+            check() {
+                const s2 = window.uiApp?.traceStages?.find(s => s.id === 2);
+                const conf = s2?.confidence;
+                return [
+                    chkEq(typeof conf === 'number' ? 'ok' : 'fail', 'ok',
+                        'Stage 2 confidence is a number'),
+                    chkEq(conf >= 0 ? 'ok' : 'fail', 'ok',
+                        `confidence >= 0 (got: ${conf})`),
+                    chkEq(conf <= 100 ? 'ok' : 'fail', 'ok',
+                        `confidence <= 100 (got: ${conf})`),
+                    chkGt(conf ?? -1, -1,
+                        'confidence is defined and non-negative'),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T04', stage: 8, n: 3,
+            name: 'New metrics — Stage 2 includes Spread quality metric',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }
+            ],
+            check() {
+                const s2 = window.uiApp?.traceStages?.find(s => s.id === 2);
+                const metrics = s2?.metrics || [];
+                const hasSpread    = metrics.some(m => m.label.toLowerCase().includes('spread quality'));
+                const hasRedundancy = metrics.some(m => m.label.toLowerCase().includes('redundancy'));
+                const hasConf      = metrics.some(m => m.label.toLowerCase().includes('confidence'));
+                return [
+                    chkEq(hasSpread     ? 'ok' : 'fail', 'ok', 'Stage 2 metrics include "Spread quality"'),
+                    chkEq(hasRedundancy ? 'ok' : 'fail', 'ok', 'Stage 2 metrics include "Redundancy"'),
+                    chkEq(hasConf       ? 'ok' : 'fail', 'ok', 'Stage 2 metrics include "Confidence"'),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T05', stage: 8, n: 3,
+            name: 'New metrics — Stage 3 includes Coverage rate and Zone balance',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }
+            ],
+            check() {
+                const s3 = window.uiApp?.traceStages?.find(s => s.id === 3);
+                const metrics = s3?.metrics || [];
+                const hasCoverage = metrics.some(m => m.label.toLowerCase().includes('coverage rate'));
+                const hasBalance  = metrics.some(m => m.label.toLowerCase().includes('zone balance'));
+                return [
+                    chkEq(hasCoverage ? 'ok' : 'fail', 'ok', 'Stage 3 metrics include "Coverage rate"'),
+                    chkEq(hasBalance  ? 'ok' : 'fail', 'ok', 'Stage 3 metrics include "Zone balance"'),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T06', stage: 8, n: 3, mode: 'roaming',
+            name: 'New metrics — Stage 4 includes Cache hit rate and Total circuit dist',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const s4 = window.uiApp?.traceStages?.find(s => s.id === 4);
+                const metrics = s4?.metrics || [];
+                const hasCacheRate = metrics.some(m => m.label.toLowerCase().includes('cache hit rate'));
+                const hasCircuit   = metrics.some(m => m.label.toLowerCase().includes('total circuit dist'));
+                return [
+                    chkEq(hasCacheRate ? 'ok' : 'fail', 'ok', 'Stage 4 metrics include "Cache hit rate"'),
+                    chkEq(hasCircuit   ? 'ok' : 'fail', 'ok', 'Stage 4 metrics include "Total circuit dist"'),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T07', stage: 8, n: 3,
+            name: 'Em-dash removal — no em-dash character in any stage summary, metrics, or full log',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }
+            ],
+            check() {
+                const stages = window.uiApp?.traceStages || [];
+                const allText = stages.map(s => [
+                    s.summary || '',
+                    (s.metrics || []).map(m => (m.value || '') + (m.label || '')).join(''),
+                    s.fullLog || ''
+                ].join('')).join('');
+                const summary = window.uiApp?.pipelineSummary || '';
+                const bannerTxt = bannerText() || '';
+                const combined = allText + summary + bannerTxt;
+                const hasEmDash = combined.includes('—'); // em dash character
+                return [
+                    chkEq(hasEmDash ? 'fail' : 'ok', 'ok',
+                        'no em-dash (\\u2014) in any trace summary, metrics, full log, pipeline summary, or banner'),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T08', stage: 8, n: 3,
+            name: 'Full log preamble — structured header present in each completed stage full log',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }
+            ],
+            check() {
+                const stages = window.uiApp?.traceStages || [];
+                const s1Log = stages.find(s => s.id === 1)?.fullLog || '';
+                const s2Log = stages.find(s => s.id === 2)?.fullLog || '';
+                const s3Log = stages.find(s => s.id === 3)?.fullLog || '';
+                return [
+                    chkEq(s1Log.includes('STAGE 1') && s1Log.includes('Runtime') ? 'ok' : 'fail', 'ok',
+                        'Stage 1 full log has preamble header (STAGE 1 + Runtime)'),
+                    chkEq(s2Log.includes('STAGE 2') && s2Log.includes('Confidence') ? 'ok' : 'fail', 'ok',
+                        'Stage 2 full log has preamble header (STAGE 2 + Confidence)'),
+                    chkEq(s3Log.includes('STAGE 3') && s3Log.includes('Zone balance') ? 'ok' : 'fail', 'ok',
+                        'Stage 3 full log has preamble header (STAGE 3 + Zone balance)'),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T09', stage: 8, n: 3,
+            name: 'Emoji removal — stage status renders as OK/WARN/FAIL/... in DOM, not emoji',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }
+            ],
+            async check() {
+                // Alpine.js DOM updates are microtask-batched. Give it a tick to flush
+                // x-text directives (status → 'OK'/'WARN'/'FAIL'/'...') before reading DOM.
+                await new Promise(r => setTimeout(r, 150));
+                const tracePanel = document.getElementById('trace-content');
+                const panelText  = tracePanel?.textContent || '';
+                // Allowed status tokens: OK, WARN, FAIL, ...  (or empty if no stages rendered yet)
+                const hasOldEmoji = ['✓', '✗', '⚠', '◌'].some(e => panelText.includes(e));
+                const hasNewText  = ['OK', 'WARN', 'FAIL', '...'].some(t => panelText.includes(t));
+                return [
+                    chkEq(hasOldEmoji ? 'fail' : 'ok', 'ok',
+                        'trace panel contains no old emoji status markers (checkmark, X, warning, spinner)'),
+                    chkEq(hasNewText ? 'ok' : 'fail', 'ok',
+                        'trace panel shows text-based status (OK / WARN / FAIL / ...)'),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T10', stage: 8, n: 3,
+            name: 'Settings tooltips — Hill Climbing settings fields have title attributes',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                // Open settings modal to hydrate Alpine
+                if (window.uiApp) window.uiApp.showSettings = true;
+
+                // Small delay allows Alpine to render — check synchronously via DOM
+                const settingsPanel = document.querySelector('.settings-panel') || document.body;
+
+                // Look for spans with cursor-help class and a non-empty title attribute
+                const tooltipSpans = settingsPanel.querySelectorAll('span.cursor-help[title]');
+                const tooltipCount = [...tooltipSpans].filter(s => s.title.length > 10).length;
+
+                if (window.uiApp) window.uiApp.showSettings = false;
+                return [
+                    chkGt(tooltipCount, 4,
+                        `at least 5 settings fields have tooltip title attributes (found: ${tooltipCount})`),
+                ];
+            }
+        },
+
+        {
+            id: 'SF-T11', stage: 8, n: 3,
+            name: 'Trace metrics — all Stage 2 metrics have tooltip property defined',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }
+            ],
+            check() {
+                const s2 = window.uiApp?.traceStages?.find(s => s.id === 2);
+                const metrics = s2?.metrics || [];
+                const withTooltip    = metrics.filter(m => m.tooltip && m.tooltip.length > 5).length;
+                const withoutTooltip = metrics.filter(m => !m.tooltip).length;
+                return [
+                    chkGt(metrics.length, 0,
+                        'Stage 2 has at least one metric'),
+                    chkGt(withTooltip, 3,
+                        `at least 4 Stage 2 metrics have tooltip text (found: ${withTooltip})`),
+                    chkEq(withoutTooltip, 0,
+                        `all Stage 2 metrics have tooltip (${withoutTooltip} missing)`),
                 ];
             }
         },
@@ -1015,19 +1335,22 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() {
-                openSettings();
+                const ui = window.uiApp;
+                ui?.openSettings();
+                const cfg = ui?.activeConfig;
+                const draft = ui?.settingsDraft;
                 const results = [
-                    chkEq(parseInt(document.getElementById('cfg-hc-restarts').value),    CONFIG.hillClimbing.restarts,          'restarts field matches CONFIG'),
-                    chkEq(parseInt(document.getElementById('cfg-hc-maxiter').value),     CONFIG.hillClimbing.maxIterations,     'maxIterations field matches CONFIG'),
-                    chkEq(parseFloat(document.getElementById('cfg-hc-radius').value),    CONFIG.hillClimbing.radiusMultiplier,  'radiusMultiplier field matches CONFIG'),
-                    chkEq(parseInt(document.getElementById('cfg-ch-area').value),         CONFIG.convexHull.areaThresholdDivisor,'areaThresholdDivisor field matches CONFIG'),
-                    chkEq(parseFloat(document.getElementById('cfg-ch-outlier').value),   CONFIG.convexHull.outlierMultiplier,   'outlierMultiplier field matches CONFIG'),
-                    chkEq(parseInt(document.getElementById('cfg-tsp-max').value),         CONFIG.tsp.maxCrimeNodesPerZone,      'maxCrimeNodesPerZone field matches CONFIG'),
-                    chkEq(document.getElementById('cfg-show-zone-lines').checked,         CONFIG.display.showZoneLines,         'showZoneLines checkbox matches CONFIG'),
-                    chkEq(document.getElementById('cfg-show-arrows').checked,             CONFIG.display.showRouteArrows,       'showRouteArrows checkbox matches CONFIG'),
-                    chkEq(document.getElementById('cfg-show-overlap').checked,            CONFIG.display.showOverlapColoring,   'showOverlapColoring checkbox matches CONFIG')
+                    chkEq(draft?.hillClimbing?.restarts,              cfg?.hillClimbing?.restarts,              'restarts draft matches activeConfig'),
+                    chkEq(draft?.hillClimbing?.maxIterations,         cfg?.hillClimbing?.maxIterations,         'maxIterations draft matches activeConfig'),
+                    chkEq(draft?.hillClimbing?.radiusMultiplier,      cfg?.hillClimbing?.radiusMultiplier,      'radiusMultiplier draft matches activeConfig'),
+                    chkEq(draft?.convexHull?.areaThresholdDivisor,    cfg?.convexHull?.areaThresholdDivisor,    'areaThresholdDivisor draft matches activeConfig'),
+                    chkEq(draft?.convexHull?.outlierMultiplier,       cfg?.convexHull?.outlierMultiplier,       'outlierMultiplier draft matches activeConfig'),
+                    chkEq(draft?.tsp?.maxCrimeNodesPerZone,           cfg?.tsp?.maxCrimeNodesPerZone,           'maxCrimeNodesPerZone draft matches activeConfig'),
+                    chkEq(draft?.display?.showZoneLines,              cfg?.display?.showZoneLines,              'showZoneLines draft matches activeConfig'),
+                    chkEq(draft?.display?.showRouteArrows,            cfg?.display?.showRouteArrows,            'showRouteArrows draft matches activeConfig'),
+                    chkEq(draft?.display?.showOverlapColoring,        cfg?.display?.showOverlapColoring,        'showOverlapColoring draft matches activeConfig')
                 ];
-                closeSettings();
+                if (ui) ui.showSettings = false;
                 return results;
             }
         },
@@ -1041,19 +1364,21 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() {
-                const orig = { restarts: CONFIG.hillClimbing.restarts, maxZone: CONFIG.tsp.maxCrimeNodesPerZone };
-                openSettings();
-                document.getElementById('cfg-hc-restarts').value = '7';
-                document.getElementById('cfg-tsp-max').value = '8';
-                document.getElementById('settings-apply').click();
+                const ui = window.uiApp;
+                const origRestarts = ui?.activeConfig?.hillClimbing?.restarts;
+                const origMaxZone  = ui?.activeConfig?.tsp?.maxCrimeNodesPerZone;
+                ui?.openSettings();
+                if (ui?.settingsDraft?.hillClimbing) ui.settingsDraft.hillClimbing.restarts = 7;
+                if (ui?.settingsDraft?.tsp)          ui.settingsDraft.tsp.maxCrimeNodesPerZone = 8;
+                ui?.applySettings();
                 const results = [
-                    chkEq(CONFIG.hillClimbing.restarts,        7,        'CONFIG.hillClimbing.restarts updated to 7'),
-                    chkEq(CONFIG.tsp.maxCrimeNodesPerZone,     8,        'CONFIG.tsp.maxCrimeNodesPerZone updated to 8'),
-                    chkEq(document.getElementById('settings-modal').classList.contains('open') ? 'open' : 'closed', 'closed',
-                        'modal closed after Apply')
+                    chkEq(ui?.activeConfig?.hillClimbing?.restarts,        7, 'activeConfig.hillClimbing.restarts updated to 7'),
+                    chkEq(ui?.activeConfig?.tsp?.maxCrimeNodesPerZone,     8, 'activeConfig.tsp.maxCrimeNodesPerZone updated to 8'),
+                    chkEq(ui?.showSettings ? 'open' : 'closed',       'closed', 'modal closed after Apply')
                 ];
-                CONFIG.hillClimbing.restarts    = orig.restarts;
-                CONFIG.tsp.maxCrimeNodesPerZone = orig.maxZone;
+                // Restore original values
+                if (ui?.activeConfig?.hillClimbing) ui.activeConfig.hillClimbing.restarts        = origRestarts;
+                if (ui?.activeConfig?.tsp)          ui.activeConfig.tsp.maxCrimeNodesPerZone     = origMaxZone;
                 return results;
             }
         },
@@ -1067,14 +1392,15 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() {
-                const origRestarts = CONFIG.hillClimbing.restarts;
-                openSettings();
-                document.getElementById('cfg-hc-restarts').value = '99';
-                document.getElementById('settings-cancel').click();
+                const ui = window.uiApp;
+                const origRestarts = ui?.activeConfig?.hillClimbing?.restarts;
+                ui?.openSettings();
+                if (ui?.settingsDraft?.hillClimbing) ui.settingsDraft.hillClimbing.restarts = 99;
+                if (ui) ui.showSettings = false; // cancel — just close without applying
                 return [
-                    chkEq(CONFIG.hillClimbing.restarts, origRestarts,
-                        'Cancel did not modify CONFIG.hillClimbing.restarts'),
-                    chkEq(document.getElementById('settings-modal').classList.contains('open') ? 'open' : 'closed', 'closed',
+                    chkEq(ui?.activeConfig?.hillClimbing?.restarts, origRestarts,
+                        'Cancel did not modify activeConfig.hillClimbing.restarts'),
+                    chkEq(ui?.showSettings ? 'open' : 'closed', 'closed',
                         'modal closed after Cancel')
                 ];
             }
@@ -1089,21 +1415,22 @@ window.PP_TESTS = (() => {
                 { lat: 14.7040, lng: 121.0948 }
             ],
             check() {
-                CONFIG.hillClimbing.restarts     = 99;
-                CONFIG.tsp.maxCrimeNodesPerZone  = 25;
-                openSettings();
-                document.getElementById('settings-reset').click();
-                // reset handler calls openSettings() again — modal stays open with defaults populated
+                const ui = window.uiApp;
+                ui?.openSettings();
+                if (ui?.settingsDraft?.hillClimbing) ui.settingsDraft.hillClimbing.restarts = 99;
+                if (ui?.settingsDraft?.tsp)          ui.settingsDraft.tsp.maxCrimeNodesPerZone = 25;
+                ui?.resetSettingsToDefaults();
+                const draft = ui?.settingsDraft;
                 const results = [
-                    chkEq(CONFIG.hillClimbing.restarts,          CONFIG_DEFAULTS.hillClimbing.restarts,         'hillClimbing.restarts restored to default'),
-                    chkEq(CONFIG.hillClimbing.maxIterations,     CONFIG_DEFAULTS.hillClimbing.maxIterations,    'hillClimbing.maxIterations restored to default'),
-                    chkEq(CONFIG.hillClimbing.radiusMultiplier,  CONFIG_DEFAULTS.hillClimbing.radiusMultiplier, 'hillClimbing.radiusMultiplier restored to default'),
-                    chkEq(CONFIG.tsp.maxCrimeNodesPerZone,       CONFIG_DEFAULTS.tsp.maxCrimeNodesPerZone,      'tsp.maxCrimeNodesPerZone restored to default'),
-                    chkEq(CONFIG.display.showZoneLines,          CONFIG_DEFAULTS.display.showZoneLines,         'display.showZoneLines restored to default'),
-                    chkEq(CONFIG.display.showRouteArrows,        CONFIG_DEFAULTS.display.showRouteArrows,       'display.showRouteArrows restored to default'),
-                    chkEq(CONFIG.display.showOverlapColoring,    CONFIG_DEFAULTS.display.showOverlapColoring,   'display.showOverlapColoring restored to default')
+                    chkEq(draft?.hillClimbing?.restarts,              10,    'hillClimbing.restarts reset to default (10)'),
+                    chkEq(draft?.hillClimbing?.maxIterations,         500,   'hillClimbing.maxIterations reset to default (500)'),
+                    chkEq(draft?.hillClimbing?.radiusMultiplier,      2,     'hillClimbing.radiusMultiplier reset to default (2)'),
+                    chkEq(draft?.tsp?.maxCrimeNodesPerZone,           10,    'tsp.maxCrimeNodesPerZone reset to default (10)'),
+                    chkEq(draft?.display?.showZoneLines,              true,  'display.showZoneLines reset to default (true)'),
+                    chkEq(draft?.display?.showRouteArrows,            true,  'display.showRouteArrows reset to default (true)'),
+                    chkEq(draft?.display?.showOverlapColoring,        true,  'display.showOverlapColoring reset to default (true)')
                 ];
-                closeSettings();
+                if (ui) ui.showSettings = false;
                 return results;
             }
         },
@@ -1247,7 +1574,7 @@ window.PP_TESTS = (() => {
         await runPipeline();   // defined above — triggers recalculate() and polls pipelineRunning
         const elapsed = Math.round(performance.now() - t0);
 
-        const results = s.check();
+        const results = await Promise.resolve(s.check());
         const { passed, failed } = printResults(results, s.id);
         console.log(`  Completed in ${elapsed}ms`);
         console.groupEnd();

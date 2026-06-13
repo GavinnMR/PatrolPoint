@@ -316,7 +316,7 @@ export function runTSP(
             sequence     = result.sequence;
             totalDist    = result.totalDist;
             approximate  = true;
-            const msg    = `Patrol ${patrol.id}: zone size k=${actualK} exceeds threshold ${fallbackThreshold}. Using nearest neighbor heuristic — result is approximate, not guaranteed optimal.`;
+            const msg    = `Patrol ${patrol.id}: zone size k=${actualK} exceeds threshold ${fallbackThreshold}. Using nearest neighbor heuristic (result is approximate, not guaranteed optimal).`;
             log.push(msg);
             warnings.push(msg);
 
