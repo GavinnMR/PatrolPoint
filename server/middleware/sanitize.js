@@ -53,9 +53,6 @@ export function validateConfig(config) {
         if (hc.radiusMultiplier !== undefined && (typeof hc.radiusMultiplier !== 'number' || hc.radiusMultiplier < 0.1 || hc.radiusMultiplier > 20)) {
             throw new Error('hillClimbing.radiusMultiplier must be between 0.1 and 20.');
         }
-        if (hc.adaptiveMaxRestarts !== undefined && (typeof hc.adaptiveMaxRestarts !== 'number' || hc.adaptiveMaxRestarts < 1 || hc.adaptiveMaxRestarts > 100)) {
-            throw new Error('hillClimbing.adaptiveMaxRestarts must be between 1 and 100.');
-        }
         if (hc.synchronousMode !== undefined && typeof hc.synchronousMode !== 'boolean') {
             throw new Error('hillClimbing.synchronousMode must be a boolean.');
         }

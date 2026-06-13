@@ -858,7 +858,7 @@
           <div class="space-y-2">
             <label class="flex items-center justify-between">
               <span class="text-gray-600 dark:text-gray-400 cursor-help"
-                    title="Number of independent Hill Climbing runs. More restarts explore different starting positions, reducing the chance of getting stuck in a poor local optimum. Increases compute time.">Restarts</span>
+                    title="Restarts run per patrol unit. Total restarts = r × n patrols, capped at 150. Higher values reduce the chance of a poor local optimum but increase compute time.">Restarts per patrol (r)</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.restarts"
                      min="1" max="30"
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
@@ -875,13 +875,6 @@
                     title="Controls how far each patrol can search for a better position per iteration. Higher = wider search range, lower = finer local refinement. Formula: R = sqrt(area / candidates) × k.">Radius multiplier k</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.radiusMultiplier"
                      min="1" max="5" step="0.5"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
-            </label>
-            <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400 cursor-help"
-                    title="Upper limit on restarts when the algorithm automatically determines it needs more than the base restart count. Prevents infinite computation on complex configurations.">Adaptive max restarts</span>
-              <input type="number" x-model.number="settingsDraft.hillClimbing.adaptiveMaxRestarts"
-                     min="5" max="50"
                      class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">

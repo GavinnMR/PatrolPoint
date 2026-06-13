@@ -40,7 +40,6 @@ export const DEFAULT_CONFIG = {
         restarts: 10,
         maxIterations: 500,
         radiusMultiplier: 2,
-        adaptiveMaxRestarts: 30,
         synchronousMode: false
     },
     convexHull: {

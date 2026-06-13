@@ -134,7 +134,6 @@ document.addEventListener('alpine:init', () => {
                 restarts:               10,
                 maxIterations:          500,
                 radiusMultiplier:       2,
-                adaptiveMaxRestarts:    30,
                 synchronousMode:        false
             },
             convexHull: {
@@ -166,7 +165,6 @@ document.addEventListener('alpine:init', () => {
                 restarts:               10,
                 maxIterations:          500,
                 radiusMultiplier:       2,
-                adaptiveMaxRestarts:    30,
                 synchronousMode:        false
             },
             convexHull: {
@@ -733,8 +731,7 @@ document.addEventListener('alpine:init', () => {
                     restarts:               10,
                     maxIterations:          500,
                     radiusMultiplier:       2,
-                    adaptiveMaxRestarts:    30,
-                    synchronousMode:        false
+                        synchronousMode:        false
                 },
                 convexHull: {
                     areaThresholdDivisor:   100,

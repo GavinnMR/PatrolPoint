@@ -226,10 +226,10 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     const baseR = Math.sqrt(hullAreaM2 / validCandidates.length) * config.hillClimbing.radiusMultiplier;
     log.push(`R = sqrt(${Math.round(hullAreaM2)} / ${validCandidates.length}) × ${config.hillClimbing.radiusMultiplier} = ${Math.round(baseR)}m`);
 
-    // ── Adaptive restart parameters ───────────────────────────────────────────
-    // Both bounds scale with effectiveN — larger patrol counts have exponentially larger
-    // search spaces and need proportionally more exploration before declaring convergence.
-    const maxRestarts   = Math.max(config.hillClimbing.adaptiveMaxRestarts, effectiveN * 3);
+    // ── Restart budget ────────────────────────────────────────────────────────
+    // Total restarts = restarts-per-patrol × n, capped at 150. Scales with n
+    // because the min-max-pairwise-distance landscape has more local optima as n grows.
+    const maxRestarts   = Math.min(config.hillClimbing.restarts * effectiveN, 150);
     const minRestarts   = Math.max(5, effectiveN);
     const maxIterations = config.hillClimbing.maxIterations;       // default 500
     const syncMode      = config.hillClimbing.synchronousMode === true;
