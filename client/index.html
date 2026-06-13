@@ -861,6 +861,25 @@
           </div>
         </div>
 
+        <!-- Candidate nodes toggle -->
+        <div>
+          <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Patrol Placement</h3>
+          <div class="space-y-2">
+            <label class="flex items-center justify-between gap-2">
+              <span class="text-gray-600 dark:text-gray-400 leading-tight">Candidate nodes
+                <span class="block text-xs text-gray-400 dark:text-gray-500">All nodes gives finer placement; intersection nodes are road junctions only</span>
+              </span>
+              <button @click="settingsDraft.candidateNodes = settingsDraft.candidateNodes === 'all' ? 'intersection' : 'all'"
+                      :class="settingsDraft.candidateNodes === 'all' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
+                      class="relative w-10 h-5 rounded-full transition-colors flex-shrink-0">
+                <span :class="settingsDraft.candidateNodes === 'all' ? 'translate-x-5' : 'translate-x-0'"
+                      class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
+              </button>
+            </label>
+            <p class="text-xs text-gray-400 dark:text-gray-500" x-text="settingsDraft.candidateNodes === 'all' ? 'All nodes — max recommended updates to √total' : 'Intersection nodes only — max recommended updates to √junctions'"></p>
+          </div>
+        </div>
+
         <!-- Convex Hull settings -->
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Convex Hull</h3>

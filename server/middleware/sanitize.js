@@ -93,6 +93,10 @@ export function validateConfig(config) {
             throw new Error('snapping.initialSearchRadiusMeters must be a positive number.');
         }
     }
+
+    if (config.candidateNodes !== undefined && !['all', 'intersection'].includes(config.candidateNodes)) {
+        throw new Error('candidateNodes must be "all" or "intersection".');
+    }
 }
 
 export function validateBarangay(barangay) {

@@ -217,13 +217,17 @@ function handleNetworkLoaded(data) {
     // nodeMap, adjacencyList, intersectionNodeIds live server-side in V2 —
     // the backend runs all algorithm computation and sends only results to the client.
 
+    // Store both counts globally so applySettings() can recompute nMax on toggle
+    window._nodeCount         = data.nodeCount;
+    window._intersectionCount = data.intersectionCount;
+
     // Update Alpine component with network metadata
     const ui = window.uiApp;
     if (ui) {
         ui.networkInfo = `${data.nodeCount} nodes · ${data.edgeCount} edges · ${data.fromCache ? 'cached' : 'live OSM'}`;
-        if (data.intersectionCount) {
-            ui.nMax = Math.floor(Math.sqrt(data.intersectionCount));
-        }
+        const candidateNodes = ui.activeConfig?.candidateNodes ?? 'all';
+        const count = candidateNodes === 'intersection' ? data.intersectionCount : data.nodeCount;
+        if (count) ui.nMax = Math.floor(Math.sqrt(count));
     }
 
     onNetworkLoaded(data);

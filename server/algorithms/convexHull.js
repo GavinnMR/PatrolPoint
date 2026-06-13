@@ -55,10 +55,10 @@ function hullsEqual(hull1, hull2, eps) {
 }
 
 // ── Ray Casting pre-filter ────────────────────────────────────────────────────
-// Filter all intersection nodes inside hull.
+// Filter all road nodes inside hull.
 // Bounding box pre-filter rejects obviously-outside nodes before full ray cast.
 // eps expands the bbox by CONFIG.snapping.boundingBoxEpsilon on all sides.
-function runRayCastPreFilter(hull, intersectionNodeIds, nodeMap, eps) {
+function runRayCastPreFilter(hull, nodeMap, eps) {
     let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
     for (const v of hull) {
         if (v.lat < minLat) minLat = v.lat;
@@ -69,9 +69,8 @@ function runRayCastPreFilter(hull, intersectionNodeIds, nodeMap, eps) {
     minLat -= eps; maxLat += eps; minLng -= eps; maxLng += eps;
 
     const candidates = [];
-    for (const id of intersectionNodeIds) {
+    for (const id in nodeMap) {
         const node = nodeMap[id];
-        if (!node) continue;
         if (node.lat < minLat || node.lat > maxLat || node.lng < minLng || node.lng > maxLng) continue;
         if (rayCast(node, hull)) candidates.push(node);
     }
@@ -152,7 +151,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
         hullCache = null
     } = options;
 
-    const { intersectionNodeIds, nodeMap, barangayAreaM2 } = networkData;
+    const { nodeMap, barangayAreaM2 } = networkData;
     const eps    = config.snapping.boundingBoxEpsilon;       // 1e-7
     const colEps = config.convexHull.collinearityEpsilon;    // 1e-10
 
@@ -505,13 +504,13 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
         updatedHullCache = hullCache;
         log.push(`Valid candidates: cache hit — reusing ${validCandidates.length} cached candidates (hull unchanged)`);
     } else {
-        validCandidates  = runRayCastPreFilter(hull, intersectionNodeIds, nodeMap, eps);
+        validCandidates  = runRayCastPreFilter(hull, nodeMap, eps);
         // Deep-copy hull vertices into cache to prevent mutation by downstream code
         updatedHullCache = {
             hull:       hull.map(v => ({ lat: v.lat, lng: v.lng })),
             candidates: validCandidates
         };
-        log.push(`Valid candidates: ${validCandidates.length} of ${intersectionNodeIds.length} intersection nodes inside hull`);
+        log.push(`Valid candidates: ${validCandidates.length} of ${Object.keys(nodeMap).length} road nodes inside hull`);
     }
 
     // WebSocket progress callback — called after pre-filtering with hull metrics (V2 feature)
@@ -532,7 +531,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
         // Find 5 nearest intersection nodes to hull centroid — all are outside the hull
         const centLat = hull.reduce((s, v) => s + v.lat, 0) / hull.length;
         const centLng = hull.reduce((s, v) => s + v.lng, 0) / hull.length;
-        const nearestHighlights = intersectionNodeIds
+        const nearestHighlights = Object.keys(nodeMap)
             .map(id => ({ id, lat: nodeMap[id].lat, lng: nodeMap[id].lng,
                 dist: haversineDistance(centLat, centLng, nodeMap[id].lat, nodeMap[id].lng) }))
             .sort((a, b) => a.dist - b.dist)

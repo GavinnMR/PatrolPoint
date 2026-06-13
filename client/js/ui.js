@@ -124,6 +124,7 @@ document.addEventListener('alpine:init', () => {
 
         // ── Active config (currently applied, sent to backend on compute) ─────
         activeConfig: {
+            candidateNodes:     'all',
             hillClimbing: {
                 restarts:               10,
                 maxIterations:          500,
@@ -155,6 +156,7 @@ document.addEventListener('alpine:init', () => {
 
         // ── Settings draft (editable copy shown in modal) ─────────────────────
         settingsDraft: {
+            candidateNodes:     'all',
             hillClimbing: {
                 restarts:               10,
                 maxIterations:          500,
@@ -729,6 +731,12 @@ document.addEventListener('alpine:init', () => {
             // Commit draft to active config
             this.activeConfig = JSON.parse(JSON.stringify(this.settingsDraft));
 
+            // Update nMax based on candidateNodes setting
+            const count = this.activeConfig.candidateNodes === 'intersection'
+                ? (window._intersectionCount || 0)
+                : (window._nodeCount || 0);
+            if (count) this.nMax = Math.floor(Math.sqrt(count));
+
             // Sync animation preference to reactive state and localStorage
             this.animationsEnabled = this.activeConfig.display.animationsEnabled;
             window.animationsEnabled = this.animationsEnabled;
@@ -742,6 +750,7 @@ document.addEventListener('alpine:init', () => {
 
         resetSettingsToDefaults() {
             this.settingsDraft = {
+                candidateNodes:     'all',
                 hillClimbing: {
                     restarts:               10,
                     maxIterations:          500,

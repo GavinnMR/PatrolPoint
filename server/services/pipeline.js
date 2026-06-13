@@ -65,11 +65,12 @@ export const DEFAULT_CONFIG = {
 // Deep-merge user config into DEFAULT_CONFIG — user values override defaults per key.
 function mergeConfig(userConfig) {
     return {
-        hillClimbing: { ...DEFAULT_CONFIG.hillClimbing, ...(userConfig?.hillClimbing || {}) },
-        convexHull:   { ...DEFAULT_CONFIG.convexHull,   ...(userConfig?.convexHull   || {}) },
+        hillClimbing:   { ...DEFAULT_CONFIG.hillClimbing,   ...(userConfig?.hillClimbing   || {}) },
+        convexHull:     { ...DEFAULT_CONFIG.convexHull,     ...(userConfig?.convexHull     || {}) },
         tsp:            { ...DEFAULT_CONFIG.tsp,            ...(userConfig?.tsp            || {}) },
         zoneAssignment: { ...DEFAULT_CONFIG.zoneAssignment, ...(userConfig?.zoneAssignment || {}) },
-        snapping:       { ...DEFAULT_CONFIG.snapping,       ...(userConfig?.snapping       || {}) }
+        snapping:       { ...DEFAULT_CONFIG.snapping,       ...(userConfig?.snapping       || {}) },
+        candidateNodes: userConfig?.candidateNodes ?? 'all'
     };
 }
 
@@ -117,18 +118,33 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         hull:            previousHull            = null,
         validCandidates: previousValidCandidates  = null,
         incidents:       previousIncidents        = null,
-        hullAreaM2:      previousHullAreaM2       = null
+        hullAreaM2:      previousHullAreaM2       = null,
+        candidateNodes:  previousCandidateNodes   = null
     } = previousState;
 
     // Build the networkData object that Stage 1 expects
-    const barangayAreaM2     = computeBarangayAreaM2(networkData.bbox);
-    const filteredIntersectionNodeIds = removedNodes
-        ? networkData.intersectionNodeIds.filter(id => !removedNodes.has(id))
-        : networkData.intersectionNodeIds;
+    const barangayAreaM2       = computeBarangayAreaM2(networkData.bbox);
+    const currentCandidateNodes = config?.candidateNodes ?? 'all';
+    const useAllNodes           = currentCandidateNodes !== 'intersection';
+    // If candidateNodes mode changed, cached validCandidates are from the wrong node set — discard them
+    const effectivePrevCandidates = previousCandidateNodes !== null && previousCandidateNodes !== currentCandidateNodes
+        ? null
+        : previousValidCandidates;
+
+    let filteredNodeMap;
+    if (useAllNodes) {
+        filteredNodeMap = removedNodes && removedNodes.size > 0
+            ? Object.fromEntries(Object.entries(networkData.nodes).filter(([id]) => !removedNodes.has(id)))
+            : networkData.nodes;
+    } else {
+        const filteredIds = removedNodes
+            ? networkData.intersectionNodeIds.filter(id => !removedNodes.has(id))
+            : networkData.intersectionNodeIds;
+        filteredNodeMap = Object.fromEntries(filteredIds.map(id => [id, networkData.nodes[id]]));
+    }
 
     const networkDataForHull = {
-        intersectionNodeIds: filteredIntersectionNodeIds,
-        nodeMap:             networkData.nodes,    // { nodeId → {id, osmId, lat, lng} }
+        nodeMap:       filteredNodeMap,
         barangayAreaM2
     };
 
@@ -147,7 +163,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     try {
         hull1Result = runConvexHull(incidents, n, config, networkDataForHull, {
             previousHull,
-            previousValidCandidates,
+            previousValidCandidates: effectivePrevCandidates,
             previousIncidents,
             pushProgress: (progressData) => pushMessage({ type: 'stage_progress', data: progressData })
         });
@@ -239,7 +255,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     console.log(`Road distance matrix: ${validCandidates.length} candidates, built in ${matrixMs}ms`);
 
     // ── Stage 2: Hill Climbing ────────────────────────────────────────────────
-    if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+    if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
 
     pushMessage({ type: 'stage_start', data: { stage: 2, name: 'Hill Climbing' } });
     const stage2StartMs = performance.now();
@@ -253,7 +269,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         });
     } catch (err) {
         pushMessage({ type: 'error', data: { stage: 2, message: `Stage 2 error: ${err.message}`, fatal: true } });
-        return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+        return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
     }
 
     const stage2RuntimeMs = performance.now() - stage2StartMs;
@@ -287,13 +303,13 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
 
     if (hill2Result.status === 'error') {
         pushMessage({ type: 'error', data: { stage: 2, message: hill2Result.message, fatal: true } });
-        return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+        return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
     }
 
     const patrols = s2Data.patrols;
 
     // ── Stage 3: Zone Assignment ──────────────────────────────────────────────
-    if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+    if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
 
     pushMessage({ type: 'stage_start', data: { stage: 3, name: 'Zone Assignment' } });
     const stage3StartMs = performance.now();
@@ -311,7 +327,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         );
     } catch (err) {
         pushMessage({ type: 'error', data: { stage: 3, message: `Stage 3 error: ${err.message}`, fatal: true } });
-        return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+        return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
     }
 
     const stage3RuntimeMs = performance.now() - stage3StartMs;
@@ -346,7 +362,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
 
     if (zone3Result.status === 'error') {
         pushMessage({ type: 'error', data: { stage: 3, message: zone3Result.message, fatal: true } });
-        return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+        return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
     }
 
     const { zones, emptyZones, singleNodeZones, multiNodeZones } = s3Data;
@@ -354,7 +370,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
 
     // ── Stage 4: Backtracking TSP — roaming mode only ─────────────────────────
     if (mode === 'roaming') {
-        if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+        if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
 
         pushMessage({ type: 'stage_start', data: { stage: 4, name: 'Backtracking TSP' } });
         const stage4StartMs = performance.now();
@@ -375,7 +391,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
             );
         } catch (err) {
             pushMessage({ type: 'error', data: { stage: 4, message: `Stage 4 error: ${err.message}`, fatal: true } });
-            return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+            return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
         }
 
         const stage4RuntimeMs = performance.now() - stage4StartMs;
@@ -404,7 +420,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
 
         if (tsp4Result.status === 'error') {
             pushMessage({ type: 'error', data: { stage: 4, message: tsp4Result.message, fatal: true } });
-            return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2 } };
+            return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
         }
 
         routes = s4Data.routes;
@@ -451,7 +467,8 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
             hull:            finalHull,
             validCandidates: finalValidCandidates,
             incidents,
-            hullAreaM2:      finalHullAreaM2
+            hullAreaM2:      finalHullAreaM2,
+            candidateNodes:  currentCandidateNodes
         }
     };
 }
