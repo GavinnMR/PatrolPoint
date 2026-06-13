@@ -1436,6 +1436,156 @@ window.PP_TESTS = (() => {
         },
 
         {
+            id: 'S7-T05b', stage: 7, n: 3,
+            name: 'Settings Reset to Defaults — zoneAssignment.strongRebalancing resets to true (regression: was "redistribute")',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const ui = window.uiApp;
+                ui?.openSettings();
+                if (ui?.settingsDraft?.zoneAssignment) ui.settingsDraft.zoneAssignment.strongRebalancing = false;
+                ui?.resetSettingsToDefaults();
+                const draft = ui?.settingsDraft;
+                const results = [
+                    chkEq(draft?.zoneAssignment?.strongRebalancing, true,
+                        'zoneAssignment.strongRebalancing reset to default (true), not "redistribute" key'),
+                    chkEq('redistribute' in (draft?.zoneAssignment || {}), false,
+                        'no stale "redistribute" key present after reset')
+                ];
+                if (ui) ui.showSettings = false;
+                return results;
+            }
+        },
+
+        {
+            id: 'S7-T05c', stage: 7, n: 3,
+            name: 'Settings Reset to Defaults — all fields covered: candidateNodes, hillClimbing, convexHull, tsp, zoneAssignment, display',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const ui = window.uiApp;
+                ui?.openSettings();
+                // Dirty every field
+                if (ui?.settingsDraft) {
+                    ui.settingsDraft.candidateNodes = 'intersection';
+                    if (ui.settingsDraft.hillClimbing) {
+                        ui.settingsDraft.hillClimbing.restarts = 99;
+                        ui.settingsDraft.hillClimbing.maxIterations = 9999;
+                        ui.settingsDraft.hillClimbing.radiusMultiplier = 9;
+                        ui.settingsDraft.hillClimbing.adaptiveMaxRestarts = 99;
+                        ui.settingsDraft.hillClimbing.synchronousMode = true;
+                    }
+                    if (ui.settingsDraft.convexHull) {
+                        ui.settingsDraft.convexHull.areaThresholdDivisor = 999;
+                        ui.settingsDraft.convexHull.outlierMultiplier = 9;
+                        ui.settingsDraft.convexHull.includeOutliers = false;
+                    }
+                    if (ui.settingsDraft.tsp) {
+                        ui.settingsDraft.tsp.maxCrimeNodesPerZone = 99;
+                        ui.settingsDraft.tsp.nearestNeighborFallbackThreshold = 99;
+                        ui.settingsDraft.tsp.hullExteriorPenalty = 99;
+                    }
+                    if (ui.settingsDraft.zoneAssignment) ui.settingsDraft.zoneAssignment.strongRebalancing = false;
+                    if (ui.settingsDraft.display) {
+                        ui.settingsDraft.display.showZoneLines = false;
+                        ui.settingsDraft.display.showRouteArrows = false;
+                        ui.settingsDraft.display.showOverlapColoring = false;
+                        ui.settingsDraft.display.showCoverageRadius = true;
+                    }
+                }
+                ui?.resetSettingsToDefaults();
+                const d = ui?.settingsDraft;
+                const results = [
+                    chkEq(d?.candidateNodes, 'all',                             'candidateNodes reset to all'),
+                    chkEq(d?.hillClimbing?.restarts,               10,           'hillClimbing.restarts = 10'),
+                    chkEq(d?.hillClimbing?.maxIterations,          500,          'hillClimbing.maxIterations = 500'),
+                    chkEq(d?.hillClimbing?.radiusMultiplier,       2,            'hillClimbing.radiusMultiplier = 2'),
+                    chkEq(d?.hillClimbing?.adaptiveMaxRestarts,    30,           'hillClimbing.adaptiveMaxRestarts = 30'),
+                    chkEq(d?.hillClimbing?.synchronousMode,        false,        'hillClimbing.synchronousMode = false'),
+                    chkEq(d?.convexHull?.areaThresholdDivisor,     100,          'convexHull.areaThresholdDivisor = 100'),
+                    chkEq(d?.convexHull?.outlierMultiplier,        2.5,          'convexHull.outlierMultiplier = 2.5'),
+                    chkEq(d?.convexHull?.includeOutliers,          true,         'convexHull.includeOutliers = true'),
+                    chkEq(d?.tsp?.maxCrimeNodesPerZone,            10,           'tsp.maxCrimeNodesPerZone = 10'),
+                    chkEq(d?.tsp?.nearestNeighborFallbackThreshold,12,           'tsp.nearestNeighborFallbackThreshold = 12'),
+                    chkEq(d?.tsp?.hullExteriorPenalty,             1,            'tsp.hullExteriorPenalty = 1'),
+                    chkEq(d?.zoneAssignment?.strongRebalancing,    true,         'zoneAssignment.strongRebalancing = true'),
+                    chkEq(d?.display?.showZoneLines,               true,         'display.showZoneLines = true'),
+                    chkEq(d?.display?.showRouteArrows,             true,         'display.showRouteArrows = true'),
+                    chkEq(d?.display?.showOverlapColoring,         true,         'display.showOverlapColoring = true'),
+                    chkEq(d?.display?.showCoverageRadius,          false,        'display.showCoverageRadius = false')
+                ];
+                if (ui) ui.showSettings = false;
+                return results;
+            }
+        },
+
+        {
+            id: 'S7-T05d', stage: 7, n: 3,
+            name: 'Settings Apply then Reset — activeConfig unchanged by Reset (Reset only touches draft)',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const ui = window.uiApp;
+                const origRestarts = ui?.activeConfig?.hillClimbing?.restarts;
+                // Apply a custom value
+                ui?.openSettings();
+                if (ui?.settingsDraft?.hillClimbing) ui.settingsDraft.hillClimbing.restarts = 15;
+                ui?.applySettings();
+                // Now open again and click Reset (should only reset draft, not activeConfig)
+                ui?.openSettings();
+                ui?.resetSettingsToDefaults();
+                const results = [
+                    chkEq(ui?.activeConfig?.hillClimbing?.restarts, 15,
+                        'activeConfig.hillClimbing.restarts still 15 — Reset only clears draft, not active config'),
+                    chkEq(ui?.settingsDraft?.hillClimbing?.restarts, 10,
+                        'settingsDraft.hillClimbing.restarts restored to default 10 by Reset')
+                ];
+                // Restore original value
+                if (ui?.activeConfig?.hillClimbing) ui.activeConfig.hillClimbing.restarts = origRestarts;
+                if (ui) ui.showSettings = false;
+                return results;
+            }
+        },
+
+        {
+            id: 'S7-T05e', stage: 7, n: 3,
+            name: 'Settings openSettings — always deep-copies activeConfig (not a reference)',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            check() {
+                const ui = window.uiApp;
+                ui?.openSettings();
+                // Mutate the draft
+                const origRestarts = ui?.activeConfig?.hillClimbing?.restarts;
+                if (ui?.settingsDraft?.hillClimbing) ui.settingsDraft.hillClimbing.restarts = 77;
+                const activeUnchanged = ui?.activeConfig?.hillClimbing?.restarts === origRestarts;
+                // Open again — should re-sync from active (not the mutated draft)
+                ui?.openSettings();
+                const draftAfterReopen = ui?.settingsDraft?.hillClimbing?.restarts;
+                const results = [
+                    chkEq(activeUnchanged ? 'ok' : 'fail', 'ok',
+                        'mutating draft does not mutate activeConfig (deep copy confirmed)'),
+                    chkEq(draftAfterReopen, origRestarts,
+                        'reopening settings re-syncs draft from activeConfig, not stale draft')
+                ];
+                if (ui) ui.showSettings = false;
+                return results;
+            }
+        },
+
+        {
             id: 'S7-T06', stage: 7, n: 3,
             name: 'Map legend — DOM element present with all required marker type entries',
             coords: [

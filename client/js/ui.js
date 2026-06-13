@@ -792,7 +792,7 @@ document.addEventListener('alpine:init', () => {
                     hullExteriorPenalty:                 1
                 },
                 zoneAssignment: {
-                    redistribute:           true
+                    strongRebalancing:      true
                 },
                 display: {
                     showZoneLines:          true,
