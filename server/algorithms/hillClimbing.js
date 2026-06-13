@@ -240,6 +240,10 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     let totalRadiusExpansions = 0;
     let duplicateConfigCount  = 0;
 
+    // ── Parameters block ──────────────────────────────────────────────────────
+    log.push(`Patrols: ${effectiveN}${cappedFrom != null ? ` (capped from ${cappedFrom})` : ''} | Candidates: ${validCandidates.length} | R: ${Math.round(baseR)}m`);
+    log.push(`Restarts: max ${maxRestarts} (${config.hillClimbing.restarts}×n), min ${minRestarts} | Max iterations: ${maxIterations} | Mode: ${syncMode ? 'synchronous' : 'asynchronous'} | Seed: ${seed !== null ? seed : 'none (random)'}`);
+
     // ── Restart loop ──────────────────────────────────────────────────────────
     for (let restartIdx = 0; restartIdx < maxRestarts; restartIdx++) {
         log.push(`─── Restart ${restartIdx + 1} ───`);
@@ -260,13 +264,15 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
             lng:     node.lng,
             color:   PATROL_COLORS[i % PATROL_COLORS.length]
         }));
-        log.push(`  Init: ${positions.map(p => p.nodeId).join(', ')}`);
+        const initMinDist = effectiveN > 1 ? globalMinPairwiseDist(positions, roadDistMatrix) : 0;
+        log.push(`  Init: ${positions.map(p => p.nodeId).join(', ')} | start dist: ${Math.round(initMinDist)}m`);
 
         let R                        = baseR;
         let anyPatrolMoved           = true;
         let iteration                = 0;
         let maxIterReached           = false;
         let restartRadiusExpansions  = 0;
+        let moveCount                = 0;
 
         // ── Iteration loop ────────────────────────────────────────────────────
         while (anyPatrolMoved && iteration < maxIterations) {
@@ -326,6 +332,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
                     occupiedTargets.add(target.id);
                     newPositions[idx] = { ...newPositions[idx], nodeId: target.id, lat: target.lat, lng: target.lng };
                     anyPatrolMoved = true;
+                    moveCount++;
                     log.push(`  Iter ${iteration}, ${newPositions[idx].id} (sync) ${positions[idx].nodeId} → ${target.id}`);
                 }
                 positions = newPositions;
@@ -384,6 +391,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
                         const oldNodeId  = positions[idx].nodeId;
                         positions[idx]   = { ...positions[idx], nodeId: bestNeighbor.id, lat: bestNeighbor.lat, lng: bestNeighbor.lng };
                         anyPatrolMoved   = true;
+                        moveCount++;
                         log.push(`  Iter ${iteration}, ${positions[idx].id} moved ${oldNodeId} → ${bestNeighbor.id} (min dist: ${Math.round(prevGlobalMin)}m → ${Math.round(bestMinDist)}m)`);
 
                         // pushProgress after each individual patrol move in async mode
@@ -443,16 +451,18 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
             maxIterReached,
             nodeIdSet
         });
-        log.push(`  Restart ${restartIdx + 1} complete: minPairwiseDist=${Math.round(finalMinDist)}m, iterations=${iteration}`);
 
         // Keep the restart with highest minimum pairwise distance as current best
-        if (!bestResult || finalMinDist > bestResult.minDist) {
+        const isNewBest = !bestResult || finalMinDist > bestResult.minDist;
+        if (isNewBest) {
             bestResult = {
                 positions:    positions.map(p => ({ ...p })),
                 minDist:      finalMinDist,
                 restartIndex: restartIdx
             };
         }
+
+        log.push(`  Restart ${restartIdx + 1} summary: ${iteration} iter | ${moveCount} moves | ${Math.round(initMinDist)}m → ${Math.round(finalMinDist)}m${isNewBest ? ' [NEW BEST]' : ''}${isDuplicate ? ' [DUPLICATE]' : ''}`);
 
         // ── Adaptive convergence check ─────────────────────────────────────────
         // After minimum 5 restarts, stop if last 3 consecutive results are within 0.1%.
@@ -518,16 +528,17 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     const allMinDists = allRestartResults.map(r => r.minDist);
     const mean        = allMinDists.reduce((s, d) => s + d, 0) / allMinDists.length;
     let confidence    = 100;
+    let consistency   = 100;
     if (allMinDists.length > 1 && mean > 0) {
-        const variance      = allMinDists.reduce((s, d) => s + (d - mean) ** 2, 0) / allMinDists.length;
-        const stdDev        = Math.sqrt(variance);
-        const consistency   = Math.max(0, Math.min(100, (1 - stdDev / mean) * 100));
-        const confirmation  = redundancy ?? 0;
+        const variance  = allMinDists.reduce((s, d) => s + (d - mean) ** 2, 0) / allMinDists.length;
+        const stdDev    = Math.sqrt(variance);
+        consistency     = Math.max(0, Math.min(100, (1 - stdDev / mean) * 100));
+        const confirmation = redundancy ?? 0;
         confidence = Math.max(0, Math.min(100, 0.6 * consistency + 0.4 * confirmation));
     }
 
     log.push(`Convergence restart: ${convergenceRestart} of ${restartsCompleted}. Redundancy: ${redundancy}%.`);
-    log.push(`Confidence: ${confidence.toFixed(1)}% (60% consistency + 40% confirmation).`);
+    log.push(`Confidence: ${confidence.toFixed(1)}% = consistency(${consistency.toFixed(1)}%) × 0.6 + confirmation(${(redundancy ?? 0).toFixed(1)}%) × 0.4`);
 
     const hasWarnings = anyMaxIterWarning || duplicateConfigCount > 0 || totalRadiusExpansions > 0;
 
