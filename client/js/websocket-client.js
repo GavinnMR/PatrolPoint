@@ -364,7 +364,7 @@ function handleStageComplete(data) {
         };
         // Attach Stage 2 convergence data for trace panel display
         if (stage === 2) {
-            if (_lastConfidence !== null)    stageUpdate.confidence        = _lastConfidence;
+            stageUpdate.confidence         = _lastConfidence;             // always include — null if server didn't provide
             if (_lastConvergenceCurve)       stageUpdate.convergenceCurve  = _lastConvergenceCurve;
             stageUpdate.convergenceRestart  = result.convergenceRestart  ?? null;
             stageUpdate.redundancy          = result.redundancy          ?? null;
@@ -567,8 +567,8 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
     switch (stage) {
         case 1: {
             const vertexCount    = result.hull?.length ?? 0;
-            const areaKm2        = result.hullArea != null ? (result.hullArea / 1e6).toFixed(4) : '—';
-            const areaM2         = result.hullArea != null ? Math.round(result.hullArea).toLocaleString() : '—';
+            const areaKm2        = result.hullArea != null ? (result.hullArea / 1e6).toFixed(4) : 'N/A';
+            const areaM2         = result.hullArea != null ? Math.round(result.hullArea).toLocaleString() : 'N/A';
             const candidates     = result.validCandidateCount ?? 0;
             const outliers       = result.outlierCount ?? 0;
             return [
@@ -812,12 +812,31 @@ function buildTraceMetrics(stage, result) {
         case 3: {
             const nonEmptyZones = (result.zones || []).filter(z => z && z.length > 0);
             const zoneSizes     = nonEmptyZones.map(z => z.length);
-            const minZone       = zoneSizes.length > 0 ? Math.min(...zoneSizes) : 0;
-            const maxZone       = zoneSizes.length > 0 ? Math.max(...zoneSizes) : 0;
-            const balance       = maxZone > 0 ? Math.round((minZone / maxZone) * 100) : 100;
             const totalPlotted  = (result.zones || []).reduce((s, z) => s + (z?.length ?? 0), 0) + (result.excludedCount ?? 0);
             const covered       = (result.zones || []).reduce((s, z) => s + (z?.length ?? 0), 0);
             const coverageRate  = totalPlotted > 0 ? Math.round((covered / totalPlotted) * 100) : 100;
+
+            // Zone balance — MAD-based score
+            // First check if distribution is already optimal (all zones within [floor, ceil] of target).
+            // If optimal, show "Optimal" regardless of the raw ratio.
+            // Otherwise use mean absolute deviation from target, normalised to 0–100%.
+            let balanceValue   = 'N/A';
+            let balanceWarn    = false;
+            if (zoneSizes.length > 0) {
+                const target      = covered / nonEmptyZones.length;
+                const floorTarget = Math.floor(target);
+                const ceilTarget  = Math.ceil(target);
+                const isOptimal   = zoneSizes.every(s => s >= floorTarget && s <= ceilTarget);
+                if (isOptimal) {
+                    balanceValue = 'Optimal';
+                } else {
+                    const mad    = zoneSizes.reduce((s, sz) => s + Math.abs(sz - target), 0) / zoneSizes.length;
+                    const score  = target > 0 ? Math.max(0, Math.round((1 - mad / target) * 100)) : 100;
+                    balanceValue = score + '%';
+                    balanceWarn  = score < 70;
+                }
+            }
+
             return [
                 {
                     label:   'Coverage rate',
@@ -826,8 +845,9 @@ function buildTraceMetrics(stage, result) {
                 },
                 {
                     label:   'Zone balance',
-                    value:   balance + '%',
-                    tooltip: 'How evenly incidents are distributed across patrols. 100% = all patrols have the same number of incidents. Low values mean some patrols are overloaded.'
+                    value:   balanceValue,
+                    warn:    balanceWarn,
+                    tooltip: 'How evenly incidents are spread across patrols. "Optimal" means every patrol is within one incident of the ideal equal split — the best mathematically possible. A percentage shows how far the distribution is from equal, using average deviation across all patrols (not just the best and worst).'
                 },
                 {
                     label:   'Patrol zones',

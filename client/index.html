@@ -688,19 +688,32 @@
               <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2.5">Results</div>
               <div class="grid grid-cols-2 gap-x-6 gap-y-3">
                 <template x-for="m in (stage.metrics || [])" :key="m.label">
-                  <div x-data="{ ttVisible: false }" class="relative">
+                  <div x-data="{
+                    ttVisible: false,
+                    ttStyle: '',
+                    showTt(el) {
+                      if (!m.tooltip) return;
+                      const r = el.getBoundingClientRect();
+                      const tw = 208;
+                      let left = r.left;
+                      if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
+                      this.ttStyle = 'left:' + left + 'px;top:' + (r.top - 6) + 'px;transform:translateY(-100%)';
+                      this.ttVisible = true;
+                    }
+                  }" class="relative">
                     <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5 select-none"
                          :class="m.tooltip ? 'cursor-help underline decoration-dotted underline-offset-2' : ''"
                          x-text="m.label"
-                         @mouseenter="m.tooltip ? ttVisible = true : null"
+                         @mouseenter="showTt($el)"
                          @mouseleave="ttVisible = false"></div>
                     <div class="text-sm font-bold leading-tight"
                          :class="m.warn ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-800 dark:text-gray-100'"
                          x-text="m.value"></div>
-                    <!-- Tooltip -->
+                    <!-- Tooltip: fixed so it escapes overflow:hidden ancestors; position clamped to viewport -->
                     <div x-show="ttVisible && m.tooltip"
                          x-cloak
-                         class="absolute bottom-full left-0 mb-1.5 w-52 bg-gray-900 dark:bg-gray-950 text-white text-[10px] leading-snug px-2.5 py-1.5 rounded shadow-lg z-[9999] pointer-events-none"
+                         :style="ttStyle"
+                         class="fixed w-52 bg-gray-900 dark:bg-gray-950 text-white text-[10px] leading-snug px-2.5 py-1.5 rounded shadow-lg z-[9999] pointer-events-none"
                          x-text="m.tooltip"></div>
                   </div>
                 </template>
