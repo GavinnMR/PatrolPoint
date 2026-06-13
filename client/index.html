@@ -242,27 +242,6 @@
           <span x-text="networkInfo"></span>
         </div>
 
-        <!-- Auth section — hidden in demo mode -->
-        <div x-show="!demoMode" class="flex items-center justify-between text-xs">
-          <template x-if="!currentUser">
-            <button @click="showAuth = true"
-                    class="text-blue-500 hover:text-blue-600 font-medium">
-              Sign in to save sessions
-            </button>
-          </template>
-          <template x-if="currentUser">
-            <div class="flex items-center gap-2 flex-1">
-              <span class="text-gray-600 dark:text-gray-400 truncate"
-                    x-text="'Signed in as ' + currentUser.username"></span>
-              <button @click="logout()" class="text-red-500 hover:text-red-600 flex-shrink-0">Sign out</button>
-            </div>
-          </template>
-          <button x-show="currentUser" @click="showSessions = true"
-                  class="text-blue-500 hover:text-blue-600 font-medium flex-shrink-0 ml-2">
-            Sessions
-          </button>
-        </div>
-
         <!-- Number of patrols input -->
         <div x-data="{ tipVisible: false }">
           <div class="flex items-center justify-between mb-1">
@@ -443,52 +422,6 @@
           </div>
         </div>
 
-        <!-- Session history panel (collapsible, requires auth) -->
-        <div x-show="currentUser"
-             class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-          <button @click="showSessionsPanel = !showSessionsPanel; if (showSessionsPanel) loadSessions()"
-                  class="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
-            <span>Saved Sessions</span>
-            <svg :class="showSessionsPanel ? 'rotate-180' : ''"
-                 class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </button>
-          <div x-show="showSessionsPanel" class="border-t border-gray-200 dark:border-gray-700">
-            <div class="max-h-48 overflow-y-auto px-2 py-2 space-y-1">
-              <div x-show="sessionsLoading" class="flex items-center justify-center py-4 gap-1.5 text-xs text-gray-400">
-                <div class="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                <span>Loading...</span>
-              </div>
-              <p x-show="!sessionsLoading && sessionsError"
-                 class="text-xs text-red-500 text-center py-2" x-text="sessionsError"></p>
-              <p x-show="!sessionsLoading && !sessionsError && sessions.length === 0"
-                 class="text-xs text-gray-400 text-center py-4">No saved deployments yet.</p>
-              <div x-show="!sessionsLoading && !sessionsError">
-              <template x-for="s in sessions" :key="s.id">
-                <div class="flex items-center gap-1 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs">
-                  <div class="flex-1 min-w-0 cursor-pointer" @click="loadSession(s.id)">
-                    <p class="font-medium truncate"
-                       x-text="s.session_name || 'Untitled Session'"></p>
-                    <p class="text-gray-400 truncate"
-                       x-text="s.barangay_name + ' · ' + s.n_patrols + 'p · ' + s.deployment_mode"></p>
-                    <p class="text-gray-400"
-                       x-text="new Date(s.created_at).toLocaleDateString()"></p>
-                  </div>
-                  <button @click="deleteSession(s.id)"
-                          class="text-red-400 hover:text-red-600 flex-shrink-0 p-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                  </button>
-                </div>
-              </template>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div><!-- end main controls (scrollable) -->
 
       <!-- Bottom controls row (fixed at bottom of panel) -->
@@ -543,49 +476,6 @@
         </div>
 
         <div class="flex-1"></div>
-
-        <!-- Save session — hidden in demo mode -->
-        <div x-show="!demoMode" class="relative" x-data="{ show: false }">
-          <button @click="promptSaveSession()" :disabled="!pipelineComplete"
-                  @mouseenter="show = true" @mouseleave="show = false"
-                  class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
-            </svg>
-          </button>
-          <div x-show="show" x-cloak
-               class="absolute bottom-full mb-1 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
-            Save current results to session history
-          </div>
-        </div>
-
-        <!-- Export dropdown — hidden in demo mode -->
-        <div x-show="!demoMode" class="relative" x-data="{ exportOpen: false, show: false }">
-          <button @click="exportOpen = !exportOpen" :disabled="!pipelineComplete"
-                  @mouseenter="show = true" @mouseleave="show = false; exportOpen = false"
-                  class="p-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-          </button>
-          <div x-show="show && !exportOpen" x-cloak
-               class="absolute bottom-full mb-1 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
-            Export results as PDF or CSV
-          </div>
-          <div x-show="exportOpen" @click.outside="exportOpen = false"
-               class="absolute bottom-full mb-1 right-0 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg overflow-hidden z-50">
-            <button @click="exportResults('pdf'); exportOpen = false"
-                    class="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
-              Export as PDF
-            </button>
-            <button @click="exportResults('csv'); exportOpen = false"
-                    class="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
-              Export as CSV
-            </button>
-          </div>
-        </div>
 
         <!-- Settings gear — openSettings() syncs draft from activeConfig first -->
         <div class="relative" x-data="{ show: false }">
@@ -1157,95 +1047,6 @@
                 class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
           Cancel
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ──────────────────────────────────────────────────────────────────────── -->
-  <!-- Auth modal (login / register)                                            -->
-  <!-- ──────────────────────────────────────────────────────────────────────── -->
-  <div x-show="showAuth" x-cloak
-       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-       @click.self="showAuth = false">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-80 p-6">
-      <h2 class="font-semibold text-lg mb-4"
-          x-text="authMode === 'login' ? 'Sign In' : 'Create Account'"></h2>
-      <div class="space-y-3">
-        <input type="text" x-model="authForm.username" placeholder="Username"
-               class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input x-show="authMode === 'register'"
-               type="text" x-model="authForm.displayName" placeholder="Display name"
-               class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input type="password" x-model="authForm.password" placeholder="Password (min 8 chars)"
-               class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-               @keydown.enter="submitAuth()" />
-        <p x-show="authError" class="text-red-500 text-xs" x-text="authError"></p>
-        <p x-show="authSuccess" class="text-green-600 dark:text-green-400 text-xs" x-text="authSuccess"></p>
-        <button @click="submitAuth()"
-                class="w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-                x-text="authMode === 'login' ? 'Sign In' : 'Create Account'"></button>
-        <button @click="authMode = authMode === 'login' ? 'register' : 'login'; authError = ''; authSuccess = ''"
-                class="w-full text-xs text-blue-500 hover:text-blue-600"
-                x-text="authMode === 'login' ? 'No account? Register' : 'Already have an account? Sign in'"></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ──────────────────────────────────────────────────────────────────────── -->
-  <!-- Session history modal (full list overlay)                                -->
-  <!-- ──────────────────────────────────────────────────────────────────────── -->
-  <div x-show="showSessions" x-cloak
-       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-       @click.self="showSessions = false">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-[480px] max-h-[70vh] flex flex-col">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <h2 class="font-semibold">Saved Sessions</h2>
-        <div class="flex items-center gap-2">
-          <button @click="promptSaveSession()" :disabled="!pipelineComplete"
-                  class="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-40">
-            Save Current
-          </button>
-          <button @click="showSessions = false"
-                  class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-        <!-- Loading state -->
-        <div x-show="sessionsLoading" class="flex items-center justify-center py-8 gap-2 text-sm text-gray-400">
-          <div class="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-          <span>Loading sessions...</span>
-        </div>
-        <!-- Error state -->
-        <p x-show="!sessionsLoading && sessionsError"
-           class="text-sm text-red-500 text-center py-4" x-text="sessionsError"></p>
-        <!-- Empty state -->
-        <p x-show="!sessionsLoading && !sessionsError && sessions.length === 0"
-           class="text-sm text-gray-400 text-center py-8">No saved deployments yet. Run the pipeline and save your first deployment.</p>
-        <div x-show="!sessionsLoading && !sessionsError" class="space-y-2">
-          <template x-for="s in sessions" :key="s.id">
-            <div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <div class="flex-1 min-w-0 cursor-pointer" @click="loadSession(s.id)">
-                <p class="text-sm font-medium truncate"
-                   x-text="s.session_name || 'Untitled Session'"></p>
-                <p class="text-xs text-gray-400"
-                   x-text="s.barangay_name + ' · ' + s.n_patrols + ' patrols · ' + s.deployment_mode"></p>
-                <p class="text-xs text-gray-400"
-                   x-text="new Date(s.created_at).toLocaleString()"></p>
-              </div>
-              <button @click="deleteSession(s.id)"
-                      class="ml-2 text-red-400 hover:text-red-600 flex-shrink-0">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
-              </button>
-            </div>
-          </template>
-        </div>
       </div>
     </div>
   </div>

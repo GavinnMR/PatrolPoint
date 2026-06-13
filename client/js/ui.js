@@ -88,26 +88,13 @@ document.addEventListener('alpine:init', () => {
 
         // ── Panels / modals ───────────────────────────────────────────────────
         showSettings:      false,
-        showAuth:          false,
-        showSessions:      false,
         showComparison:    false,
         showImport:        false,
         showPlayback:      false,
-        showSessionsPanel: false,
 
         // ── Import coordinates ────────────────────────────────────────────────
         importText:    '',
         importMessage: '',
-
-        // ── Auth ──────────────────────────────────────────────────────────────
-        authMode: 'login',   // 'login' | 'register'
-        authForm: { username: '', password: '', displayName: '' },
-        authError:   '',
-        authSuccess: '',     // green message shown after successful registration
-        currentUser: null,   // { id, username, displayName, barangay }
-        sessions:        [],     // list from GET /api/sessions
-        sessionsLoading: false,
-        sessionsError:   '',
 
         // ── Undo / redo stacks ────────────────────────────────────────────────
         undoStack: [],   // {type, data, timestamp} — length exposed for :disabled binding
@@ -133,9 +120,6 @@ document.addEventListener('alpine:init', () => {
         playbackPatrolId:    '',
         playbackSpeed:       1,
         playbackProgress:    0,
-
-        // ── Demo mode ─────────────────────────────────────────────────────────
-        demoMode: false,
 
         // ── Mobile bottom sheet ───────────────────────────────────────────────
         mobileSheetHeight: 40,   // percent of viewport height — 40% collapsed, 80% expanded
@@ -219,13 +203,6 @@ document.addEventListener('alpine:init', () => {
                 document.documentElement.classList.add('dark');
             }
 
-            // Restore auth token and user info if previously logged in
-            const savedToken = localStorage.getItem('patrolpoint-token');
-            if (savedToken) {
-                window.authToken = savedToken;
-                this._restoreSession(savedToken);
-            }
-
             // Global keyboard shortcuts — only when textarea/input not focused
             window.addEventListener('keydown', (e) => {
                 const tag = e.target.tagName;
@@ -269,12 +246,6 @@ document.addEventListener('alpine:init', () => {
 
             // Expose Alpine component instance globally so map.js can call methods
             window.uiApp = this;
-
-            // Fetch server config — sets demoMode flag before map/WS init
-            fetch('/api/config')
-                .then(r => r.json())
-                .then(cfg => { this.demoMode = cfg.demoMode === true; })
-                .catch(() => {});
 
             // Populate barangay dropdown from manifest
             fetch('/data/barangays/manifest.json')
@@ -330,22 +301,6 @@ document.addEventListener('alpine:init', () => {
             point.lng = newLng;
             this.P = [...window.P];
             this._pushUndo({ type: 'drag_crime', data: { crimeId, oldLat, oldLng, newLat, newLng }, timestamp: Date.now() });
-        },
-
-        // ── Auth helpers ──────────────────────────────────────────────────────
-
-        async _restoreSession(token) {
-            try {
-                const res = await fetch('/api/auth/me', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    // GET /me returns { user: { userId, username, barangay } }
-                    this.currentUser = data.user ?? data;
-                    window.currentUser = this.currentUser;
-                }
-            } catch (_) { /* silently ignore — token may be expired */ }
         },
 
         // ── Input validation ──────────────────────────────────────────────────
@@ -814,190 +769,6 @@ document.addEventListener('alpine:init', () => {
             });
             document.body.setAttribute('data-print-timestamp', `Generated: ${ts}`);
             window.print();
-        },
-
-        // ── Auth ──────────────────────────────────────────────────────────────
-
-        async submitAuth() {
-            this.authError = '';
-            const endpoint = this.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-            try {
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(this.authForm)
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    this.authError = data.error || 'Request failed.';
-                    return;
-                }
-                if (this.authMode === 'login') {
-                    window.authToken = data.token;
-                    this.currentUser = data.user;
-                    window.currentUser = data.user;
-                    localStorage.setItem('patrolpoint-token', data.token);
-                    this.authSuccess = '';
-                    this.showAuth = false;
-                    this.loadSessions();
-                } else {
-                    // Registration succeeded — switch to login tab and show success message
-                    this.authMode = 'login';
-                    this.authError = '';
-                    this.authForm.password = '';
-                    this.authSuccess = 'Account created successfully. Please sign in.';
-                }
-            } catch (_) {
-                this.authError = 'Connection error. Is the server running?';
-            }
-        },
-
-        logout() {
-            window.authToken = null;
-            window.currentUser = null;
-            this.currentUser = null;
-            this.sessions = [];
-            this.showSessionsPanel = false;
-            localStorage.removeItem('patrolpoint-token');
-        },
-
-        // ── Sessions ──────────────────────────────────────────────────────────
-
-        async loadSessions() {
-            if (!window.authToken) return;
-            this.sessionsLoading = true;
-            this.sessionsError   = '';
-            try {
-                const res = await fetch('/api/sessions', {
-                    headers: { Authorization: `Bearer ${window.authToken}` }
-                });
-                if (res.ok) {
-                    this.sessions = await res.json();
-                } else {
-                    this.sessionsError = 'Failed to load sessions. Please try again.';
-                }
-            } catch (_) {
-                this.sessionsError = 'Connection error. Please check your connection.';
-            } finally {
-                this.sessionsLoading = false;
-            }
-        },
-
-        async loadSession(id) {
-            if (!window.authToken) return;
-            try {
-                const res = await fetch(`/api/sessions/${id}`, {
-                    headers: { Authorization: `Bearer ${window.authToken}` }
-                });
-                if (!res.ok) return;
-                const session = await res.json();
-                if (typeof renderSessionResults === 'function') {
-                    renderSessionResults(session, this);
-                } else {
-                    console.log('[ui.js] loadSession() — renderSessionResults not yet implemented (Part 9)');
-                }
-                this.showSessions = false;
-            } catch (_) { /* silently ignore */ }
-        },
-
-        async deleteSession(id) {
-            if (!confirm('Delete this session?')) return;
-            if (!window.authToken) return;
-            try {
-                await fetch(`/api/sessions/${id}`, {
-                    method: 'DELETE',
-                    headers: { Authorization: `Bearer ${window.authToken}` }
-                });
-                this.sessions = this.sessions.filter(s => s.id !== id);
-            } catch (_) { /* silently ignore */ }
-        },
-
-        promptSaveSession() {
-            if (!window.authToken) {
-                this.showBanner('Sign in to save sessions.', 'warning');
-                return;
-            }
-            if (!window.pipelineComplete) {
-                this.showBanner('Run the pipeline first before saving.', 'warning');
-                return;
-            }
-            const name = window.prompt('Session name (leave blank for "Untitled Session"):') ?? '';
-            this.saveCurrentSession(name.trim() || 'Untitled Session');
-        },
-
-        async saveCurrentSession(name) {
-            if (!window.authToken || !window.pipelineComplete) return;
-            try {
-                const body = {
-                    session_name:    name || 'Untitled Session',
-                    barangay_name:   this.selectedBarangay,
-                    n_patrols:       this.nPatrols,
-                    deployment_mode: this.deploymentMode,
-                    incidents:       window.P,
-                    config:          this.activeConfig,
-                    results: {
-                        hull:    window.currentHull,
-                        patrols: window.S_star,
-                        zones:   window.zones,
-                        routes:  window.routes
-                    },
-                    trace:            this.traceStages,
-                    total_runtime_ms: null
-                };
-                const res = await fetch('/api/sessions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization:  `Bearer ${window.authToken}`
-                    },
-                    body: JSON.stringify(body)
-                });
-                if (res.ok) {
-                    await this.loadSessions();
-                    this.showBanner('Session saved.', 'warning');
-                    setTimeout(() => this.clearBanner(), 2000);
-                }
-            } catch (_) { /* silently ignore */ }
-        },
-
-        // ── Export ────────────────────────────────────────────────────────────
-
-        async exportResults(format) {
-            if (!window.authToken) {
-                this.showBanner('Sign in to export results.', 'warning');
-                return;
-            }
-            try {
-                const res = await fetch(`/api/export/${format}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization:  `Bearer ${window.authToken}`
-                    },
-                    body: JSON.stringify({
-                        results: {
-                            hull:    window.currentHull,
-                            patrols: window.S_star,
-                            zones:   window.zones,
-                            routes:  window.routes
-                        }
-                    })
-                });
-                if (!res.ok) {
-                    this.showBanner('Export failed. Please try again.', 'error');
-                    return;
-                }
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                const tsStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-                a.download = `patrolpoint-deployment-${tsStr}.${format}`;
-                a.click();
-                URL.revokeObjectURL(url);
-            } catch (_) {
-                this.showBanner('Export failed.', 'error');
-            }
         },
 
         // ── Route playback ────────────────────────────────────────────────────

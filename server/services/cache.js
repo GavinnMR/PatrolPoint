@@ -1,35 +1,25 @@
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
-import { getRoadNetwork, saveRoadNetwork } from '../db/queries.js';
-import { fetchBarangayData } from './overpass.js';
-import { processOverpassResponse } from './networkProcessor.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// All barangay bounding boxes and local network files are populated from the manifest.
-const BARANGAY_BBOXES = {};
 const LOCAL_NETWORK_FILES = {};
 
-// Load manifest and register all pre-built barangay files from data/barangays/.
-// Runs once at startup; non-fatal if file is absent.
 try {
     const manifestPath = join(__dirname, '../../data/barangays/manifest.json');
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
     for (const [name, entry] of Object.entries(manifest)) {
-        BARANGAY_BBOXES[name] = entry.bbox;
         LOCAL_NETWORK_FILES[name] = join(__dirname, `../../data/barangays/${entry.slug}.json`);
     }
     console.log(`Barangay manifest loaded: ${Object.keys(manifest).length} barangays registered`);
 } catch {
-    console.log('No barangay manifest found — no local networks available (run scripts/preprocess_barangays.py to generate)');
+    console.log('No barangay manifest found — run scripts/preprocess_barangays.py to generate local network files');
 }
 
-// Module-level in-memory cache — persists across requests for the lifetime of the process
+// In-memory cache — persists across requests for the lifetime of the process
 const networkCache = {};
 
-// Build processed network object from the pre-built road_network.json format.
-// road_network.json stores nodes as an array; the cache expects a nodeMap object.
 async function buildNetworkFromLocalFile(barangayName) {
     const filePath = LOCAL_NETWORK_FILES[barangayName];
     if (!filePath) return null;
@@ -42,11 +32,9 @@ async function buildNetworkFromLocalFile(barangayName) {
         return null;
     }
 
-    // Convert nodes array → nodeMap object keyed by id
     const nodes = {};
     for (const n of raw.nodes) nodes[n.id] = n;
 
-    // Build adjacencyList and degree map from edges
     const adjacencyList = {};
     const degree = {};
     for (const id in nodes) { adjacencyList[id] = []; degree[id] = 0; }
@@ -58,10 +46,8 @@ async function buildNetworkFromLocalFile(barangayName) {
         degree[edge.to]   = (degree[edge.to]   || 0) + 1;
     }
 
-    // Intersection nodes — degree >= 3
     const intersectionNodeIds = Object.keys(degree).filter(id => degree[id] >= 3);
 
-    // Bounding box from node coordinates
     let minLat = Infinity, maxLat = -Infinity;
     let minLng = Infinity, maxLng = -Infinity;
     for (const id in nodes) {
@@ -84,7 +70,6 @@ async function buildNetworkFromLocalFile(barangayName) {
         adjacencyList,
         intersectionNodeIds,
         boundary: raw.boundary || [],
-        osmRelationId: null,
         nodeCount,
         edgeCount,
         intersectionCount,
@@ -93,104 +78,17 @@ async function buildNetworkFromLocalFile(barangayName) {
 }
 
 export async function getOrFetchNetwork(barangayName) {
-    // 1. In-memory hit — fastest path, no DB round-trip
     if (networkCache[barangayName]) {
-        console.log(`Network cache hit (memory): ${barangayName}`);
+        console.log(`Network cache hit: ${barangayName}`);
         return { ...networkCache[barangayName], fromCache: true };
     }
 
-    // 2. Database hit — warm start after server restart
-    let dbRecord = null;
-    try {
-        dbRecord = await getRoadNetwork(barangayName);
-    } catch (dbErr) {
-        console.warn(`Database unavailable for "${barangayName}" (${dbErr.message}) — will try local file then Overpass`);
-    }
-    if (dbRecord) {
-        console.log(`Network cache hit (database): ${barangayName}`);
-        const data = {
-            nodes: dbRecord.nodes,
-            edges: dbRecord.edges,
-            adjacencyList: dbRecord.adjacency_list,
-            intersectionNodeIds: dbRecord.intersection_node_ids,
-            boundary: dbRecord.boundary,
-            nodeCount: dbRecord.node_count,
-            edgeCount: dbRecord.edge_count,
-            intersectionCount: dbRecord.intersection_count,
-            bbox: {
-                south: parseFloat(dbRecord.bbox_south),
-                west: parseFloat(dbRecord.bbox_west),
-                north: parseFloat(dbRecord.bbox_north),
-                east: parseFloat(dbRecord.bbox_east)
-            }
-        };
-        networkCache[barangayName] = data;
-        return { ...data, fromCache: true };
-    }
-
-    // 3. Local file fallback — uses pre-built road_network.json, no external requests
-    console.log(`Trying local network file for "${barangayName}"...`);
+    console.log(`Loading network for "${barangayName}" from local file...`);
     const localData = await buildNetworkFromLocalFile(barangayName);
     if (localData) {
-        console.log(`Loaded "${barangayName}" from local file — seeding database for next startup`);
         networkCache[barangayName] = localData;
-
-        // Seed DB in the background so future startups hit cache level 2 instead
-        saveRoadNetwork({
-            barangay_name: barangayName,
-            city: 'Quezon City',
-            osm_relation_id: localData.osmRelationId,
-            nodes: localData.nodes,
-            edges: localData.edges,
-            boundary: localData.boundary,
-            adjacency_list: localData.adjacencyList,
-            intersection_node_ids: localData.intersectionNodeIds,
-            node_count: localData.nodeCount,
-            edge_count: localData.edgeCount,
-            intersection_count: localData.intersectionCount,
-            bbox_south: localData.bbox.south,
-            bbox_west: localData.bbox.west,
-            bbox_north: localData.bbox.north,
-            bbox_east: localData.bbox.east
-        }).then(() => console.log(`Network seeded to database: ${barangayName}`))
-          .catch(err => console.warn(`DB seed failed for "${barangayName}" (non-fatal): ${err.message}`));
-
         return { ...localData, fromCache: false };
     }
 
-    // 4. Cold start — fetch from Overpass as last resort
-    console.log(`Network cache miss: ${barangayName} — fetching from Overpass`);
-    const bbox = BARANGAY_BBOXES[barangayName];
-    if (!bbox) {
-        throw new Error(`No bounding box configured for barangay: ${barangayName}`);
-    }
-
-    const { roadData, boundaryData } = await fetchBarangayData(barangayName, bbox);
-    const processed = processOverpassResponse(roadData, boundaryData);
-
-    try {
-        await saveRoadNetwork({
-            barangay_name: barangayName,
-            city: 'Quezon City',
-            osm_relation_id: processed.osmRelationId,
-            nodes: processed.nodes,
-            edges: processed.edges,
-            boundary: processed.boundary,
-            adjacency_list: processed.adjacencyList,
-            intersection_node_ids: processed.intersectionNodeIds,
-            node_count: processed.nodeCount,
-            edge_count: processed.edgeCount,
-            intersection_count: processed.intersectionCount,
-            bbox_south: processed.bbox.south,
-            bbox_west: processed.bbox.west,
-            bbox_north: processed.bbox.north,
-            bbox_east: processed.bbox.east
-        });
-        console.log(`Network cached to database: ${barangayName}`);
-    } catch (dbErr) {
-        console.error(`Failed to cache network to database for ${barangayName}:`, dbErr.message);
-    }
-
-    networkCache[barangayName] = processed;
-    return { ...processed, fromCache: false };
+    throw new Error(`No local network file found for barangay: "${barangayName}". Run scripts/preprocess_barangays.py to generate it.`);
 }
