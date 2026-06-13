@@ -44,8 +44,8 @@ export function validateConfig(config) {
 
     const hc = config.hillClimbing;
     if (hc) {
-        if (hc.restarts !== undefined && (typeof hc.restarts !== 'number' || hc.restarts < 1 || hc.restarts > 100)) {
-            throw new Error('hillClimbing.restarts must be between 1 and 100.');
+        if (hc.restarts !== undefined && (typeof hc.restarts !== 'number' || hc.restarts < 1 || hc.restarts > 10000)) {
+            throw new Error('hillClimbing.restarts must be between 1 and 10000.');
         }
         if (hc.maxIterations !== undefined && (typeof hc.maxIterations !== 'number' || hc.maxIterations < 1 || hc.maxIterations > 10000)) {
             throw new Error('hillClimbing.maxIterations must be between 1 and 10000.');

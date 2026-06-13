@@ -227,9 +227,9 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     log.push(`R = sqrt(${Math.round(hullAreaM2)} / ${validCandidates.length}) × ${config.hillClimbing.radiusMultiplier} = ${Math.round(baseR)}m`);
 
     // ── Restart budget ────────────────────────────────────────────────────────
-    // Total restarts = restarts-per-patrol × n, capped at 150. Scales with n
-    // because the min-max-pairwise-distance landscape has more local optima as n grows.
-    const maxRestarts   = Math.min(config.hillClimbing.restarts * effectiveN, 150);
+    // Total restarts = restarts-per-patrol × n. Scales with n because the
+    // min-max-pairwise-distance landscape has more local optima as n grows.
+    const maxRestarts   = config.hillClimbing.restarts * effectiveN;
     const minRestarts   = Math.max(5, effectiveN);
     const maxIterations = config.hillClimbing.maxIterations;       // default 500
     const syncMode      = config.hillClimbing.synchronousMode === true;
