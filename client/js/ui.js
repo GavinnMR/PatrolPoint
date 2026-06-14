@@ -245,19 +245,11 @@ document.addEventListener('alpine:init', () => {
             // Expose Alpine component instance globally so map.js can call methods
             window.uiApp = this;
 
-            // Populate barangay dropdown from manifest
+            // Load manifest for slug lookups — barangay is locked to Commonwealth
             fetch('/data/barangays/manifest.json')
                 .then(r => r.json())
-                .then(manifest => {
-                    window.barangayManifest = manifest;
-                    const names = Object.keys(manifest).filter(n => !manifest[n].hidden).sort((a, b) => a.localeCompare(b));
-                    this.barangayOptions = names;
-                    if (!names.includes(this.selectedBarangay)) {
-                        this.selectedBarangay = names[0] || 'Commonwealth';
-                    }
-                    this.barangayQuery = this.selectedBarangay;
-                })
-                .catch(() => { /* keep default ['Commonwealth'] */ });
+                .then(manifest => { window.barangayManifest = manifest; })
+                .catch(() => {});
 
             if (typeof initMap === 'function')       initMap(this);
             if (typeof initWebSocket === 'function') initWebSocket(this);
