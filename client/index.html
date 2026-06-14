@@ -50,7 +50,7 @@
        class="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-900/80">
     <div class="bg-white dark:bg-gray-800 rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
       <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      <p class="text-lg font-semibold" x-text="wsStatusText">Connecting to server...</p>
+      <p class="text-base font-semibold" x-text="wsStatusText">Connecting to server...</p>
     </div>
   </div>
 
@@ -68,20 +68,20 @@
       <!-- Reset View + Road Graph Editor toggle (top-left, offset to not cover Leaflet zoom controls) -->
       <div class="absolute top-3 left-12 z-[1000] flex flex-col gap-2">
         <button @click="resetView()"
-                class="bg-white dark:bg-gray-800 text-sm px-3 py-1.5 rounded shadow hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200">
+                class="bg-white dark:bg-gray-800 text-[11px] px-3 py-1.5 rounded shadow hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200">
           Reset View
         </button>
         <button @click="toggleOsmGraph()"
                 :class="osmGraphMode
                   ? 'bg-blue-500 text-white border-blue-500'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600'"
-                class="text-sm px-3 py-1.5 rounded shadow border">
+                class="text-[11px] px-3 py-1.5 rounded shadow border">
           Road Graph
         </button>
         <button id="graph-reset-btn"
                 @click="resetRoadGraph()"
                 style="display:none"
-                class="text-sm px-3 py-1.5 rounded shadow border bg-white dark:bg-gray-800 text-red-500 border-red-400 hover:bg-red-50 dark:hover:bg-gray-700">
+                class="text-[11px] px-3 py-1.5 rounded shadow border bg-white dark:bg-gray-800 text-red-500 border-red-400 hover:bg-red-50 dark:hover:bg-gray-700">
           Reset Graph
         </button>
       </div>
@@ -93,14 +93,14 @@
       <!-- Map legend (collapsible) -->
       <div x-data="{ open: false }" class="relative">
         <button @click="open = !open"
-                class="bg-white/90 dark:bg-gray-800/90 text-xs px-2 py-1 rounded shadow border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                class="bg-white/90 dark:bg-gray-800/90 text-[11px] px-2 py-1 rounded shadow border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
           </svg>
           Legend
         </button>
         <div x-show="open" x-cloak
-             class="absolute bottom-full mb-1 left-0 bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-3 text-xs text-gray-600 dark:text-gray-300 space-y-2 min-w-max">
+             class="absolute bottom-full mb-1 left-0 bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-3 text-[11px] text-gray-600 dark:text-gray-300 space-y-2 min-w-max">
           <!-- Crime incident -->
           <div class="flex items-center gap-2">
             <div class="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow flex-shrink-0"></div>
@@ -157,7 +157,7 @@
 
       <!-- Live coordinate display (to the right of legend button) -->
       <div id="coord-display"
-           class="bg-white/80 dark:bg-gray-800/80 text-xs px-2 py-1 rounded font-mono hidden">
+           class="bg-white/80 dark:bg-gray-800/80 text-[11px] px-2 py-1 rounded font-mono hidden">
         Lat: -- &nbsp; Lng: --
       </div>
 
@@ -181,10 +181,10 @@
       <!-- Header: title + dark mode toggle -->
       <div class="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 class="text-lg font-bold text-gray-900 dark:text-white">
+          <h1 class="text-base font-bold text-gray-900 dark:text-white">
             PatrolPoint
           </h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Algorithmic Patrol Deployment and Route Generation</p>
+          <p class="text-[11px] text-gray-500 dark:text-gray-400">Algorithmic Patrol Deployment and Route Generation</p>
         </div>
       </div>
 
@@ -193,7 +193,7 @@
            :class="bannerType === 'error'
              ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200'
              : 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'"
-           class="mx-3 mt-3 rounded-lg border text-xs flex-shrink-0">
+           class="mx-3 mt-3 rounded-lg border text-[11px] flex-shrink-0">
         <!-- Banner header — always visible -->
         <div class="flex items-start justify-between gap-2 px-3 py-2">
           <p class="flex-1" x-text="bannerList.length > 1 && bannerCollapsed
@@ -224,21 +224,21 @@
 
         <!-- Barangay (locked to Commonwealth) -->
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Barangay</label>
-          <div class="w-full text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-gray-500 dark:text-gray-400 select-none">
+          <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Barangay</label>
+          <div class="w-full text-[11px] rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-gray-500 dark:text-gray-400 select-none">
             Commonwealth
           </div>
         </div>
 
         <!-- Network info -->
-        <div x-show="networkInfo" class="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 rounded p-2">
+        <div x-show="networkInfo" class="text-[11px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 rounded p-2">
           <span x-text="networkInfo"></span>
         </div>
 
         <!-- Number of patrols input -->
         <div x-data="{ tipVisible: false }">
           <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">
+            <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">
               Number of Patrols
             </label>
             <button type="button" @mouseenter="tipVisible = true" @mouseleave="tipVisible = false"
@@ -248,7 +248,7 @@
                       d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               <div x-show="tipVisible" x-cloak
-                   class="absolute bottom-full mb-1 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded w-48 z-[9999] pointer-events-none text-left font-normal">
+                   class="absolute bottom-full mb-1 right-0 bg-gray-900 text-white text-[11px] px-2 py-1 rounded w-48 z-[9999] pointer-events-none text-left font-normal">
                 How many tanod patrol units to deploy across the danger zone
               </div>
             </button>
@@ -259,19 +259,19 @@
                  :class="nPatrolsError
                    ? 'border-red-400 focus:ring-red-400'
                    : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'"
-                 class="w-full text-sm rounded-lg border bg-white dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 disabled:opacity-50"
+                 class="w-full text-[11px] rounded-lg border bg-white dark:bg-gray-700 px-3 py-2 focus:outline-none focus:ring-2 disabled:opacity-50"
                  @input="validateNPatrols()" />
-          <p x-show="nPatrolsError" class="text-red-500 text-xs mt-1" x-text="nPatrolsError"></p>
-          <p x-show="!nPatrolsError && nMax" class="text-gray-400 text-xs mt-1"
+          <p x-show="nPatrolsError" class="text-red-500 text-[11px] mt-1" x-text="nPatrolsError"></p>
+          <p x-show="!nPatrolsError && nMax" class="text-gray-400 text-[11px] mt-1"
              x-text="'Max recommended: ' + nMax"></p>
         </div>
 
         <!-- Deployment mode toggle -->
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+          <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">
             Deployment Mode
           </label>
-          <div class="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 text-sm">
+          <div class="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 text-[11px]">
             <button @click="deploymentMode = 'stationary'"
                     :class="deploymentMode === 'stationary'
                       ? 'bg-blue-500 text-white'
@@ -298,10 +298,10 @@
           <button @click="recalculate()"
                   :disabled="pipelineRunning || !wsConnected || !!nPatrolsError"
                   @mouseenter="tipVisible = true" @mouseleave="tipVisible = false"
-                  class="w-full py-2.5 rounded-lg font-semibold text-sm transition-colors bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                  class="w-full py-2.5 rounded-lg font-semibold text-[11px] transition-colors bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">
             <span x-show="!pipelineRunning">
               Recalculate
-              <span class="text-blue-200 text-xs font-normal">(Ctrl+Enter)</span>
+              <span class="text-blue-200 text-[11px] font-normal">(Ctrl+Enter)</span>
             </span>
             <span x-show="pipelineRunning" class="flex items-center justify-center gap-2">
               <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -309,13 +309,13 @@
             </span>
           </button>
           <div x-show="tipVisible && !pipelineRunning" x-cloak
-               class="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
+               class="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[11px] px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
             Run the patrol deployment algorithm with current inputs
           </div>
         </div>
 
         <!-- Map click instruction -->
-        <p class="text-xs text-gray-500 dark:text-gray-400 text-center">
+        <p class="text-[11px] text-gray-500 dark:text-gray-400 text-center">
           Click the map to plot crime incidents
         </p>
 
@@ -335,7 +335,7 @@
                }
              }"
              class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-          <div class="flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+          <div class="flex items-center justify-between px-3 py-2 text-[11px] font-medium text-gray-600 dark:text-gray-400">
             <button @click="open = !open" class="flex items-center gap-1.5 hover:text-gray-800 dark:hover:text-gray-200">
               Incidents
               <span class="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full px-1.5 font-semibold"
@@ -371,7 +371,7 @@
           </div>
           <div x-show="open" class="border-t border-gray-200 dark:border-gray-700 max-h-44 overflow-y-auto">
             <template x-for="node in P" :key="node.crimeId">
-              <div class="group flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs">
+              <div class="group flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-[11px]">
                 <div class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
                 <span class="font-mono text-gray-700 dark:text-gray-300 flex-shrink-0"
                       x-text="node.crimeId"></span>
@@ -393,7 +393,7 @@
         <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           <button @click="showImport = !showImport"
                   title="Paste crime incident coordinates to plot multiple points at once"
-                  class="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  class="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
             <span>Import Coordinates</span>
             <svg :class="showImport ? 'rotate-180' : ''"
                  class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,17 +401,17 @@
             </svg>
           </button>
           <div x-show="showImport" class="px-3 pb-3 space-y-2 border-t border-gray-200 dark:border-gray-700">
-            <p class="text-xs text-gray-400 pt-2">One coordinate per line. Format: 14.7023, 121.0934</p>
+            <p class="text-[11px] text-gray-400 pt-2">One coordinate per line. Format: 14.7023, 121.0934</p>
             <textarea x-model="importText" rows="5"
                       :disabled="pipelineRunning"
-                      class="w-full text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 font-mono resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                      class="w-full text-[11px] rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1.5 font-mono resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                       placeholder="14.7023, 121.0934&#10;14.7031, 121.0951&#10;14.7018, 121.0929"></textarea>
             <button @click="importCoordinates()"
                     :disabled="pipelineRunning || !importText.trim()"
-                    class="w-full py-1.5 text-xs rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
+                    class="w-full py-1.5 text-[11px] rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
               Import
             </button>
-            <p x-show="importMessage" class="text-xs text-green-600 dark:text-green-400" x-text="importMessage"></p>
+            <p x-show="importMessage" class="text-[11px] text-green-600 dark:text-green-400" x-text="importMessage"></p>
           </div>
         </div>
 
@@ -431,7 +431,7 @@
             </svg>
           </button>
           <div x-show="show" x-cloak
-               class="absolute bottom-full mb-1 left-0 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
+               class="absolute bottom-full mb-1 left-0 bg-gray-900 text-white text-[11px] px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
             Undo last action (Ctrl+Z)
           </div>
         </div>
@@ -447,7 +447,7 @@
             </svg>
           </button>
           <div x-show="show" x-cloak
-               class="absolute bottom-full mb-1 left-0 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
+               class="absolute bottom-full mb-1 left-0 bg-gray-900 text-white text-[11px] px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
             Redo (Ctrl+Shift+Z)
           </div>
         </div>
@@ -463,7 +463,7 @@
             </svg>
           </button>
           <div x-show="show" x-cloak
-               class="absolute bottom-full mb-1 left-0 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
+               class="absolute bottom-full mb-1 left-0 bg-gray-900 text-white text-[11px] px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
             Clear all incidents and results
           </div>
         </div>
@@ -482,7 +482,7 @@
             </svg>
           </button>
           <div x-show="show" x-cloak
-               class="absolute bottom-full mb-1 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
+               class="absolute bottom-full mb-1 right-0 bg-gray-900 text-white text-[11px] px-2 py-1 rounded whitespace-nowrap z-[9999] pointer-events-none">
             Adjust algorithm parameters and display options
           </div>
         </div>
@@ -503,8 +503,7 @@
     <!-- Panel header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
       <div>
-        <h2 class="font-semibold text-sm text-gray-900 dark:text-gray-100">Pipeline Trace</h2>
-        <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Algorithm-by-algorithm breakdown</p>
+        <h2 class="font-semibold text-[11px] text-gray-900 dark:text-gray-100">Trace Panel</h2>
       </div>
       <button @click="showTracePanel = false"
               class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-4">
@@ -514,7 +513,7 @@
       </button>
     </div>
 
-    <div id="trace-content" class="flex-1 overflow-y-auto px-3 py-3 space-y-3 text-xs">
+    <div id="trace-content" class="flex-1 overflow-y-auto px-3 py-3 space-y-3 text-[11px]">
       <p class="text-gray-400 dark:text-gray-500 text-center py-6"
          x-show="traceStages.length === 0">
         No pipeline run yet. Plot incidents and click Recalculate.
@@ -528,7 +527,7 @@
                   class="w-full flex items-center gap-2.5 px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-left">
 
             <!-- Status icon -->
-            <span class="flex-shrink-0 text-sm leading-none font-bold"
+            <span class="flex-shrink-0 text-[11px] leading-none font-bold"
                   :class="{
                     'text-green-500':              stage.status === 'success',
                     'text-yellow-500':             stage.status === 'warning',
@@ -543,12 +542,12 @@
               <div class="text-[9px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 leading-none mb-0.5">
                 Stage <span x-text="stage.id"></span>
               </div>
-              <div class="font-semibold text-sm text-gray-800 dark:text-gray-100 leading-tight" x-text="stage.name"></div>
+              <div class="font-semibold text-[11px] text-gray-800 dark:text-gray-100 leading-tight" x-text="stage.name"></div>
             </div>
 
             <!-- Runtime + chevron -->
             <div class="flex items-center gap-1.5 flex-shrink-0">
-              <span class="text-[10px] font-mono text-gray-400" x-show="stage.runtimeMs" x-text="stage.runtimeMs + 'ms'"></span>
+              <span class="text-[9px] font-mono text-gray-400" x-show="stage.runtimeMs" x-text="stage.runtimeMs + 'ms'"></span>
               <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-150 flex-shrink-0"
                    :class="stage.expanded ? 'rotate-180' : ''"
                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -563,12 +562,12 @@
 
             <!-- What this stage does -->
             <div class="px-4 py-3" x-show="stage.description">
-              <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed" x-text="stage.description"></p>
+              <p class="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed" x-text="stage.description"></p>
             </div>
 
             <!-- Run-specific narrative: data-driven sentence about THIS run -->
             <div class="px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40" x-show="stage.narrative">
-              <p class="text-[11px] text-blue-700 dark:text-blue-300 leading-snug font-medium" x-text="stage.narrative"></p>
+              <p class="text-[10px] text-blue-700 dark:text-blue-300 leading-snug font-medium" x-text="stage.narrative"></p>
             </div>
 
             <!-- Step-by-step / per-patrol subparts -->
@@ -587,9 +586,9 @@
                           }"
                           x-text="{ ok: 'OK', warn: 'WARN', error: 'FAIL', skip: 'SKIP' }[sp.status] || '?'"></span>
                     <div class="min-w-0">
-                      <span class="text-[10px] font-semibold text-gray-700 dark:text-gray-200" x-text="sp.name"></span>
-                      <span class="text-[10px] text-gray-400 dark:text-gray-500" x-show="sp.detail"> — </span>
-                      <span class="text-[10px] text-gray-500 dark:text-gray-400" x-text="sp.detail"></span>
+                      <span class="text-[9px] font-semibold text-gray-700 dark:text-gray-200" x-text="sp.name"></span>
+                      <span class="text-[9px] text-gray-400 dark:text-gray-500" x-show="sp.detail"> — </span>
+                      <span class="text-[9px] text-gray-500 dark:text-gray-400" x-text="sp.detail"></span>
                     </div>
                   </div>
                 </template>
@@ -656,14 +655,14 @@
                          x-text="m.label"
                          @mouseenter="showTt($el)"
                          @mouseleave="ttVisible = false"></div>
-                    <div class="text-sm font-bold leading-tight"
+                    <div class="text-[11px] font-bold leading-tight"
                          :class="m.warn ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-800 dark:text-gray-100'"
                          x-text="m.value"></div>
                     <!-- Tooltip: fixed so it escapes overflow:hidden ancestors; position clamped to viewport -->
                     <div x-show="ttVisible && m.tooltip"
                          x-cloak
                          :style="ttStyle"
-                         class="fixed w-52 bg-gray-900 dark:bg-gray-950 text-white text-[10px] leading-snug px-2.5 py-1.5 rounded shadow-lg z-[9999] pointer-events-none"
+                         class="fixed w-52 bg-gray-900 dark:bg-gray-950 text-white text-[9px] leading-snug px-2.5 py-1.5 rounded shadow-lg z-[9999] pointer-events-none"
                          x-text="m.tooltip"></div>
                   </div>
                 </template>
@@ -674,7 +673,7 @@
             <div x-show="stage.id === 2 && stage.confidence !== null" class="px-4 py-3">
               <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500">Solution confidence</span>
-                <span class="text-xs font-bold"
+                <span class="text-[11px] font-bold"
                       :class="{
                         'text-green-600 dark:text-green-400':  stage.confidence >= 80,
                         'text-yellow-600 dark:text-yellow-400': stage.confidence >= 50 && stage.confidence < 80,
@@ -736,7 +735,7 @@
             <!-- Algorithm note -->
             <div class="px-4 py-3" x-show="stage.algorithmNote">
               <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-1.5">How the algorithm works</div>
-              <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed" x-text="stage.algorithmNote"></p>
+              <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed" x-text="stage.algorithmNote"></p>
             </div>
 
             <!-- Debug log (collapsible) -->
@@ -750,7 +749,7 @@
                   Debug log
                 </summary>
                 <div class="px-4 pb-3">
-                  <pre class="p-2 text-[10px] font-mono text-gray-500 dark:text-gray-400 whitespace-pre-wrap overflow-x-auto leading-relaxed bg-gray-50 dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-700"
+                  <pre class="p-2 text-[9px] font-mono text-gray-500 dark:text-gray-400 whitespace-pre-wrap overflow-x-auto leading-relaxed bg-gray-50 dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-700"
                        x-text="stage.fullLog"></pre>
                 </div>
               </details>
@@ -765,81 +764,27 @@
         <div class="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
           <div class="px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
             <span class="text-[9px] uppercase tracking-widest font-semibold text-gray-500 dark:text-gray-400">Pipeline complete</span>
-            <span class="text-[10px] font-mono text-gray-400" x-text="pipelineSummaryData.totalRuntimeMs + 'ms total'"></span>
+            <span class="text-[9px] font-mono text-gray-400" x-text="pipelineSummaryData.totalRuntimeMs + 'ms total'"></span>
           </div>
           <div class="px-4 py-3 grid grid-cols-3 gap-4 bg-white dark:bg-gray-800">
             <div>
               <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5">Roaming</div>
-              <div class="text-xl font-bold text-gray-800 dark:text-gray-100" x-text="pipelineSummaryData.roamingCount"></div>
+              <div class="text-base font-bold text-gray-800 dark:text-gray-100" x-text="pipelineSummaryData.roamingCount"></div>
             </div>
             <div>
               <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5">Stationary</div>
-              <div class="text-xl font-bold text-gray-800 dark:text-gray-100" x-text="pipelineSummaryData.stationaryCount"></div>
+              <div class="text-base font-bold text-gray-800 dark:text-gray-100" x-text="pipelineSummaryData.stationaryCount"></div>
             </div>
             <div>
               <div class="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500 leading-none mb-0.5">Overlap edges</div>
-              <div class="text-xl font-bold"
+              <div class="text-base font-bold"
                    :class="pipelineSummaryData.overlapEdges > 0 ? 'text-orange-500' : 'text-gray-800 dark:text-gray-100'"
                    x-text="pipelineSummaryData.overlapEdges"></div>
             </div>
           </div>
-          <div x-show="pipelineSummaryData.verificationPass !== null"
-               class="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2">
-            <span class="text-sm flex-shrink-0"
-                  :class="pipelineSummaryData.verificationPass ? 'text-green-500' : 'text-yellow-500'"
-                  x-text="pipelineSummaryData.verificationPass ? 'PASS' : 'WARN'"></span>
-            <span class="text-[10px] text-gray-500 dark:text-gray-400"
-                  x-text="pipelineSummaryData.verificationPass
-                    ? 'All algorithm checks passed'
-                    : pipelineSummaryData.verificationFailCount + ' verification check(s) failed'"></span>
-          </div>
         </div>
       </template>
 
-      <!-- Verification report detail -->
-      <template x-if="verificationReport">
-        <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-          <div class="px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
-            <span class="text-sm flex-shrink-0"
-                  :class="verificationReport.overallPass ? 'text-green-500' : 'text-yellow-500'"
-                  x-text="verificationReport.overallPass ? 'PASS' : 'WARN'"></span>
-            <span class="font-semibold text-xs text-gray-700 dark:text-gray-200"
-                  x-text="'Verification: ' + (verificationReport.overallPass ? 'All checks passed' : verificationReport.failureCount + ' issue(s) found')"></span>
-          </div>
-          <div class="px-3 py-2 space-y-1.5 bg-white dark:bg-gray-800">
-            <div class="flex items-start gap-2">
-              <span class="text-sm flex-shrink-0 mt-px"
-                    :class="verificationReport.convexHull?.pass ? 'text-green-500' : 'text-red-500'"
-                    x-text="verificationReport.convexHull?.pass ? 'OK' : 'FAIL'"></span>
-              <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
-                    x-text="'Hull: ' + (verificationReport.convexHull?.message || '')"></span>
-            </div>
-            <div class="flex items-start gap-2">
-              <span class="text-sm flex-shrink-0 mt-px"
-                    :class="verificationReport.patrolPositions?.pass ? 'text-green-500' : 'text-red-500'"
-                    x-text="verificationReport.patrolPositions?.pass ? 'OK' : 'FAIL'"></span>
-              <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
-                    x-text="'Positions: ' + (verificationReport.patrolPositions?.message || '')"></span>
-            </div>
-            <div class="flex items-start gap-2">
-              <span class="text-sm flex-shrink-0 mt-px"
-                    :class="verificationReport.zoneAssignment?.pass ? 'text-green-500' : 'text-red-500'"
-                    x-text="verificationReport.zoneAssignment?.pass ? 'OK' : 'FAIL'"></span>
-              <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
-                    x-text="'Zones: ' + (verificationReport.zoneAssignment?.message || '')"></span>
-            </div>
-            <template x-for="r in (verificationReport.tspRoutes || [])" :key="r.patrolId">
-              <div class="flex items-start gap-2">
-                <span class="text-sm flex-shrink-0 mt-px"
-                      :class="r.pass ? 'text-green-500' : 'text-red-500'"
-                      x-text="r.pass ? 'OK' : 'FAIL'"></span>
-                <span class="text-[11px] text-gray-600 dark:text-gray-400 leading-snug"
-                      x-text="'Route ' + r.patrolId + ': ' + (r.message || '')"></span>
-              </div>
-            </template>
-          </div>
-        </div>
-      </template>
 
     </div>
   </div>
@@ -854,7 +799,7 @@
   <!-- Route playback controls bar (appears after roaming pipeline complete)    -->
   <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showPlayback" x-cloak
-       class="fixed bottom-0 left-0 right-80 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-20 flex flex-col text-sm">
+       class="fixed bottom-0 left-0 right-80 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-20 flex flex-col text-[11px]">
     <!-- Progress bar -->
     <div class="h-1 bg-gray-100 dark:bg-gray-700">
       <div class="h-1 bg-blue-500 transition-none"
@@ -862,9 +807,9 @@
     </div>
     <!-- Controls -->
     <div class="px-4 py-2 flex items-center gap-4">
-      <span class="font-medium text-xs flex-shrink-0">Route Playback</span>
+      <span class="font-medium text-[11px] flex-shrink-0">Route Playback</span>
       <select x-model="playbackPatrolId" @change="onPlaybackPatrolChange()"
-              class="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700">
+              class="text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700">
         <template x-for="r in routes" :key="r.patrolId">
           <option :value="r.patrolId" x-text="'Patrol ' + (r.patrolIndex + 1)"></option>
         </template>
@@ -873,16 +818,16 @@
               :class="routePlaybackActive
                 ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500'
                 : 'bg-blue-500 text-white hover:bg-blue-600'"
-              class="px-3 py-1 text-xs rounded"
+              class="px-3 py-1 text-[11px] rounded"
               x-text="routePlaybackActive ? 'Pause' : 'Play'">
       </button>
       <button @click="playbackStop()"
-              class="px-3 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+              class="px-3 py-1 text-[11px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
         Stop
       </button>
       <input type="range" x-model="playbackSpeed" @change="onPlaybackSpeedChange()"
              min="0.5" max="3" step="0.5" class="w-20" />
-      <span class="text-xs text-gray-400" x-text="playbackSpeed + 'x'"></span>
+      <span class="text-[11px] text-gray-400" x-text="playbackSpeed + 'x'"></span>
       <button @click="playbackStop(); showPlayback = false" class="ml-auto text-gray-400 hover:text-gray-600">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -910,7 +855,7 @@
         </button>
       </div>
 
-      <div class="flex-1 overflow-y-auto px-4 py-4 space-y-5 text-sm">
+      <div class="flex-1 overflow-y-auto px-4 py-4 space-y-5 text-[11px]">
 
         <!-- Hill Climbing settings -->
         <div>
@@ -921,21 +866,21 @@
                     title="Restarts run per patrol unit. Total restarts = r × n patrols. Higher values increase the chance of finding the global optimum but increase compute time.">Restarts per patrol (r)</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.restarts"
                      min="1" max="1000"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+                     class="w-20 text-right text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
               <span class="text-gray-600 dark:text-gray-400 cursor-help"
                     title="Maximum number of move attempts per restart. Higher values let each run explore further before stopping. Increase if patrols seem poorly spread.">Max iterations</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.maxIterations"
                      min="50" max="2000"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+                     class="w-20 text-right text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
               <span class="text-gray-600 dark:text-gray-400 cursor-help"
                     title="Controls how far each patrol can search for a better position per iteration. Higher = wider search range, lower = finer local refinement. Formula: R = sqrt(area / candidates) × k.">Radius multiplier (k)</span>
               <input type="number" x-model.number="settingsDraft.hillClimbing.radiusMultiplier"
                      min="1" max="5" step="0.5"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+                     class="w-20 text-right text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
 
           </div>
@@ -947,7 +892,7 @@
           <div class="space-y-2">
             <label class="flex items-center justify-between gap-2">
               <span class="text-gray-600 dark:text-gray-400 leading-tight">Candidate nodes
-                <span class="block text-xs text-gray-400 dark:text-gray-500">All nodes gives finer placement; intersection nodes are road junctions only</span>
+                <span class="block text-[11px] text-gray-400 dark:text-gray-500">All nodes gives finer placement; intersection nodes are road junctions only</span>
               </span>
               <button @click="settingsDraft.candidateNodes = settingsDraft.candidateNodes === 'all' ? 'intersection' : 'all'"
                       :class="settingsDraft.candidateNodes === 'all' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
@@ -956,7 +901,7 @@
                       class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
               </button>
             </label>
-            <p class="text-xs text-gray-400 dark:text-gray-500" x-text="settingsDraft.candidateNodes === 'all' ? 'All nodes: max recommended patrols updates to sqrt(total nodes)' : 'Intersection nodes only: max recommended updates to sqrt(junctions)'"></p>
+            <p class="text-[11px] text-gray-400 dark:text-gray-500" x-text="settingsDraft.candidateNodes === 'all' ? 'All nodes: max recommended patrols updates to sqrt(total nodes)' : 'Intersection nodes only: max recommended updates to sqrt(junctions)'"></p>
           </div>
         </div>
 
@@ -969,7 +914,7 @@
                     title="Incidents farther from the group centroid than this multiplier times the average distance are flagged as outliers. Lower = stricter flagging. Default 2.5 flags only extreme outliers.">Outlier multiplier</span>
               <input type="number" x-model.number="settingsDraft.convexHull.outlierMultiplier"
                      min="1" max="5" step="0.1"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
+                     class="w-20 text-right text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
             </label>
             <label class="flex items-center justify-between">
               <span class="text-gray-600 dark:text-gray-400 cursor-help"
@@ -991,20 +936,20 @@
             <label class="flex items-center justify-between gap-2">
               <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
                     title="Zones with more incidents than this threshold use nearest-neighbor heuristic instead of exact backtracking TSP. Exact TSP is O(k!) and becomes impractically slow above 10-12 nodes.">Fast route above N incidents
-                <span class="block text-xs text-gray-400 dark:text-gray-500">Zones larger than this use a quick estimate instead of exact optimal</span>
+                <span class="block text-[11px] text-gray-400 dark:text-gray-500">Zones larger than this use a quick estimate instead of exact optimal</span>
               </span>
               <input type="number" x-model.number="settingsDraft.tsp.nearestNeighborFallbackThreshold"
                      min="6" max="20"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
+                     class="w-20 text-right text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
             </label>
             <label class="flex items-center justify-between gap-2">
               <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
                     title="Road segments outside the danger zone boundary have their cost multiplied by this value. Set to 1 to allow any road. Higher values strongly discourage routes that leave the zone.">Stay-inside penalty
-                <span class="block text-xs text-gray-400 dark:text-gray-500">1 = off · higher values push routes to stay within the danger zone</span>
+                <span class="block text-[11px] text-gray-400 dark:text-gray-500">1 = off · higher values push routes to stay within the danger zone</span>
               </span>
               <input type="number" x-model.number="settingsDraft.tsp.hullExteriorPenalty"
                      min="1" max="20" step="0.5"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
+                     class="w-20 text-right text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
             </label>
           </div>
         </div>
@@ -1016,7 +961,7 @@
             <label class="flex items-center justify-between gap-2">
               <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
                     title="Light mode (off): only corrects extreme zone imbalance where one patrol has far more incidents than others. Strong mode (on): redistributes incidents iteratively until all active patrols have equal workloads.">Strong rebalancing
-                <span class="block text-xs text-gray-400 dark:text-gray-500">Off: light rebalancing (default) - only corrects extreme imbalance. On: redistributes until all patrols have equal workload</span>
+                <span class="block text-[11px] text-gray-400 dark:text-gray-500">Off: light rebalancing (default) - only corrects extreme imbalance. On: redistributes until all patrols have equal workload</span>
               </span>
               <button @click="settingsDraft.zoneAssignment.strongRebalancing = !settingsDraft.zoneAssignment.strongRebalancing"
                       :class="settingsDraft.zoneAssignment.strongRebalancing ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
@@ -1033,15 +978,15 @@
 
       <div class="flex gap-2 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
         <button @click="applySettings()"
-                class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-[11px] font-medium hover:bg-blue-700">
           Apply
         </button>
         <button @click="resetSettingsToDefaults()"
-                class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-[11px] hover:bg-gray-50 dark:hover:bg-gray-700">
           Defaults
         </button>
         <button @click="showSettings = false"
-                class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                class="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg text-[11px] hover:bg-gray-50 dark:hover:bg-gray-700">
           Cancel
         </button>
       </div>
@@ -1059,7 +1004,7 @@
         <div class="flex items-center gap-3">
           <h2 class="font-semibold">Algorithm Comparison</h2>
           <span x-show="comparisonModeActive"
-                class="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                class="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
             Active
           </span>
         </div>
@@ -1075,18 +1020,18 @@
 
         <!-- Instructions when no runs stored -->
         <template x-if="!comparisonRunA && !comparisonRunB">
-          <div class="text-center text-gray-400 dark:text-gray-500 py-10 text-sm">
+          <div class="text-center text-gray-400 dark:text-gray-500 py-10 text-[11px]">
             <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
             </svg>
             <p class="font-medium text-gray-600 dark:text-gray-400">No runs stored yet</p>
-            <p class="mt-1 text-xs">Run the pipeline, then click "Store as Run A". Adjust settings, run again, click "Store as Run B".</p>
+            <p class="mt-1 text-[11px]">Run the pipeline, then click "Store as Run A". Adjust settings, run again, click "Store as Run B".</p>
           </div>
         </template>
 
         <!-- Side-by-side comparison when at least one run stored -->
-        <div x-show="comparisonRunA || comparisonRunB" class="grid grid-cols-2 gap-4 text-sm">
+        <div x-show="comparisonRunA || comparisonRunB" class="grid grid-cols-2 gap-4 text-[11px]">
 
           <!-- Run A -->
           <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
@@ -1094,12 +1039,12 @@
               <h3 class="font-semibold text-gray-700 dark:text-gray-300">Run A</h3>
               <button @click="showRunA = !showRunA"
                       :class="showRunA ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200'"
-                      class="px-2 py-0.5 text-xs rounded transition-colors">
+                      class="px-2 py-0.5 text-[11px] rounded transition-colors">
                 <span x-text="showRunA ? 'Visible' : 'Hidden'"></span>
               </button>
             </div>
             <template x-if="comparisonRunA">
-              <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+              <div class="space-y-1 text-[11px] text-gray-600 dark:text-gray-400">
                 <p x-text="'Barangay: ' + (comparisonRunA.barangay || 'N/A')"></p>
                 <p x-text="'Patrols: ' + (comparisonRunA.patrols?.length || 0)"></p>
                 <p x-text="'Mode: ' + (comparisonRunA.mode || 'N/A')"></p>
@@ -1107,7 +1052,7 @@
                 <p x-text="'Runtime: ' + (comparisonRunA.totalRuntimeMs ? comparisonRunA.totalRuntimeMs + 'ms' : 'N/A')"></p>
               </div>
             </template>
-            <p x-show="!comparisonRunA" class="text-xs text-gray-400">Not stored yet.</p>
+            <p x-show="!comparisonRunA" class="text-[11px] text-gray-400">Not stored yet.</p>
           </div>
 
           <!-- Run B -->
@@ -1116,12 +1061,12 @@
               <h3 class="font-semibold text-gray-700 dark:text-gray-300">Run B</h3>
               <button @click="showRunB = !showRunB"
                       :class="showRunB ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200'"
-                      class="px-2 py-0.5 text-xs rounded transition-colors">
+                      class="px-2 py-0.5 text-[11px] rounded transition-colors">
                 <span x-text="showRunB ? 'Visible' : 'Hidden'"></span>
               </button>
             </div>
             <template x-if="comparisonRunB">
-              <div class="space-y-1 text-xs text-gray-600 dark:text-gray-400">
+              <div class="space-y-1 text-[11px] text-gray-600 dark:text-gray-400">
                 <p x-text="'Barangay: ' + (comparisonRunB.barangay || 'N/A')"></p>
                 <p x-text="'Patrols: ' + (comparisonRunB.patrols?.length || 0)"></p>
                 <p x-text="'Mode: ' + (comparisonRunB.mode || 'N/A')"></p>
@@ -1129,7 +1074,7 @@
                 <p x-text="'Runtime: ' + (comparisonRunB.totalRuntimeMs ? comparisonRunB.totalRuntimeMs + 'ms' : 'N/A')"></p>
               </div>
             </template>
-            <p x-show="!comparisonRunB" class="text-xs text-gray-400">Not stored yet.</p>
+            <p x-show="!comparisonRunB" class="text-[11px] text-gray-400">Not stored yet.</p>
           </div>
 
         </div>
@@ -1137,15 +1082,15 @@
 
       <div class="flex gap-2 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
         <button @click="storeComparisonRunA()" :disabled="!pipelineComplete"
-                class="flex-1 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+                class="flex-1 py-2 text-[11px] border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
           Store as Run A
         </button>
         <button @click="storeComparisonRunB()" :disabled="!pipelineComplete"
-                class="flex-1 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+                class="flex-1 py-2 text-[11px] border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
           Store as Run B
         </button>
         <button @click="exitComparisonMode()"
-                class="py-2 px-3 text-xs border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30">
+                class="py-2 px-3 text-[11px] border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30">
           Clear
         </button>
       </div>
