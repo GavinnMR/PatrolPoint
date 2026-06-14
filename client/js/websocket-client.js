@@ -608,7 +608,7 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
                 `Best result at restart: #${restartBest}`,
                 `Best min pairwise dist: ${best}`,
                 `Redundancy            : ${redundancy}  (% of restarts that confirmed without improving)`,
-                `Confidence            : ${confidence}  (60% consistency + 40% confirmation)`,
+                `Confidence            : ${confidence}  (50% consistency + 50% confirmation)`,
                 hr
             ].filter(Boolean).join('\n');
         }
@@ -997,7 +997,7 @@ function buildTraceMetrics(stage, result) {
                 {
                     label:   'Confidence',
                     value:   result.confidence != null ? result.confidence.toFixed(1) + '%' : 'N/A',
-                    tooltip: 'How reliable this result is: 60% weighted by restart consistency (do all restarts agree?) + 40% by confirmation rate (how many restarts confirmed the best without improving it?).'
+                    tooltip: 'How reliable this result is: 50% restart consistency (do all restarts agree on the same answer?) + 50% confirmation rate (how many restarts confirmed the best without improving it?).'
                 },
                 {
                     label:   'Restarts',

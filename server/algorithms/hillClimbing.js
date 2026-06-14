@@ -547,11 +547,11 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         const stdDev    = Math.sqrt(variance);
         consistency     = Math.max(0, Math.min(100, (1 - stdDev / mean) * 100));
         const confirmation = redundancy ?? 0;
-        confidence = Math.max(0, Math.min(100, 0.6 * consistency + 0.4 * confirmation));
+        confidence = Math.max(0, Math.min(100, 0.5 * consistency + 0.5 * confirmation));
     }
 
     log.push(`Convergence restart: ${convergenceRestart} of ${restartsCompleted}. Redundancy: ${redundancy}%.`);
-    log.push(`Confidence: ${confidence.toFixed(1)}% = consistency(${consistency.toFixed(1)}%) × 0.6 + confirmation(${(redundancy ?? 0).toFixed(1)}%) × 0.4`);
+    log.push(`Confidence: ${confidence.toFixed(1)}% = consistency(${consistency.toFixed(1)}%) × 0.5 + confirmation(${(redundancy ?? 0).toFixed(1)}%) × 0.5`);
 
     const hasWarnings = anyMaxIterWarning || duplicateConfigCount > 0 || totalRadiusExpansions > 0;
 
