@@ -224,7 +224,6 @@ function handleNetworkLoaded(data) {
     // Update Alpine component with network metadata
     const ui = window.uiApp;
     if (ui) {
-        ui.networkInfo = `${data.nodeCount} nodes · ${data.edgeCount} edges · ${data.fromCache ? 'cached' : 'live OSM'}`;
         const candidateNodes = ui.activeConfig?.candidateNodes ?? 'all';
         const count = candidateNodes === 'intersection' ? data.intersectionCount : data.nodeCount;
         if (count) ui.nMax = Math.floor(Math.sqrt(count));

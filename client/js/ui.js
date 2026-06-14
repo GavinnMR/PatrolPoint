@@ -47,7 +47,6 @@ document.addEventListener('alpine:init', () => {
         barangayOptions:      ['Commonwealth'],
         barangayQuery:        'Commonwealth',   // combobox input text
         barangayDropdownOpen: false,
-        networkInfo:          '',    // e.g. "3613 nodes · 3971 edges · cached"
         nMax:                 null,  // soft cap = floor(sqrt(intersectionCount))
 
         get barangayFiltered() {
@@ -398,7 +397,6 @@ document.addEventListener('alpine:init', () => {
             this.traceStages = [];
             this.pipelineSummary = '';
             this.pipelineSummaryData = null;
-            this.networkInfo = '';
 
             if (typeof clearAllMapResults === 'function') clearAllMapResults();
             if (typeof loadBarangayNetwork === 'function') loadBarangayNetwork(barangay);
