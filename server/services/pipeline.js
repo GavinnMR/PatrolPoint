@@ -318,15 +318,17 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         data: {
             stage: 2,
             result: {
-                patrols:             s2Data.patrols,
-                bestMinPairwiseDist: s2Data.bestMinPairwiseDist,
-                bestRestart:         s2Data.bestRestart,
-                restartsCompleted:   s2Data.restartsCompleted,
-                confidence:          s2Data.confidence,
-                cappedFrom:          s2Data.cappedFrom,
-                bestSoFarCurve:      s2Data.bestSoFarCurve,
-                convergenceRestart:  s2Data.convergenceRestart,
-                redundancy:          s2Data.redundancy
+                patrols:              s2Data.patrols,
+                bestMinPairwiseDist:  s2Data.bestMinPairwiseDist,
+                bestRestart:          s2Data.bestRestart,
+                restartsCompleted:    s2Data.restartsCompleted,
+                confidence:           s2Data.confidence,
+                cappedFrom:           s2Data.cappedFrom,
+                bestSoFarCurve:       s2Data.bestSoFarCurve,
+                convergenceRestart:   s2Data.convergenceRestart,
+                redundancy:           s2Data.redundancy,
+                matrixRuntimeMs:      matrixMs,
+                matrixCandidateCount: validCandidates.length
             },
             trace:     { log: s2Data.traceLog },
             runtimeMs: stage2RuntimeMs

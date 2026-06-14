@@ -597,11 +597,14 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
             const redundancy     = result.redundancy != null ? result.redundancy.toFixed(1) + '%' : 'N/A';
             const confidence     = result.confidence != null ? result.confidence.toFixed(1) + '%' : 'N/A';
             const cappedNote     = result.cappedFrom != null ? `(capped from ${result.cappedFrom})` : '';
+            const matrixMs       = result.matrixRuntimeMs != null ? result.matrixRuntimeMs + ' ms' : 'N/A';
+            const matrixNodes    = result.matrixCandidateCount ?? '?';
             return [
                 hr,
                 'STAGE 2  Hill Climbing Patrol Placement',
                 hr,
                 `Runtime               : ${rt}`,
+                `Road dist matrix      : ${matrixNodes} candidate(s) × full graph, built in ${matrixMs}  [pre-Stage 2]`,
                 `Patrols requested     : ${n} ${cappedNote}`,
                 `Candidate nodes       : ${candidates}`,
                 `Restarts completed    : ${totalRestarts}`,
@@ -979,6 +982,11 @@ function buildTraceMetrics(stage, result) {
                 spreadQuality = Math.min(100, Math.round((result.bestMinPairwiseDist / idealSpacing) * 100));
             }
             return [
+                {
+                    label:   'Matrix build',
+                    value:   result.matrixRuntimeMs != null ? result.matrixRuntimeMs + ' ms' : 'N/A',
+                    tooltip: 'Time to precompute road distances between all valid candidate nodes before Hill Climbing starts. Shared by Stage 2 (neighbor evaluation) and Stage 3 (zone assignment).'
+                },
                 {
                     label:   'Patrols placed',
                     value:   n,
