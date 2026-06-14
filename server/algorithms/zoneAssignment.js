@@ -107,6 +107,7 @@ function lightRebalanceZones(zones, distanceMatrix, log) {
         if (!bestNode) break;
 
         largest.zone.splice(bestNodeIdx, 1);
+        bestNode.roadDistToPatrol = bestDist;
         smallest.zone.push(bestNode);
         log.push(`Light rebalance iter ${iterations + 1}: reassigned ${bestNode.crimeId} from patrol ${largest.idx + 1} to patrol ${smallest.idx + 1}`);
         iterations++;
@@ -175,6 +176,7 @@ function strongRebalanceZones(zones, distanceMatrix, log) {
         if (!bestNode) break;
 
         zones[bestFromIdx].splice(bestNodeIdx, 1);
+        bestNode.roadDistToPatrol = bestDist;
         zones[bestToIdx].push(bestNode);
         log.push(`Strong rebalance iter ${iterations + 1}: reassigned ${bestNode.crimeId} from patrol ${bestFromIdx + 1} to patrol ${bestToIdx + 1} (road dist: ${Math.round(bestDist)}m)`);
         iterations++;
@@ -208,6 +210,7 @@ function strongRebalanceZones(zones, distanceMatrix, log) {
 //     maxSnappingDist:     number,    // meters, rounded to 1dp
 //     snappedCount:        number,    // crime nodes successfully snapped (before dedup)
 //     mergedCount:         number,    // crime nodes discarded by deduplication
+//     euclideanFallbacks:  number,    // crime nodes assigned via Haversine fallback (road graph disconnected)
 //     zeroDistWaypoints:   number,
 //     cappedZonesCount:    number,
 //     rebalanceIterations: number,
@@ -265,6 +268,7 @@ export function runZoneAssignment(
     let totalSnappingDist    = 0;
     let maxSnappingDist      = 0;
 
+    log.push('--- Snapping ---');
     for (const inc of numberedIncidents) {
         const result = snapToNearestCandidate(inc, effectiveSnapCandidates, hullDiameterM, config);
         if (!result) {
@@ -291,6 +295,7 @@ export function runZoneAssignment(
     // ── Duplicate snapping deduplication ─────────────────────────────────────
     // Two crime nodes that snap to the same valid candidate are merged — keep first, discard rest.
     // Both visual markers remain on the map (frontend handles styling).
+    log.push('--- Deduplication ---');
     const seenSnappedIds    = new Map(); // snappedNodeId → first crime node
     const deduplicatedNodes = [];
     let mergedCount         = 0;
@@ -315,6 +320,7 @@ export function runZoneAssignment(
     // Run Dijkstra once per unique snapped node ID — single-source gives distances to ALL nodes
     // including all patrol positions. Builds distanceMatrix[snappedNodeId][patrolIndex].
     // dijkstraCache is mutated in-place so Stage 4 benefits from these computed paths.
+    log.push('--- Road Distance Pre-computation ---');
     const distanceMatrix   = {}; // snappedNodeId → { [patrolIndex]: distanceMeters }
     let dijkstraCacheHits  = 0;
     let dijkstraCacheMisses = 0;
@@ -337,6 +343,7 @@ export function runZoneAssignment(
     // Assign each crime node to patrol with minimum road network distance.
     // Euclidean Haversine fallback if all Dijkstra distances are Infinity (disconnected graph).
     // Strict < in comparison ensures lower patrol index wins on equal distance (tiebreaker).
+    log.push('--- Initial Zone Assignment ---');
     const zones = Array.from({ length: n }, () => []);
     let euclideanFallbacks = 0;
 
@@ -376,6 +383,8 @@ export function runZoneAssignment(
         }
     }
 
+    log.push('Zone sizes after initial assignment: [' + zones.map(z => z.length).join(', ') + ']');
+
     // ── Zero distance waypoint detection (post-assignment) ────────────────────
     // Checked after assignment so "zero distance" is accurate: only fires when the crime node
     // snapped to its own assigned patrol's node, not any patrol's node.
@@ -390,16 +399,20 @@ export function runZoneAssignment(
 
     // ── Zone rebalancing ──────────────────────────────────────────────────────
     const useStrong = config.zoneAssignment?.strongRebalancing === true;
+    log.push(`--- Rebalancing (${useStrong ? 'Strong' : 'Light'}) ---`);
+    log.push('Zone sizes before rebalancing: [' + zones.map(z => z.length).join(', ') + ']');
     const rebalanceIterations = useStrong
         ? strongRebalanceZones(zones, distanceMatrix, log)
         : lightRebalanceZones(zones, distanceMatrix, log);
     if (rebalanceIterations > 0) {
         log.push(`${useStrong ? 'Strong' : 'Light'} rebalancing: ${rebalanceIterations} iteration(s) completed`);
     }
+    log.push('Zone sizes after rebalancing: [' + zones.map(z => z.length).join(', ') + ']');
 
     // ── Zone cap enforcement ──────────────────────────────────────────────────
     // Hard limit of CONFIG.tsp.maxCrimeNodesPerZone per zone.
     // Keep the nearest nodes by road network distance; grey-flag the rest.
+    log.push('--- Zone Cap ---');
     const maxNodes = config.tsp.maxCrimeNodesPerZone;
     let cappedZonesCount = 0;
 
@@ -424,7 +437,10 @@ export function runZoneAssignment(
         warnings.push(msg);
     }
 
+    log.push('Zone sizes after cap: [' + zones.map(z => z.length).join(', ') + ']');
+
     // ── Zone classification ───────────────────────────────────────────────────
+    log.push('--- Zone Classification ---');
     const emptyZones      = [];
     const singleNodeZones = [];
     const multiNodeZones  = [];
@@ -512,6 +528,7 @@ export function runZoneAssignment(
             maxSnappingDist:    Math.round(maxSnappingDist * 10) / 10,
             snappedCount:       snappedCountBeforeDedup,
             mergedCount,
+            euclideanFallbacks,
             zeroDistWaypoints,
             cappedZonesCount,
             rebalanceIterations,
