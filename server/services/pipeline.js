@@ -54,7 +54,7 @@ export const DEFAULT_CONFIG = {
         hullExteriorPenalty: 1
     },
     zoneAssignment: {
-        strongRebalancing: true
+        strongRebalancing: false
     },
     snapping: {
         boundingBoxEpsilon: 1e-7,
