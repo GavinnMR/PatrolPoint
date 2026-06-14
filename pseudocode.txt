@@ -1,0 +1,318 @@
+PatrolPoint - Algorithm Pseudocode
+
+
+================================================================================
+Stage 1 - Brute Force Convex Hull
+================================================================================
+
+INPUT:
+    incidents[]       <- crime coordinates {lat, lng}
+    n                 <- number of patrols
+    nodeMap           <- road graph nodes {id, lat, lng}
+
+OUTPUT:
+    hull[]            <- ordered CCW polygon vertices (the "danger zone")
+    validCandidates[] <- road nodes inside the hull
+    hullAreaM2        <- hull area in square metres
+
+
+STEP 1 - OUTLIER DETECTION
+    centroid  <- average lat/lng of all incidents
+    avg       <- mean haversine distance from centroid to each incident
+    threshold <- outlierMultiplier x avg
+    filtered  <- incidents where distance to centroid <= threshold
+
+    if |filtered| < 3: trigger LINEAR HANDLER
+
+
+STEP 2 - DEGENERATE INPUT CHECKS
+    if |filtered| == 2: trigger LINEAR HANDLER
+
+    for each point C (after the first two points A, B):
+        cross <- (B.lng - A.lng)(C.lat - A.lat) - (B.lat - A.lat)(C.lng - A.lng)
+        if |cross| >= epsilon: not collinear, continue
+
+    if all points collinear: trigger LINEAR HANDLER
+
+    LINEAR HANDLER:
+        sort points along their axis
+        place n patrols evenly at t = k / (n+1) for k = 1..n
+        return - no polygon computed
+
+
+STEP 3 - BRUTE FORCE CONVEX HULL  O(n^3)
+    for each ordered pair (pi, pj):
+        for each other point pk:
+            d <- cross product of pi->pj with pk
+            if d < 0: edge is invalid (pk is to the right), break
+        if all d >= 0: add (pi, pj) to validEdges
+
+    if |validEdges| < 3: trigger LINEAR HANDLER
+
+
+STEP 4 - EDGE ORDERING
+    start with any edge
+    repeatedly find the next edge whose start matches the current end
+    hull <- vertices extracted from the ordered edge chain
+
+
+STEP 5 - SHOELACE AREA + WINDING
+    signedArea <- shoelace formula over hull vertices
+    if signedArea < 0: reverse hull to force CCW winding
+    hullAreaM2 <- |signedArea| converted from degrees^2 to metres^2
+    if hullAreaM2 <= 0: return error
+
+
+STEP 6 - RAY CAST PRE-FILTER
+    for each road node:
+        skip if outside hull bounding box
+        cast a ray rightward and count hull edge crossings
+        if crossings is odd: node is inside hull -> add to validCandidates
+
+    if validCandidates is empty: return error
+
+return hull, validCandidates, hullAreaM2
+
+
+================================================================================
+Stage 2 - Hill Climbing Patrol Placement
+================================================================================
+
+INPUT:
+    validCandidates[] <- road nodes inside the hull (from Stage 1)
+    n                 <- number of patrols
+    hullAreaM2        <- hull area in square metres (from Stage 1)
+    seed              <- deterministic seed from incident coordinates
+
+OUTPUT:
+    patrols[]           <- optimal patrol positions {id, nodeId, lat, lng}
+    bestMinPairwiseDist <- minimum road distance between any two patrols
+    confidence          <- 0-100 quality score
+
+OBJECTIVE:
+    Maximize the minimum pairwise distance between all n patrols.
+    Spread patrols as far apart as possible.
+
+DEFINITIONS:
+    S            <- current set of n patrol positions
+    minDist(S)   <- minimum distance between any two patrols in S
+    N(si, R)     <- unoccupied valid candidates within road distance R of si
+
+
+SETUP:
+    R           <- sqrt(hullAreaM2 / |validCandidates|) x radiusMultiplier
+    maxRestarts <- restarts x n
+    minRestarts <- max(5, n)
+
+
+RESTART LOOP:
+    for each restart:
+
+        S <- random sample of n distinct candidates
+
+        repeat until no patrol moves OR iteration limit reached:
+            for each patrol si (in shuffled order):
+                for each neighbor v in N(si, R):
+                    newMin <- min distance if si were moved to v
+                    if newMin > current minDist(S): move si to v
+
+            if no patrol had any neighbors: expand R by 50%
+
+        record minDist(S) for this restart
+        keep S if it is the best result so far
+
+        if last 3 restarts all within 0.1% of each other: stop early
+
+    SYNC MODE (toggle):
+        instead of moving one patrol at a time,
+        compute all moves using current positions, then apply them all at once
+
+
+CONFIDENCE:
+    consistency  <- how tightly clustered restart results are (low stdDev = high)
+    confirmation <- % of restarts that matched the best without improving it
+    confidence   <- 0.5 x consistency + 0.5 x confirmation
+
+return best S as patrols, bestMinPairwiseDist, confidence
+
+
+================================================================================
+Stage 3 - Zone Assignment
+================================================================================
+
+INPUT:
+    incidents[]    <- crime coordinates {crimeId, lat, lng}
+    patrols[]      <- patrol positions from Stage 2
+    hull[]         <- hull polygon from Stage 1
+    adjacencyList  <- road graph
+    dijkstraCache  <- shared with Stage 4
+
+OUTPUT:
+    zones[][]      <- zones[i] = list of crime nodes assigned to patrols[i]
+    distanceMatrix <- road distance from each crime node to each patrol
+
+
+STEP 1 - SNAPPING
+    Each crime node is user-clicked and may not sit on a road intersection.
+    Snap it to the nearest valid candidate inside the hull.
+
+    for each incident:
+        searchRadius <- 500m
+        repeat:
+            find nearest valid candidate within searchRadius
+            if found: record snapped position, break
+            if searchRadius >= hull diameter: exclude node, break
+            searchRadius <- searchRadius x 1.5
+
+
+STEP 2 - DEDUPLICATION
+    if two incidents snap to the same node: keep the first, discard the rest
+
+
+STEP 3 - DIJKSTRA PRE-COMPUTATION
+    for each unique snapped node:
+        run Dijkstra from that node across the full road graph
+        store road distance to every patrol in distanceMatrix
+        cache result for Stage 4 reuse
+
+
+STEP 4 - ZONE ASSIGNMENT
+    for each crime node:
+        assign to the patrol with the shortest road distance
+        if all distances are Infinity: fall back to straight-line distance
+
+
+STEP 5 - REBALANCING
+
+    LIGHT (default):
+        if largest zone > 2x mean AND smallest zone < 0.5x mean:
+            find a boundary node (nearly equidistant between the two patrols)
+            move it from the largest zone to the smallest
+            repeat up to 10 times
+
+    STRONG (opt-in):
+        while any zone is overloaded or underloaded:
+            move the node with the lowest road cost to the receiving patrol
+
+
+STEP 6 - ZONE CAP
+    if any zone exceeds maxCrimeNodesPerZone:
+        sort by road distance to patrol, keep the nearest, drop the rest
+
+
+STEP 7 - CLASSIFICATION
+    |zone| = 0 -> stationary patrol
+    |zone| = 1 -> direct out-and-back route
+    |zone| > 1 -> proceed to TSP
+
+return zones, distanceMatrix
+
+
+================================================================================
+Stage 4 - TSP with Dijkstra Road Distances
+================================================================================
+
+INPUT:
+    zones[][]      <- crime nodes per patrol (from Stage 3)
+    patrols[]      <- patrol positions
+    nodeMap        <- road graph nodes
+    adjacencyList  <- road graph
+    dijkstraCache  <- shared from Stage 3
+
+OUTPUT:
+    routes[]       <- per patrol: { sequence, circuitDistanceM, pathSegments }
+    overlapEdges[] <- road edges shared by 2 or more patrols
+
+OBJECTIVE:
+    For each patrol, find the shortest circuit visiting all assigned crime nodes
+    and returning to start, using real road distances.
+
+
+DIJKSTRA:
+
+    function runDijkstra(source):
+        dist[source] <- 0; all others <- Infinity
+        heap <- MinHeap with (0, source)
+
+        while heap not empty:
+            (d, u) <- heap.pop()
+            if d > dist[u]: skip
+
+            for each neighbor (v, weight):
+                if dist[u] + weight < dist[v]:
+                    dist[v]   <- dist[u] + weight
+                    parent[v] <- u
+                    heap.push(dist[v], v)
+
+        cache result; return distances, parents
+
+    function reconstructPath(from, to):
+        walk parent[] backwards from `to` to `from`
+        return ordered list of node IDs
+
+    function buildDistanceMatrix(nodeIds):
+        for each source in nodeIds:
+            run Dijkstra (or use cache)
+            record distance to every other node in the set
+        return D[source][dest]
+
+
+SINGLE-NODE ZONES:
+    circuit <- si -> c1 -> si
+    circuitDistance <- D[si][c1] + D[c1][si]
+    pathSegments    <- [ reconstructPath(si, c1), reconstructPath(c1, si) ]
+
+
+MULTI-NODE ZONES:
+    D <- buildDistanceMatrix([si] + crimeNodeIds)
+
+    BACKTRACKING TSP  O(k!)   (used when k <= threshold):
+
+        function backtrack(current, accumulated, visited, route):
+            if accumulated >= bestCircuit: return    <- prune
+
+            if all nodes visited:
+                total <- accumulated + D[current][si]
+                if total < bestCircuit: save as best
+                return
+
+            for each unvisited node c:
+                if D[current][c] = Infinity: skip
+                visit c; recurse; unvisit c
+
+        backtrack(si, 0, {}, [])
+
+    NEAREST NEIGHBOR  O(k^2)   (used when k > threshold):
+
+        current <- si
+        while unvisited nodes remain:
+            nearest <- closest unvisited node by road distance
+            visit it; move to it
+        return to si
+
+    PATH-AWARE SEQUENCE ADJUSTMENT:
+        for each leg (A -> B) in the circuit:
+            if the road path from A to B passes through another crime node mid:
+                move mid to be visited right after A instead of later
+        recompute total distance
+
+    BUILD ROAD PATH:
+        for each consecutive pair in the final circuit:
+            append reconstructPath(A, B) coordinates to pathSegments
+
+
+OVERLAP DETECTION:
+    track which patrols traverse each road edge
+    overlapEdges <- edges used by 2 or more patrols
+
+return routes, overlapEdges
+
+
+================================================================================
+Pipeline Summary
+================================================================================
+
+Stage 1 defines WHERE patrols can go.
+Stage 2 finds WHERE TO PLACE them.
+Stage 3 assigns WHICH CRIMES each patrol covers.
+Stage 4 finds WHICH ORDER to visit them, following real roads.
