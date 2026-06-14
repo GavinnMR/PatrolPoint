@@ -912,13 +912,14 @@ document.addEventListener('alpine:init', () => {
                 convergenceCurve:   null,
                 convergenceRestart: null,
                 redundancy:         null,
-                restartsCompleted:  null
+                restartsCompleted:  null,
+                subparts:           []
             });
         },
 
         updateTraceStage(id, { status, summary, fullLog, runtimeMs, confidence,
                                 convergenceCurve, convergenceRestart, redundancy,
-                                restartsCompleted, metrics }) {
+                                restartsCompleted, metrics, subparts }) {
             const stage = this.traceStages.find(s => s.id === id);
             if (!stage) return;
             if (status             !== undefined) stage.status             = status;
@@ -931,6 +932,7 @@ document.addEventListener('alpine:init', () => {
             if (redundancy         !== undefined) stage.redundancy         = redundancy;
             if (restartsCompleted  !== undefined) stage.restartsCompleted  = restartsCompleted;
             if (metrics            !== undefined) stage.metrics            = metrics;
+            if (subparts           !== undefined) stage.subparts           = subparts;
         },
 
         setPipelineSummary(text) {

@@ -532,6 +532,9 @@ export function runZoneAssignment(
             zeroDistWaypoints,
             cappedZonesCount,
             rebalanceIterations,
+            rebalanceMode:      useStrong ? 'strong' : 'light',
+            dijkstraCalls:      dijkstraCacheMisses,
+            dijkstraCacheHits,
             distanceMatrix,
             traceLog:           log
         }

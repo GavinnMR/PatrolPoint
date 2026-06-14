@@ -362,6 +362,9 @@ function handleStageComplete(data) {
             fullLog:   combinedLog,
             runtimeMs: Math.round(runtimeMs)
         };
+        // Attach stage subpart breakdowns
+        if (stage === 1) stageUpdate.subparts = buildStage1Subparts(result);
+        if (stage === 3) stageUpdate.subparts = buildStage3Subparts(result);
         // Attach Stage 2 convergence data for trace panel display
         if (stage === 2) {
             stageUpdate.confidence         = _lastConfidence;             // always include — null if server didn't provide
@@ -734,6 +737,198 @@ function buildTraceSummary(stage, result, runtimeMs) {
         default:
             return `Runtime: ${rt}`;
     }
+}
+
+// ── Stage 1 subpart builder ────────────────────────────────────────────────────
+// Returns step-by-step breakdown of what Stage 1 computed and in what order.
+// Each subpart: { name, status ('ok'|'warn'|'skip'), detail }
+function buildStage1Subparts(result) {
+    const subparts = [];
+
+    // Step 0 — Incremental cache check
+    if (result.skipped) {
+        subparts.push({ name: 'Incremental cache', status: 'skip',
+            detail: 'Hull reused from previous run — all new incidents inside previous danger zone' });
+        return subparts;
+    }
+    subparts.push({ name: 'Incremental cache', status: 'ok',
+        detail: 'No reusable hull — full computation required' });
+
+    // Step 1 — Outlier detection
+    const outliers  = result.outlierCount ?? 0;
+    const remaining = result.filteredCount ?? 0;
+    const total     = remaining + outliers;
+    if (outliers > 0) {
+        subparts.push({ name: 'Outlier detection', status: 'warn',
+            detail: `${outliers} of ${total} incident${total !== 1 ? 's' : ''} flagged — ${remaining} remaining` });
+    } else {
+        subparts.push({ name: 'Outlier detection', status: 'ok',
+            detail: `No outliers — all ${remaining} incident${remaining !== 1 ? 's' : ''} retained` });
+    }
+
+    // Step 2 — Minimum points check
+    const reason = result.linearHandlerReason;
+    if (reason === 'two_points') {
+        subparts.push({ name: 'Minimum points', status: 'warn',
+            detail: `Only ${remaining} incident${remaining !== 1 ? 's' : ''} after outlier removal — need 3+ for a polygon, linear handler triggered` });
+        return subparts;
+    }
+    subparts.push({ name: 'Minimum points', status: 'ok',
+        detail: `${remaining} incident${remaining !== 1 ? 's' : ''} — hull computable` });
+
+    // Step 3 — Collinearity check
+    if (reason === 'collinear') {
+        subparts.push({ name: 'Collinearity check', status: 'warn',
+            detail: 'All incidents lie on one line — no 2D polygon possible, linear handler triggered' });
+        return subparts;
+    }
+    subparts.push({ name: 'Collinearity check', status: 'ok',
+        detail: 'Non-collinear — 2D convex hull computable' });
+
+    // Step 4 — Brute force O(n³)
+    const edges = result.validEdgesCount;
+    if (edges != null) {
+        subparts.push({ name: 'Brute force O(n³)', status: 'ok',
+            detail: `${edges} valid directed edge${edges !== 1 ? 's' : ''} identified` });
+    }
+
+    // Step 5 — Edge count validation
+    if (reason === 'few_edges') {
+        subparts.push({ name: 'Edge count check', status: 'warn',
+            detail: `${edges ?? 0} valid edge${(edges ?? 0) !== 1 ? 's' : ''} — fewer than 3 required for polygon, linear handler triggered` });
+        return subparts;
+    }
+    if (edges != null) {
+        subparts.push({ name: 'Edge count check', status: 'ok',
+            detail: `${edges} edge${edges !== 1 ? 's' : ''} — sufficient for a polygon` });
+    }
+
+    // Step 6 — Edge ordering
+    const vertices = result.hull?.length;
+    if (vertices != null) {
+        subparts.push({ name: 'Edge ordering', status: 'ok',
+            detail: `${vertices} hull ${vertices === 1 ? 'vertex' : 'vertices'} chained into closed polygon` });
+    }
+
+    // Steps 7+8 — Shoelace area and winding normalization (shown together)
+    if (result.hullArea != null) {
+        const areaM2  = Math.round(result.hullArea).toLocaleString();
+        const areaKm2 = (result.hullArea / 1e6).toFixed(4);
+        let windingNote = '';
+        if      (result.windingReversed === true)  windingNote = ' — winding reversed to CCW';
+        else if (result.windingReversed === false)  windingNote = ' — winding already CCW';
+        subparts.push({ name: 'Shoelace + winding', status: 'ok',
+            detail: `~${areaM2} m² (~${areaKm2} km²)${windingNote}` });
+    }
+
+    // Step 9 — Area validation (only show if hull was valid)
+    if (result.hull && result.hull.length > 0) {
+        subparts.push({ name: 'Area validation', status: 'ok', detail: 'Hull area > 0' });
+    }
+
+    // Step 10 — Ray cast pre-filter (only show if hull was valid)
+    if (result.hull && result.hull.length > 0) {
+        const rc = result.rayCastStats;
+        if (rc) {
+            subparts.push({ name: 'Ray cast filter', status: rc.passed === 0 ? 'warn' : 'ok',
+                detail: `${rc.passed.toLocaleString()} of ${rc.totalNodes.toLocaleString()} road nodes inside hull ` +
+                        `(${rc.bboxRejected.toLocaleString()} bbox-rejected, ${rc.rayCastRejected.toLocaleString()} ray-cast-rejected)` });
+        } else {
+            subparts.push({ name: 'Ray cast filter', status: 'skip',
+                detail: `Hull-candidate cache reused — ${(result.validCandidateCount ?? 0).toLocaleString()} candidates` });
+        }
+    }
+
+    return subparts;
+}
+
+// ── Stage 3 subpart builder ────────────────────────────────────────────────────
+function buildStage3Subparts(result) {
+    const subparts = [];
+
+    // Step 1 — Crime node snapping
+    const snapped  = result.snappedCount ?? 0;
+    const excluded = (result.excludedCrimeNodes || []).filter(e => e.reason === 'no_reachable_intersection').length;
+    const total    = snapped + excluded;
+    subparts.push({
+        name:   'Crime node snapping',
+        status: excluded > 0 ? 'warn' : 'ok',
+        detail: excluded > 0
+            ? `${snapped} of ${total} snapped to road nodes — ${excluded} excluded (no reachable intersection)`
+            : `All ${snapped} crime node${snapped !== 1 ? 's' : ''} snapped to nearest road node`
+    });
+
+    // Step 2 — Deduplication
+    const merged   = result.mergedCount ?? 0;
+    const unique   = snapped - merged;
+    subparts.push({
+        name:   'Deduplication',
+        status: merged > 0 ? 'warn' : 'ok',
+        detail: merged > 0
+            ? `${merged} duplicate${merged !== 1 ? 's' : ''} merged — ${unique} unique position${unique !== 1 ? 's' : ''} remaining`
+            : 'No duplicate snapping positions'
+    });
+
+    // Step 3 — Road distance pre-computation (Dijkstra)
+    const calls  = result.dijkstraCalls    ?? 0;
+    const hits   = result.dijkstraCacheHits ?? 0;
+    const total3 = calls + hits;
+    subparts.push({
+        name:   'Road distance (Dijkstra)',
+        status: 'ok',
+        detail: total3 > 0
+            ? `${total3} source${total3 !== 1 ? 's' : ''} — ${calls} computed, ${hits} cache hit${hits !== 1 ? 's' : ''}`
+            : 'No Dijkstra runs needed'
+    });
+
+    // Step 4 — Zone assignment
+    const fallbacks = result.euclideanFallbacks ?? 0;
+    const byRoad    = unique - fallbacks;
+    subparts.push({
+        name:   'Zone assignment',
+        status: fallbacks > 0 ? 'warn' : 'ok',
+        detail: fallbacks > 0
+            ? `${byRoad} by road distance, ${fallbacks} by straight-line fallback (road graph disconnected)`
+            : `${unique} node${unique !== 1 ? 's' : ''} assigned by road distance`
+    });
+
+    // Step 5 — Zone rebalancing
+    const iters = result.rebalanceIterations ?? 0;
+    const mode  = result.rebalanceMode ?? 'light';
+    subparts.push({
+        name:   'Zone rebalancing',
+        status: 'ok',
+        detail: iters > 0
+            ? `${iters} iteration${iters !== 1 ? 's' : ''} (${mode} mode)`
+            : `Balanced — no rebalancing needed (${mode} mode)`
+    });
+
+    // Step 6 — Zone cap
+    const capped = result.cappedZonesCount ?? 0;
+    const maxN   = window.uiApp?.activeConfig?.tsp?.maxCrimeNodesPerZone ?? 10;
+    subparts.push({
+        name:   'Zone cap',
+        status: capped > 0 ? 'warn' : 'ok',
+        detail: capped > 0
+            ? `${capped} zone${capped !== 1 ? 's' : ''} capped at ${maxN} nodes — excess excluded`
+            : `No zones exceeded the ${maxN}-node cap`
+    });
+
+    // Step 7 — Zone classification
+    const empty  = result.emptyZones?.length      ?? 0;
+    const single = result.singleNodeZones?.length  ?? 0;
+    const multi  = result.multiNodeZones?.length   ?? 0;
+    subparts.push({
+        name:   'Zone classification',
+        status: empty > 0 ? 'warn' : 'ok',
+        detail: [
+            empty  > 0 ? `${empty} empty (stationary)`    : null,
+            single > 0 ? `${single} single-node (direct)` : null,
+            multi  > 0 ? `${multi} multi-node (→ TSP)`    : null
+        ].filter(Boolean).join(', ') || 'No zones classified'
+    });
+
+    return subparts;
 }
 
 // ── Trace metrics builder ──────────────────────────────────────────────────────

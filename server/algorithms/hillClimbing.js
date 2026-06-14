@@ -453,7 +453,8 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         });
 
         // Keep the restart with highest minimum pairwise distance as current best
-        const isNewBest = !bestResult || finalMinDist > bestResult.minDist;
+        const prevBestDist = bestResult?.minDist ?? null;
+        const isNewBest    = !bestResult || finalMinDist > bestResult.minDist;
         if (isNewBest) {
             bestResult = {
                 positions:    positions.map(p => ({ ...p })),
@@ -462,20 +463,30 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
             };
         }
 
-        log.push(`  Restart ${restartIdx + 1} summary: ${iteration} iter | ${moveCount} moves | ${Math.round(initMinDist)}m → ${Math.round(finalMinDist)}m${isNewBest ? ' [NEW BEST]' : ''}${isDuplicate ? ' [DUPLICATE]' : ''}`);
+        const expansionNote = restartRadiusExpansions > 0 ? ` | R expanded ${restartRadiusExpansions}×` : '';
+        log.push(`  Restart ${restartIdx + 1} summary: ${iteration} iter | ${moveCount} moves | ${Math.round(initMinDist)}m → ${Math.round(finalMinDist)}m${expansionNote}${isNewBest ? ' [NEW BEST]' : ''}${isDuplicate ? ' [DUPLICATE]' : ''}`);
+        log.push(`  Final: ${positions.map(p => `${p.id}@${p.nodeId}`).join(' | ')}`);
+        if (isNewBest && prevBestDist !== null) {
+            const imp = finalMinDist - prevBestDist;
+            log.push(`  ** Best improved: +${Math.round(imp)}m (+${((imp / prevBestDist) * 100).toFixed(1)}%) → new best ${Math.round(finalMinDist)}m`);
+        } else if (isNewBest) {
+            log.push(`  ** First result: ${Math.round(finalMinDist)}m`);
+        }
 
         // ── Adaptive convergence check ─────────────────────────────────────────
         // After minimum 5 restarts, stop if last 3 consecutive results are within 0.1%.
         if (allRestartResults.length >= minRestarts) {
             const last3 = allRestartResults.slice(-3).map(r => r.minDist);
             if (last3.length === 3) {
-                const maxD = Math.max(...last3);
-                const minD = Math.min(...last3);
+                const maxD   = Math.max(...last3);
+                const minD   = Math.min(...last3);
+                const spread = maxD > 0 ? ((maxD - minD) / maxD * 100).toFixed(3) : '0.000';
                 // Guard against maxD=0 edge case (n=2 with identical starting positions)
                 if (maxD > 0 && (maxD - minD) / maxD < 0.001) {
-                    log.push(`Converged after ${allRestartResults.length} restarts (last 3 within 0.1% tolerance).`);
+                    log.push(`Converged after ${allRestartResults.length} restarts: [${last3.map(d => Math.round(d)).join(', ')}]m, spread ${spread}% < 0.1%.`);
                     break;
                 }
+                log.push(`  Convergence check: [${last3.map(d => Math.round(d)).join(', ')}]m, spread ${spread}% (need < 0.1%)`);
             }
         }
     }
@@ -486,6 +497,8 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         log.push(`Reached maximum ${maxRestarts} restarts.`);
     }
     log.push(`Best result found at restart ${bestResult.restartIndex + 1}. Min pairwise distance: ${Math.round(bestResult.minDist)}m.`);
+    log.push(`All restart scores: [${allRestartResults.map((r, i) => `R${i + 1}:${Math.round(r.minDist)}m${r.maxIterReached ? '!' : ''}`).join('  ')}]`);
+    log.push(`Best patrol positions: ${bestResult.positions.map(p => `${p.id}@${p.nodeId}(${p.lat.toFixed(6)},${p.lng.toFixed(6)})`).join(' | ')}`);
     if (duplicateConfigCount > 0) {
         log.push(`Duplicate configurations found: ${duplicateConfigCount} restarts.`);
     }

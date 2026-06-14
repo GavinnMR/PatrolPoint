@@ -573,6 +573,30 @@
               <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed" x-text="stage.description"></p>
             </div>
 
+            <!-- Stage 1 step-by-step subparts -->
+            <div class="px-4 py-3" x-show="stage.subparts && stage.subparts.length > 0">
+              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2">Step-by-step</div>
+              <div class="space-y-1.5">
+                <template x-for="(sp, idx) in (stage.subparts || [])" :key="idx">
+                  <div class="flex items-start gap-2">
+                    <span class="flex-shrink-0 w-7 text-right text-[9px] font-mono font-bold mt-px leading-tight"
+                          :class="{
+                            'text-green-500':  sp.status === 'ok',
+                            'text-yellow-500': sp.status === 'warn',
+                            'text-red-500':    sp.status === 'error',
+                            'text-gray-400':   sp.status === 'skip'
+                          }"
+                          x-text="{ ok: 'OK', warn: 'WARN', error: 'FAIL', skip: 'SKIP' }[sp.status] || '?'"></span>
+                    <div class="min-w-0">
+                      <span class="text-[10px] font-semibold text-gray-700 dark:text-gray-200" x-text="sp.name"></span>
+                      <span class="text-[10px] text-gray-400 dark:text-gray-500" x-show="sp.detail"> — </span>
+                      <span class="text-[10px] text-gray-500 dark:text-gray-400" x-text="sp.detail"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
             <!-- Key metrics grid -->
             <div class="px-4 py-3" x-show="stage.metrics && stage.metrics.length > 0">
               <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2.5">Results</div>

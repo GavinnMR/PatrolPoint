@@ -452,9 +452,11 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     // ── Step 8: Winding order normalization ───────────────────────────────────
     // Positive signed area → CCW (correct). Negative → CW → reverse to force CCW.
     // All Ray Casting logic assumes CCW winding consistently.
+    let windingReversed = false;
     if (signedArea < 0) {
         hull.reverse();
         signedArea = -signedArea;
+        windingReversed = true;
         log.push('Winding order: reversed to counterclockwise');
     } else {
         log.push('Winding order: already counterclockwise');
@@ -511,6 +513,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     let validCandidates;
     let updatedHullCache;
 
+    let rayCastStats = null;
     if (hullCache && hullsEqual(hull, hullCache.hull, colEps)) {
         validCandidates  = hullCache.candidates;
         updatedHullCache = hullCache;
@@ -518,6 +521,12 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     } else {
         const rcResult   = runRayCastPreFilter(hull, nodeMap, eps);
         validCandidates  = rcResult.candidates;
+        rayCastStats = {
+            totalNodes:      rcResult.totalNodes,
+            bboxRejected:    rcResult.bboxRejected,
+            rayCastRejected: rcResult.rayCastRejected,
+            passed:          rcResult.candidates.length
+        };
         // Deep-copy hull vertices into cache to prevent mutation by downstream code
         updatedHullCache = {
             hull:       hull.map(v => ({ lat: v.lat, lng: v.lng })),
@@ -571,6 +580,8 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
                 outlierIndices,
                 validEdgesCount: validEdges.length,
                 linearHandler: { triggered: false },
+                windingReversed,
+                rayCastStats,
                 traceLog: log,
                 skipped: false,
                 updatedHullCache
@@ -596,6 +607,8 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
             outlierIndices,
             validEdgesCount: validEdges.length,
             linearHandler: { triggered: false },
+            windingReversed,
+            rayCastStats,
             traceLog: log,
             skipped: false,
             updatedHullCache
