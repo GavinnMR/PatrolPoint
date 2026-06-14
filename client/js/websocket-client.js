@@ -652,9 +652,10 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
                 : 'Optimal circuits:';
             const routeLines      = (result.routes || []).map(r => {
                 const dist   = r.circuitDistanceM != null ? Math.round(r.circuitDistanceM) + ' m' : 'N/A';
-                const seq    = (r.sequence || []).map(n => n.nodeId ?? n).join(' → ');
                 const approx = r.approximate ? ' [approx]' : '';
-                return `  Patrol ${r.patrolId}${approx}: total = ${dist}`;
+                const algo   = r.algorithmUsed ? ` (${r.algorithmUsed})` : '';
+                const adj    = r.sequenceAdjustmentsMade > 0 ? `, ${r.sequenceAdjustmentsMade} seq. adj.` : '';
+                return `  Patrol ${r.patrolId}${approx}: total = ${dist}${algo}${adj}`;
             }).join('\n');
             return [
                 hr,
@@ -711,10 +712,19 @@ function buildTraceSummary(stage, result, runtimeMs) {
             ].filter(Boolean).join('\n');
 
         case 4: {
-            const approxCount = (result.routes || []).filter(r => r.approximate).length;
+            const approxCount  = (result.routes || []).filter(r => r.approximate).length;
+            const bd           = result.algorithmBreakdown || {};
+            const algoDetails  = [
+                bd.backtracking    > 0 ? `${bd.backtracking} backtracking`     : null,
+                bd.nearestNeighbor > 0 ? `${bd.nearestNeighbor} nearest-neighbor` : null,
+                bd.k2Shortcut      > 0 ? `${bd.k2Shortcut} k=2 shortcut`      : null,
+            ].filter(Boolean).join(', ');
+            const adjCount     = result.totalSequenceAdjustments ?? 0;
             return [
                 `Routes: ${result.routes?.length ?? 0} patrol circuits` +
                     (approxCount > 0 ? ` (${approxCount} approximate)` : ''),
+                algoDetails ? `Algorithm: ${algoDetails}` : null,
+                adjCount > 0 ? `Sequence adjustments: ${adjCount}` : null,
                 `Dijkstra calls: ${result.totalDijkstraCalls ?? 'N/A'}, cache hits: ${result.totalCacheHits ?? 'N/A'}`,
                 `Overlap edges: ${result.overlapEdges?.length ?? 0}`,
                 `Runtime: ${rt}`
@@ -916,6 +926,11 @@ function buildTraceMetrics(stage, result) {
                     value:   result.overlapEdges?.length ?? 0,
                     warn:    (result.overlapEdges?.length ?? 0) > 0,
                     tooltip: 'Road segments used by more than one patrol circuit. Shown as orange (2 patrols) or red (3+) overlays on the map. High overlap may indicate patrol territory consolidation could help.'
+                },
+                {
+                    label:   'Seq. adjustments',
+                    value:   result.totalSequenceAdjustments ?? 0,
+                    tooltip: 'Number of times a crime node was moved earlier in the visit sequence because it was a natural intermediate stop on the road path to the next waypoint. Eliminates redundant backtracking.'
                 },
             ];
         }

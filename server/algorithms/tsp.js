@@ -137,8 +137,10 @@ export function runTSP(
     }
 
     // Cache hit/miss counters
-    let totalDijkstraCalls = 0;
-    let totalCacheHits     = 0;
+    let totalDijkstraCalls       = 0;
+    let totalCacheHits           = 0;
+    let totalSequenceAdjustments = 0;
+    const algorithmBreakdown     = { backtracking: 0, nearestNeighbor: 0, k2Shortcut: 0 };
 
     // ── Inner helpers (closures — access nodeMap, adjacencyList, effectiveCache, edgeUsage) ──
 
@@ -301,11 +303,13 @@ export function runTSP(
                 { nodeId: cId, lat: crimeNode.snappedLat, lng: crimeNode.snappedLng },
                 { nodeId: sId, lat: patrol.lat,           lng: patrol.lng }
             ],
-            circuitDistanceM: Math.round(circuitDistanceM),
-            pathSegments:     [leg1.coords, leg2.coords],
-            approximate:      false,
-            isEmpty:          false,
-            isSingleNode:     true
+            circuitDistanceM:        Math.round(circuitDistanceM),
+            pathSegments:            [leg1.coords, leg2.coords],
+            approximate:             false,
+            isEmpty:                 false,
+            isSingleNode:            true,
+            algorithmUsed:           'single-node',
+            sequenceAdjustmentsMade: 0
         });
     }
 
@@ -349,30 +353,36 @@ export function runTSP(
         const actualK  = crimeIds.length;
 
         // Step 3: TSP or nearest neighbor heuristic
-        let sequence, totalDist, approximate = false;
+        let sequence, totalDist, approximate = false, algorithmUsed;
 
         if (actualK === 2) {
             // k=2 special case: both visiting sequences produce identical circuit distance
             // on an undirected graph (si→A→B→si equals si→B→A→si by symmetry).
-            sequence  = crimeIds.slice();
-            totalDist = (D[sId]?.[crimeIds[0]] ?? 0) +
-                        (D[crimeIds[0]]?.[crimeIds[1]] ?? 0) +
-                        (D[crimeIds[1]]?.[sId] ?? 0);
+            sequence      = crimeIds.slice();
+            totalDist     = (D[sId]?.[crimeIds[0]] ?? 0) +
+                            (D[crimeIds[0]]?.[crimeIds[1]] ?? 0) +
+                            (D[crimeIds[1]]?.[sId] ?? 0);
+            algorithmUsed = 'k2-shortcut';
+            algorithmBreakdown.k2Shortcut++;
             log.push(`Patrol ${patrol.id}: 2 crime nodes in zone - both visiting sequences are equivalent. First sequence selected.`);
 
         } else if (actualK > fallbackThreshold) {
-            const result = nearestNeighborTSP(sId, crimeIds, D);
-            sequence     = result.sequence;
-            totalDist    = result.totalDist;
-            approximate  = true;
-            const msg    = `Patrol ${patrol.id}: zone size k=${actualK} exceeds threshold ${fallbackThreshold}. Using nearest neighbor heuristic (result is approximate, not guaranteed optimal).`;
+            const result  = nearestNeighborTSP(sId, crimeIds, D);
+            sequence      = result.sequence;
+            totalDist     = result.totalDist;
+            approximate   = true;
+            algorithmUsed = 'nearest-neighbor';
+            algorithmBreakdown.nearestNeighbor++;
+            const msg     = `Patrol ${patrol.id}: zone size k=${actualK} exceeds threshold ${fallbackThreshold}. Using nearest neighbor heuristic (result is approximate, not guaranteed optimal).`;
             log.push(msg);
             warnings.push(msg);
 
         } else {
-            const result = backtrackingTSP(sId, crimeIds, D);
-            sequence     = result.sequence;
-            totalDist    = result.totalDist;
+            const result  = backtrackingTSP(sId, crimeIds, D);
+            sequence      = result.sequence;
+            totalDist     = result.totalDist;
+            algorithmUsed = 'backtracking';
+            algorithmBreakdown.backtracking++;
             if (sequence.length === 0 && actualK > 0) {
                 // Backtracking found no complete circuit — all paths blocked by Infinity
                 log.push(`Patrol ${patrol.id}: backtracking found no complete circuit. Falling back to nearest neighbor.`);
@@ -380,6 +390,9 @@ export function runTSP(
                 sequence       = fallback.sequence;
                 totalDist      = fallback.totalDist;
                 approximate    = true;
+                algorithmUsed  = 'nearest-neighbor';
+                algorithmBreakdown.backtracking--;
+                algorithmBreakdown.nearestNeighbor++;
                 warnings.push(`Patrol ${patrol.id}: backtracking TSP found no feasible circuit - nearest neighbor fallback used.`);
             }
         }
@@ -395,6 +408,7 @@ export function runTSP(
             totalDist = adjustedTotalDist;
             log.push(`Patrol ${patrol.id}: ${adjustmentsMade} adjustment(s) — updated circuit distance: ${Math.round(adjustedTotalDist)}m`);
         }
+        totalSequenceAdjustments += adjustmentsMade;
 
         // Step 4: Build path segments for road-following rendering
         // Full circuit: si → seq[0] → seq[1] → ... → seq[k-1] → si
@@ -425,14 +439,16 @@ export function runTSP(
         log.push(`Patrol ${patrol.id}: ${approximate ? 'approx.' : 'optimal'} circuit: ${circuitStr}. Total: ${Math.round(totalDist < Infinity ? totalDist : 0)}m`);
 
         routes.push({
-            patrolId:         patrol.id,
-            patrolIndex:      pi,
-            sequence:         seqWithCoords,
-            circuitDistanceM: Math.round(totalDist < Infinity ? totalDist : 0),
+            patrolId:                patrol.id,
+            patrolIndex:             pi,
+            sequence:                seqWithCoords,
+            circuitDistanceM:        Math.round(totalDist < Infinity ? totalDist : 0),
             pathSegments,
             approximate,
-            isEmpty:          false,
-            isSingleNode:     false
+            isEmpty:                 false,
+            isSingleNode:            false,
+            algorithmUsed,
+            sequenceAdjustmentsMade: adjustmentsMade
         });
 
         if (typeof pushProgress === 'function') {
@@ -478,6 +494,8 @@ export function runTSP(
             unreachableCrimeIds,
             totalDijkstraCalls,
             totalCacheHits,
+            totalSequenceAdjustments,
+            algorithmBreakdown,
             traceLog: log
         }
     };
