@@ -435,10 +435,11 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
             data: {
                 stage: 4,
                 result: {
-                    routes:             s4Data.routes,
-                    overlapEdges:       s4Data.overlapEdges,
-                    totalDijkstraCalls: s4Data.totalDijkstraCalls,
-                    totalCacheHits:     s4Data.totalCacheHits
+                    routes:               s4Data.routes,
+                    overlapEdges:         s4Data.overlapEdges,
+                    unreachableCrimeIds:  s4Data.unreachableCrimeIds,
+                    totalDijkstraCalls:   s4Data.totalDijkstraCalls,
+                    totalCacheHits:       s4Data.totalCacheHits
                 },
                 trace:     { log: s4Data.traceLog },
                 runtimeMs: stage4RuntimeMs

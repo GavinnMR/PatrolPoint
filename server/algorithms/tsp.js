@@ -115,10 +115,11 @@ export function runTSP(
     nodeMap, adjacencyList, dijkstraCache, config, hull = null, options = {}
 ) {
     const { pushProgress = null, removedNodes = null } = options;
-    const log       = [];
-    const warnings  = [];
-    const routes    = [];
-    const edgeUsage = new Map(); // normalized edge key → Set<patrolId> — prevents single-patrol double-traversal false positives
+    const log                = [];
+    const warnings           = [];
+    const routes             = [];
+    const unreachableCrimeIds = [];
+    const edgeUsage          = new Map(); // normalized edge key → Set<patrolId> — prevents single-patrol double-traversal false positives
     let _edgeTrackingPatrolId = null; // set before each patrol's processLeg calls
     const fallbackThreshold = config.tsp.nearestNeighborFallbackThreshold ?? 12;
     const exteriorPenalty   = config.tsp.hullExteriorPenalty ?? 1;
@@ -229,6 +230,7 @@ export function runTSP(
         if (distStoC === Infinity) {
             log.push(`Patrol ${patrol.id}: single-node zone - crime node ${crimeNode.crimeId} unreachable via road network - patrol remains stationary.`);
             warnings.push(`Crime node ${crimeNode.crimeId} unreachable from patrol ${patrol.id} via road network - single-node zone treated as stationary.`);
+            unreachableCrimeIds.push(crimeNode.crimeId);
             routes.push({
                 patrolId: patrol.id, patrolIndex: pi,
                 sequence: [], circuitDistanceM: 0,
@@ -279,6 +281,7 @@ export function runTSP(
             if ((D[sId]?.[c.snappedNodeId] ?? Infinity) === Infinity) {
                 log.push(`Crime node ${c.crimeId} unreachable from patrol ${patrol.id} via road network - excluded from route.`);
                 warnings.push(`Crime node ${c.crimeId} unreachable from patrol ${patrol.id} via road network - excluded from route.`);
+                unreachableCrimeIds.push(c.crimeId);
                 return false;
             }
             return true;
@@ -414,6 +417,7 @@ export function runTSP(
         data: {
             routes,
             overlapEdges,
+            unreachableCrimeIds,
             totalDijkstraCalls,
             totalCacheHits,
             traceLog: log

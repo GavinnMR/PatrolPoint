@@ -251,6 +251,8 @@ function initMap(ui) {
                 renderOverlapOverlay(result.routes);
             }
         }
+        // Mark crime nodes that were unreachable via road network during Stage 4
+        (result.unreachableCrimeIds || []).forEach(id => updateCrimeMarkerStyle(id, 'unreachable'));
     });
 
     replacePlaceholder('onPipelineComplete', (_data) => {
@@ -509,8 +511,9 @@ function updateCrimeMarkerStyle(crimeId, style) {
     const el = document.getElementById(`cm-${crimeId}`);
     if (!el) return;
     el.className = 'crime-marker';
-    if (style === 'outlier')  el.classList.add('outlier');
-    if (style === 'excluded') el.classList.add('excluded');
+    if (style === 'outlier')     el.classList.add('outlier');
+    if (style === 'excluded')    el.classList.add('excluded');
+    if (style === 'unreachable') el.classList.add('unreachable');
 }
 
 function restoreCrimeMarkers(points) {
