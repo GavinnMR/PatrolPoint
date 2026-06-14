@@ -991,6 +991,143 @@ window.PP_TESTS = (() => {
             }
         },
 
+        // ══ Stage 4 — Path-Aware Sequence Adjustment ════════════════════════════
+        // commit e884fdc: adjustSequence() moves crime nodes encountered as natural road
+        // intermediates to the point of traversal, eliminating redundant backtracking.
+
+        {
+            id: 'S4-T07', stage: 4, n: 3, mode: 'roaming',
+            name: 'Path-aware adjustment — "Seq. adjustments" metric always present with numeric value >= 0',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const s4       = window.uiApp?.traceStages?.find(s => s.id === 4);
+                const metrics  = s4?.metrics || [];
+                const adjMetric = metrics.find(m => m.label?.toLowerCase().includes('seq. adjustments'));
+                return [
+                    chkNotNull(adjMetric,
+                        'Stage 4 metrics include "Seq. adjustments" entry'),
+                    chkEq(typeof adjMetric?.value === 'number' ? 'ok' : 'fail', 'ok',
+                        `"Seq. adjustments" value is a number (got: ${typeof adjMetric?.value})`),
+                    chkEq((adjMetric?.value ?? -1) >= 0 ? 'ok' : 'fail', 'ok',
+                        `"Seq. adjustments" value is >= 0 (got: ${adjMetric?.value})`),
+                    chkEq(adjMetric?.tooltip?.length > 5 ? 'ok' : 'fail', 'ok',
+                        '"Seq. adjustments" metric has a tooltip description'),
+                ];
+            }
+        },
+
+        {
+            id: 'S4-T08', stage: 4, n: 3, mode: 'roaming',
+            name: 'Path-aware adjustment — sequenceAdjustmentsMade field present on all route objects',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const r = window.routes || [];
+                const allHaveField = r.length > 0 && r.every(route =>
+                    typeof route.sequenceAdjustmentsMade === 'number' &&
+                    route.sequenceAdjustmentsMade >= 0
+                );
+                return [
+                    chkGt(r.length, 0,
+                        'window.routes is populated'),
+                    chkEq(allHaveField ? 'ok' : 'fail', 'ok',
+                        'every route object has sequenceAdjustmentsMade as a non-negative number'),
+                ];
+            }
+        },
+
+        {
+            id: 'S4-T09', stage: 4, n: 3, mode: 'roaming',
+            name: 'Path-aware adjustment — trace log and summary are consistent with adjustment count',
+            // When adjustments fire: fullLog contains "sequence adjusted", summary contains "Sequence adjustments: X".
+            // When 0 adjustments: neither appears.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const s4       = window.uiApp?.traceStages?.find(s => s.id === 4);
+                const fullLog  = s4?.fullLog  || '';
+                const summary  = s4?.summary  || '';
+                const metrics  = s4?.metrics  || [];
+                const adjMetric = metrics.find(m => m.label?.toLowerCase().includes('seq. adjustments'));
+                const adjCount = adjMetric?.value ?? 0;
+
+                if (adjCount > 0) {
+                    return [
+                        chkIncludes(fullLog, 'sequence adjusted',
+                            `fullLog contains "sequence adjusted" for ${adjCount} adjustment(s)`),
+                        chkIncludes(summary, 'Sequence adjustments:',
+                            'Stage 4 summary includes "Sequence adjustments: X" line'),
+                    ];
+                }
+                // adjCount === 0 — neither trace entry should appear
+                return [
+                    chkEq(!fullLog.includes('sequence adjusted') ? 'ok' : 'fail', 'ok',
+                        'no "sequence adjusted" in fullLog when adjustment count is 0'),
+                    chkEq(!summary.includes('Sequence adjustments:') ? 'ok' : 'fail', 'ok',
+                        'no "Sequence adjustments:" in summary when count is 0'),
+                ];
+            }
+        },
+
+        {
+            id: 'S4-T10', stage: 4, n: 3, mode: 'roaming',
+            name: 'Path-aware adjustment — route sequence nodes are a subset of zone snapped node IDs (no phantom nodes)',
+            // adjustSequence() rearranges existing crime nodes in-place.
+            // It must never insert a node that was not already in the zone.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            check() {
+                const r = window.routes || [];
+                const z = window.zones  || [];
+                if (!r.length || !z.length) {
+                    return [fail('routes and zones populated', r.length + '/' + z.length, '> 0')];
+                }
+
+                let violation = null;
+                for (const route of r) {
+                    if (route.isEmpty) continue; // empty routes have no sequence to check
+                    const pi             = route.patrolIndex;
+                    const zoneSnappedIds = new Set((z[pi] || []).map(c => c.snappedNodeId));
+                    // sequence = [patrol, crime1, ..., crimeK, patrol] — skip first and last nodes
+                    const midNodes = (route.sequence || []).slice(1, -1).map(sn => sn.nodeId);
+                    for (const nodeId of midNodes) {
+                        if (!zoneSnappedIds.has(nodeId)) {
+                            violation = `patrol ${route.patrolId}: nodeId ${nodeId} is not in zones[${pi}] snappedNodeIds`;
+                            break;
+                        }
+                    }
+                    if (violation) break;
+                }
+                return [
+                    chkEq(violation === null ? 'ok' : 'fail', 'ok',
+                        violation !== null
+                            ? `phantom node inserted by adjustment: ${violation}`
+                            : 'all sequence mid-nodes are valid snappedNodeIds from assigned zone'),
+                ];
+            }
+        },
+
         // ══ Session Fixes — Bug fixes and new feature verification ══════════════
         //    Bug 5: patrol popup shows correct crime node count (off-by-one fix)
         //    Bug 7: routes cleared when switching from roaming to stationary

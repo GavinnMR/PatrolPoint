@@ -283,7 +283,8 @@ export function runTSP(
                 patrolId: patrol.id, patrolIndex: pi,
                 sequence: [], circuitDistanceM: 0,
                 pathSegments: [], approximate: false,
-                isEmpty: true, isSingleNode: false
+                isEmpty: true, isSingleNode: false,
+                algorithmUsed: 'stationary', sequenceAdjustmentsMade: 0
             });
             continue;
         }
@@ -344,7 +345,8 @@ export function runTSP(
                 patrolId: patrol.id, patrolIndex: pi,
                 sequence: [], circuitDistanceM: 0,
                 pathSegments: [], approximate: false,
-                isEmpty: true, isSingleNode: false
+                isEmpty: true, isSingleNode: false,
+                algorithmUsed: 'stationary', sequenceAdjustmentsMade: 0
             });
             continue;
         }
