@@ -208,6 +208,52 @@ export function runTSP(
         return { coords: pathIdsToCoords(pathIds), noPath: false };
     }
 
+    // Adjust TSP sequence to visit crime nodes encountered as intermediate road nodes in-place.
+    // When the Dijkstra path between two consecutive waypoints passes through another crime node,
+    // move that node to the point of natural traversal instead of visiting it later via backtrack.
+    // Returns { adjustedSequence, adjustedTotalDist, adjustmentsMade }.
+    function adjustSequence(sequence, startId, crimeNodeIdSet, D, patrolId) {
+        const current = sequence.slice();
+        let changed = true;
+        let adjustmentsMade = 0;
+
+        while (changed) {
+            changed = false;
+            const circuit = [startId, ...current, startId];
+
+            for (let i = 0; i + 1 < circuit.length; i++) {
+                const fromId  = circuit[i];
+                const toId    = circuit[i + 1];
+                const pathIds = getPathIds(fromId, toId);
+                if (!pathIds || pathIds.length <= 2) continue; // no intermediate nodes
+
+                for (let j = 1; j < pathIds.length - 1; j++) {
+                    const mid    = pathIds[j];
+                    if (!crimeNodeIdSet.has(mid)) continue;
+                    const midPos = current.indexOf(mid);
+                    if (midPos <= i) continue; // already visited earlier in circuit, or is toId
+                    // Move mid from its later position to immediately after circuit[i]
+                    current.splice(midPos, 1);
+                    current.splice(i, 0, mid);
+                    log.push(`Patrol ${patrolId}: sequence adjusted — ${mid} visited in-place on leg ${fromId}→${toId} (moved from position ${midPos + 1} to ${i + 1})`);
+                    adjustmentsMade++;
+                    changed = true;
+                    break;
+                }
+                if (changed) break;
+            }
+        }
+
+        // Recompute circuit distance from adjusted sequence — TSP total is now stale
+        const adjustedCircuit = [startId, ...current, startId];
+        let adjustedTotalDist = 0;
+        for (let i = 0; i + 1 < adjustedCircuit.length; i++) {
+            adjustedTotalDist += D[adjustedCircuit[i]]?.[adjustedCircuit[i + 1]] ?? Infinity;
+        }
+
+        return { adjustedSequence: current, adjustedTotalDist, adjustmentsMade };
+    }
+
     // ── Single-node zones ─────────────────────────────────────────────────────
     // Route: si → c1 → si. Build road-following paths using Dijkstra.
     // Return leg (c1 → si) is explicit — never omitted.
@@ -336,6 +382,18 @@ export function runTSP(
                 approximate    = true;
                 warnings.push(`Patrol ${patrol.id}: backtracking TSP found no feasible circuit - nearest neighbor fallback used.`);
             }
+        }
+
+        // Step 3.5: Path-aware sequence adjustment
+        // Move any crime node that lies as an intermediate road node on a Dijkstra path
+        // to the point of natural traversal, eliminating redundant backtracking.
+        const crimeNodeIdSet = new Set(crimeIds);
+        const { adjustedSequence, adjustedTotalDist, adjustmentsMade } =
+            adjustSequence(sequence, sId, crimeNodeIdSet, D, patrol.id);
+        if (adjustmentsMade > 0) {
+            sequence  = adjustedSequence;
+            totalDist = adjustedTotalDist;
+            log.push(`Patrol ${patrol.id}: ${adjustmentsMade} adjustment(s) — updated circuit distance: ${Math.round(adjustedTotalDist)}m`);
         }
 
         // Step 4: Build path segments for road-following rendering
