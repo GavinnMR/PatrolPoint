@@ -645,11 +645,16 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
             const cacheRate      = (result.totalDijkstraCalls > 0)
                 ? Math.round((result.totalCacheHits / result.totalDijkstraCalls) * 100) + '%'
                 : 'N/A';
-            const overlapEdges   = result.overlapEdges?.length ?? 0;
-            const routeLines     = (result.routes || []).map(r => {
-                const dist = r.circuitDistanceM != null ? Math.round(r.circuitDistanceM) + ' m' : 'N/A';
-                const seq  = (r.sequence || []).join(' → ');
-                return `  Patrol ${r.patrolId}: circuit = ${seq || '(no sequence)'}  total = ${dist}`;
+            const overlapEdges    = result.overlapEdges?.length ?? 0;
+            const approxCount     = (result.routes || []).filter(r => r.approximate).length;
+            const circuitsLabel   = approxCount > 0
+                ? `Circuits (${approxCount} approximate — nearest neighbor heuristic):`
+                : 'Optimal circuits:';
+            const routeLines      = (result.routes || []).map(r => {
+                const dist   = r.circuitDistanceM != null ? Math.round(r.circuitDistanceM) + ' m' : 'N/A';
+                const seq    = (r.sequence || []).map(n => n.nodeId ?? n).join(' → ');
+                const approx = r.approximate ? ' [approx]' : '';
+                return `  Patrol ${r.patrolId}${approx}: total = ${dist}`;
             }).join('\n');
             return [
                 hr,
@@ -660,7 +665,7 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
                 `Dijkstra calls    : ${dijkstraCalls}`,
                 `Cache hits        : ${cacheHits}  (${cacheRate} hit rate)`,
                 `Overlapping edges : ${overlapEdges}`,
-                'Optimal circuits:',
+                circuitsLabel,
                 routeLines || '  (none)',
                 hr
             ].filter(Boolean).join('\n');
@@ -705,13 +710,16 @@ function buildTraceSummary(stage, result, runtimeMs) {
                 `Runtime: ${rt}`
             ].filter(Boolean).join('\n');
 
-        case 4:
+        case 4: {
+            const approxCount = (result.routes || []).filter(r => r.approximate).length;
             return [
-                `Routes: ${result.routes?.length ?? 0} patrol circuits`,
+                `Routes: ${result.routes?.length ?? 0} patrol circuits` +
+                    (approxCount > 0 ? ` (${approxCount} approximate)` : ''),
                 `Dijkstra calls: ${result.totalDijkstraCalls ?? 'N/A'}, cache hits: ${result.totalCacheHits ?? 'N/A'}`,
                 `Overlap edges: ${result.overlapEdges?.length ?? 0}`,
                 `Runtime: ${rt}`
             ].filter(Boolean).join('\n');
+        }
 
         default:
             return `Runtime: ${rt}`;
