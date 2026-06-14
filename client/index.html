@@ -581,9 +581,15 @@
               <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed" x-text="stage.description"></p>
             </div>
 
-            <!-- Stage 1 step-by-step subparts -->
+            <!-- Run-specific narrative: data-driven sentence about THIS run -->
+            <div class="px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40" x-show="stage.narrative">
+              <p class="text-[11px] text-blue-700 dark:text-blue-300 leading-snug font-medium" x-text="stage.narrative"></p>
+            </div>
+
+            <!-- Step-by-step / per-patrol subparts -->
             <div class="px-4 py-3" x-show="stage.subparts && stage.subparts.length > 0">
-              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2">Step-by-step</div>
+              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2"
+                   x-text="stage.id === 4 ? 'Per-patrol breakdown' : 'Step-by-step'"></div>
               <div class="space-y-1.5">
                 <template x-for="(sp, idx) in (stage.subparts || [])" :key="idx">
                   <div class="flex items-start gap-2">
@@ -602,6 +608,43 @@
                     </div>
                   </div>
                 </template>
+              </div>
+            </div>
+
+            <!-- Stage 3: Zone size distribution chart -->
+            <div class="px-4 py-3" x-show="stage.id === 3 && stage.zoneChart && stage.zoneChart.length > 0">
+              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2">Zone sizes</div>
+              <template x-for="(item, i) in (stage.zoneChart || [])" :key="i">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-[9px] font-mono text-gray-400 dark:text-gray-500 w-5 text-right flex-shrink-0" x-text="item.patrolId"></span>
+                  <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-sm h-2 min-w-0">
+                    <div :style="item.size === 0 ? 'width:4px;background:#d1d5db' : ('width:' + item.pct + '%;background-color:' + item.color + ';opacity:0.8')"
+                         class="h-full rounded-sm"></div>
+                  </div>
+                  <span class="text-[9px] font-mono text-gray-500 dark:text-gray-400 w-16 text-right flex-shrink-0"
+                        x-text="item.size === 0 ? 'empty' : (item.size + (item.size === 1 ? ' crime' : ' crimes'))"></span>
+                </div>
+              </template>
+            </div>
+
+            <!-- Stage 4: Circuit distance chart -->
+            <div class="px-4 py-3" x-show="stage.id === 4 && stage.circuitChart && stage.circuitChart.length > 0">
+              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2">Circuit distances</div>
+              <template x-for="(item, i) in (stage.circuitChart || [])" :key="i">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="text-[9px] font-mono text-gray-400 dark:text-gray-500 w-5 text-right flex-shrink-0" x-text="item.patrolId"></span>
+                  <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-sm h-2 min-w-0">
+                    <div :style="item.isEmpty ? 'width:4px;background:#d1d5db' : ('width:' + item.pct + '%;background-color:' + item.color + ';opacity:' + (item.approximate ? '0.45' : '0.8'))"
+                         class="h-full rounded-sm"></div>
+                  </div>
+                  <span class="text-[9px] font-mono text-gray-500 dark:text-gray-400 w-20 text-right flex-shrink-0"
+                        x-text="item.isEmpty ? 'stationary' : (Math.round(item.distM) + 'm' + (item.approximate ? ' ~' : ''))"></span>
+                </div>
+              </template>
+              <div class="mt-1.5 flex gap-4 text-[9px] text-gray-400 dark:text-gray-500">
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-sm bg-gray-500 dark:bg-gray-400" style="opacity:0.8"></span>Exact</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-sm bg-gray-500 dark:bg-gray-400" style="opacity:0.45"></span>Approximate (~)</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-sm bg-gray-300 dark:bg-gray-600"></span>Stationary</span>
               </div>
             </div>
 
@@ -664,7 +707,7 @@
                      }"></div>
               </div>
               <p class="text-[9px] text-gray-400 dark:text-gray-500 mt-1.5 leading-snug">
-                Composite score: 60% restart consistency + 40% confirmation rate. Higher means the algorithm repeatedly agreed on the same result.
+                Composite: 50% consistency (how tightly do all restart results cluster?) + 50% confirmation rate (what fraction of restarts verified the best without improving it?). Higher = the algorithm repeatedly agreed on the same answer.
               </p>
             </div>
 

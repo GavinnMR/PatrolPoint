@@ -362,9 +362,19 @@ function handleStageComplete(data) {
             fullLog:   combinedLog,
             runtimeMs: Math.round(runtimeMs)
         };
-        // Attach stage subpart breakdowns
+        // Attach stage subpart breakdowns and supporting chart data
         if (stage === 1) stageUpdate.subparts = buildStage1Subparts(result);
-        if (stage === 3) stageUpdate.subparts = buildStage3Subparts(result);
+        if (stage === 2) stageUpdate.subparts = buildStage2Subparts(result);
+        if (stage === 3) {
+            stageUpdate.subparts  = buildStage3Subparts(result);
+            stageUpdate.zoneChart = buildZoneChart(result);
+        }
+        if (stage === 4) {
+            stageUpdate.subparts     = buildStage4Subparts(result);
+            stageUpdate.circuitChart = buildCircuitChart(result);
+        }
+        const _narrative = buildNarrative(stage, result);
+        if (_narrative) stageUpdate.narrative = _narrative;
         // Attach Stage 2 convergence data for trace panel display
         if (stage === 2) {
             stageUpdate.confidence         = _lastConfidence;             // always include — null if server didn't provide
@@ -932,6 +942,210 @@ function buildStage3Subparts(result) {
     });
 
     return subparts;
+}
+
+// ── Patrol color palette (client-side mirror of server hillClimbing.js) ───────
+const PATROL_COLORS_CLIENT = [
+    '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
+    '#1abc9c', '#e67e22', '#34495e', '#e91e63', '#00bcd4'
+];
+
+// ── Stage 2 subparts builder ───────────────────────────────────────────────────
+// Shows algorithm steps: radius computation, restart budget, convergence, best result.
+function buildStage2Subparts(result) {
+    const subparts = [];
+    const n          = result.patrols?.length ?? 0;
+    const config     = window.uiApp?.activeConfig?.hillClimbing ?? {};
+    const hullArea   = window._lastHullArea;
+    // Stage 2 result sends matrixCandidateCount (= validCandidates.length passed by pipeline)
+    const candidates = result.matrixCandidateCount ?? result.validCandidateCount ?? null;
+
+    if (n === 1) {
+        subparts.push({ name: 'Single patrol mode', status: 'ok',
+            detail: 'Placed at the most central intersection node — minimises average road distance to all other candidates' });
+        return subparts;
+    }
+
+    // Step 1: Radius R
+    if (hullArea != null && candidates != null && candidates > 0) {
+        const baseR = Math.round(Math.sqrt(hullArea / candidates) * (config.radiusMultiplier ?? 2));
+        subparts.push({ name: 'Search radius R', status: 'ok',
+            detail: `sqrt(${Math.round(hullArea)}m² ÷ ${candidates}) × ${config.radiusMultiplier ?? 2} ≈ ${baseR}m — each patrol only considers unoccupied neighbors within this radius per iteration` });
+    } else {
+        subparts.push({ name: 'Search radius R', status: 'ok',
+            detail: `Computed as sqrt(hull area / candidates) × ${config.radiusMultiplier ?? 2}` });
+    }
+
+    // Step 2: Restart budget
+    const completed = result.restartsCompleted ?? null;
+    const maxR      = (config.restarts ?? 50) * n;
+    const minR      = Math.max(5, n);
+    subparts.push({ name: 'Restart budget', status: 'ok',
+        detail: completed != null
+            ? `${completed} of max ${maxR} restarts (min ${minR}) — each begins from a new random patrol configuration`
+            : `Min ${minR} restarts, max ${maxR} (${config.restarts ?? 50} × n)` });
+
+    // Step 3: Convergence / early stopping
+    const convRestart = result.convergenceRestart ?? null;
+    if (convRestart != null && completed != null) {
+        const confirmed = completed - convRestart;
+        if (confirmed > 0) {
+            subparts.push({ name: 'Early convergence', status: 'ok',
+                detail: `Best found at restart #${convRestart} — confirmed ${confirmed}× more without improvement, adaptive stop triggered` });
+        } else {
+            subparts.push({ name: 'No early stop', status: 'warn',
+                detail: `Still improving at restart #${completed} — increase the restart budget in Settings for higher confidence` });
+        }
+    }
+
+    // Step 4: Best result selected
+    const bestDist = result.bestMinPairwiseDist != null ? Math.round(result.bestMinPairwiseDist) : null;
+    subparts.push({ name: 'Best result (S★)', status: 'ok',
+        detail: `Min pairwise distance: ${bestDist != null ? bestDist + 'm' : 'N/A'} — the shortest gap between any two patrols, maximized across all restarts` });
+
+    return subparts;
+}
+
+// ── Stage 4 subparts builder ───────────────────────────────────────────────────
+// One subpart per patrol: shows zone size, algorithm chosen, and circuit distance.
+function buildStage4Subparts(result) {
+    const subparts = [];
+    const routes    = result.routes || [];
+    const threshold = window.uiApp?.activeConfig?.tsp?.nearestNeighborFallbackThreshold ?? 12;
+
+    for (const r of routes) {
+        if (r.isEmpty) {
+            subparts.push({ name: `Patrol ${r.patrolId}: empty zone`, status: 'skip',
+                detail: 'No incidents assigned — patrol remains stationary at deployment position' });
+            continue;
+        }
+        if (r.isSingleNode) {
+            subparts.push({ name: `Patrol ${r.patrolId}: 1 incident`, status: 'ok',
+                detail: `Direct out-and-back visit (${r.patrolId} → crime node → ${r.patrolId}) — ${Math.round(r.circuitDistanceM)}m circuit` });
+            continue;
+        }
+        // Multi-node: k = sequence length - 2 (sequence includes patrol start and end)
+        const k   = r.sequence ? Math.max(r.sequence.length - 2, 0) : '?';
+        let detail = '';
+        if (r.algorithmUsed === 'backtracking') {
+            const fact = typeof k === 'number' ? _factorial(k) : null;
+            detail = fact != null
+                ? `backtracking (exact): evaluated all ${fact.toLocaleString()} orderings (${k}!) → optimal ${Math.round(r.circuitDistanceM)}m circuit`
+                : `backtracking (exact) — ${k} waypoints → ${Math.round(r.circuitDistanceM)}m circuit`;
+        } else if (r.algorithmUsed === 'nearest-neighbor') {
+            detail = `nearest-neighbor heuristic (k=${k} > threshold ${threshold}) — approximate, not guaranteed optimal → ~${Math.round(r.circuitDistanceM)}m circuit`;
+        } else if (r.algorithmUsed === 'k2-shortcut') {
+            detail = `k=2 shortcut: both orderings produce identical distance on undirected graph → ${Math.round(r.circuitDistanceM)}m circuit`;
+        } else {
+            detail = `${r.algorithmUsed ?? 'unknown'} → ${Math.round(r.circuitDistanceM)}m circuit`;
+        }
+        if (r.sequenceAdjustmentsMade > 0) {
+            detail += `, ${r.sequenceAdjustmentsMade} in-path sequence adjustment${r.sequenceAdjustmentsMade !== 1 ? 's' : ''}`;
+        }
+        subparts.push({
+            name:   `Patrol ${r.patrolId}: ${k} incident${k !== 1 ? 's' : ''}`,
+            status: r.approximate ? 'warn' : 'ok',
+            detail
+        });
+    }
+
+    return subparts;
+}
+
+function _factorial(n) {
+    if (typeof n !== 'number' || n < 0 || n > 12) return null;
+    let f = 1;
+    for (let i = 2; i <= n; i++) f *= i;
+    return f;
+}
+
+// ── Zone distribution chart builder ───────────────────────────────────────────
+// Returns { patrolId, size, pct, color } per patrol zone for Stage 3 bar chart.
+function buildZoneChart(result) {
+    const zones   = result.zones || [];
+    const sizes   = zones.map(z => z?.length ?? 0);
+    const maxSize = Math.max(...sizes, 1);
+    return zones.map((z, i) => ({
+        patrolId: `s${i + 1}`,
+        size:     z?.length ?? 0,
+        pct:      Math.round(((z?.length ?? 0) / maxSize) * 100),
+        color:    PATROL_COLORS_CLIENT[i % PATROL_COLORS_CLIENT.length]
+    }));
+}
+
+// ── Circuit distance chart builder ────────────────────────────────────────────
+// Returns { patrolId, distM, pct, approximate, isEmpty, color } per patrol for Stage 4 bar chart.
+function buildCircuitChart(result) {
+    const routes  = result.routes || [];
+    const maxDist = Math.max(...routes.map(r => r.circuitDistanceM ?? 0), 1);
+    return routes.map(r => ({
+        patrolId:    r.patrolId,
+        distM:       r.circuitDistanceM ?? 0,
+        pct:         Math.round(((r.circuitDistanceM ?? 0) / maxDist) * 100),
+        approximate: r.approximate,
+        isEmpty:     r.isEmpty,
+        color:       PATROL_COLORS_CLIENT[(r.patrolIndex ?? 0) % PATROL_COLORS_CLIENT.length]
+    }));
+}
+
+// ── Run-specific narrative builder ────────────────────────────────────────────
+// One concise sentence per stage describing what THIS run did — complements the
+// static algorithm notes with data-driven context for demos and discussion.
+function buildNarrative(stage, result) {
+    switch (stage) {
+        case 1: {
+            if (result.skipped) return 'Hull unchanged from previous run — all new incidents fall within the existing danger zone.';
+            const n          = result.filteredCount ?? 0;
+            const pairs      = n > 1 ? (n * (n - 1)).toLocaleString() : '0';
+            const vertices   = result.hull?.length ?? 0;
+            const candidates = result.validCandidateCount ?? 0;
+            if (result.linearHandlerTriggered) {
+                return `All ${n} incident${n !== 1 ? 's' : ''} are collinear — no 2D polygon possible. Patrols placed along the incident line instead.`;
+            }
+            return `With ${n} incident${n !== 1 ? 's' : ''}, the algorithm tested ${pairs} directed edge pairs (${n}×${n > 0 ? n - 1 : 0}) and produced a ${vertices}-vertex danger zone containing ${candidates} road intersections eligible for patrol placement.`;
+        }
+        case 2: {
+            const n           = result.patrols?.length ?? 0;
+            const best        = result.bestMinPairwiseDist != null ? Math.round(result.bestMinPairwiseDist) : null;
+            const convRestart = result.convergenceRestart ?? null;
+            const completed   = result.restartsCompleted  ?? null;
+            const confidence  = result.confidence != null ? Math.round(result.confidence) : null;
+            if (n === 1) return 'Single patrol placed at the most central road intersection — minimises average distance to all candidates.';
+            let s = `${n} patrol${n !== 1 ? 's' : ''} placed with ${best != null ? best + 'm' : 'N/A'} minimum separation`;
+            if (convRestart != null && completed != null) {
+                const confirmed = completed - convRestart;
+                s += `; best found at restart #${convRestart}${confirmed > 0 ? `, confirmed ${confirmed}× more` : ''}`;
+            }
+            if (confidence != null) s += `. Confidence: ${confidence}%.`;
+            return s;
+        }
+        case 3: {
+            const n       = result.zones?.length  ?? 0;
+            const covered = (result.zones || []).reduce((s, z) => s + (z?.length ?? 0), 0);
+            const calls   = result.dijkstraCalls     ?? 0;
+            const hits    = result.dijkstraCacheHits ?? 0;
+            const empty   = result.emptyZones?.length ?? 0;
+            let s = `${covered} incident${covered !== 1 ? 's' : ''} assigned across ${n} zone${n !== 1 ? 's' : ''} using road-network Dijkstra (${calls} run${calls !== 1 ? 's' : ''}, ${hits} cache hit${hits !== 1 ? 's' : ''})`;
+            if (empty > 0) s += `; ${empty} patrol${empty !== 1 ? 's' : ''} have empty zones and remain stationary`;
+            return s + '.';
+        }
+        case 4: {
+            const routes      = result.routes || [];
+            const active      = routes.filter(r => !r.isEmpty);
+            const totalDist   = active.reduce((s, r) => s + (r.circuitDistanceM ?? 0), 0);
+            const approx      = routes.filter(r => r.approximate).length;
+            const hits        = result.totalCacheHits     ?? 0;
+            const calls       = result.totalDijkstraCalls ?? 0;
+            const totalLookups = hits + calls;
+            const hitRate     = totalLookups > 0 ? Math.round((hits / totalLookups) * 100) : 0;
+            let s = `${active.length} active circuit${active.length !== 1 ? 's' : ''} totalling ${Math.round(totalDist)}m`;
+            if (approx > 0) s += ` (${approx} approximate via nearest-neighbor)`;
+            if (totalLookups > 0) s += `; Dijkstra cache: ${hitRate}% hit rate (${hits} of ${totalLookups} lookups)`;
+            return s + '.';
+        }
+        default:
+            return '';
+    }
 }
 
 // ── Trace metrics builder ──────────────────────────────────────────────────────
