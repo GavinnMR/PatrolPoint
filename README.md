@@ -1,6 +1,7 @@
 # PatrolPoint
 
 **Live demo:** https://patrolpoint-v2.onrender.com
+**Technical documentation:** [TECHNICAL_DOCUMENTATION.md](./TECHNICAL_DOCUMENTATION.md)
 
 A full-stack patrol deployment optimizer for Philippine barangays. Plot crime incident coordinates on a map, set the number of patrol units, and the system computes an optimal danger zone boundary, spreads patrols across it with maximum separation, assigns each incident to the nearest patrol by road distance, and generates closed-loop roaming circuits that follow actual road paths.
 
