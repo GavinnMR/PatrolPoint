@@ -469,12 +469,13 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         const incidentsForVerification = incidents.filter((_, i) => !outlierIndices.has(i));
         verificationReport = verifyAll({
             hull,
-            incidents: incidentsForVerification,
+            incidents:          incidentsForVerification,
             patrols,
             validCandidates,
             zones,
-            routes: routes || [],
-            dijkstraCache
+            routes:             routes || [],
+            dijkstraCache,
+            excludedCrimeNodes: s3Data.excludedCrimeNodes || []
         });
     } catch (err) {
         console.error('Verifier error (non-fatal):', err.message);

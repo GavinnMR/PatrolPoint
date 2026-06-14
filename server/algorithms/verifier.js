@@ -116,10 +116,12 @@ export function verifyPatrolPositions(patrols, hull, validCandidates) {
 
 // ── verifyZoneAssignment ──────────────────────────────────────────────────────
 // Check: every crime node in exactly one zone (no duplicates across zones, no node in multiple).
+// Check: every non-outlier incident is accounted for — either in a zone or in excludedCrimeNodes
+//   (snapping failure or zone cap). A node missing from both indicates a silent Stage 3 drop.
 // Check: each crime node is assigned to the nearest patrol by road network distance.
-// allCrimeNodes: the full list of crime nodes that should have been assigned
-//   (excludes nodes explicitly excluded by snapping failure or zone cap — those are not in zones).
-export function verifyZoneAssignment(zones, patrols, allCrimeNodes, dijkstraCache) {
+// allCrimeNodes: non-outlier incidents (with crimeId) — the full reference list
+// excludedCrimeNodes: nodes Stage 3 intentionally excluded (snapping failure or zone cap)
+export function verifyZoneAssignment(zones, patrols, allCrimeNodes, excludedCrimeNodes, dijkstraCache) {
     if (!zones || zones.length === 0) {
         return { pass: true, message: 'No zones to verify.' };
     }
@@ -138,12 +140,14 @@ export function verifyZoneAssignment(zones, patrols, allCrimeNodes, dijkstraCach
         }
     }
 
-    // Check no allCrimeNode is missing from zones (every assigned node is accounted for)
+    // Check every incident is accounted for: in a zone or intentionally excluded by Stage 3.
+    // A node absent from both indicates a silent drop in snapping or rebalancing logic.
+    const excludedIds = new Set((excludedCrimeNodes || []).map(n => n.crimeId));
     for (const crime of (allCrimeNodes || [])) {
-        if (crimeIdToZone[crime.crimeId] === undefined) {
+        if (crimeIdToZone[crime.crimeId] === undefined && !excludedIds.has(crime.crimeId)) {
             return {
                 pass:    false,
-                message: `Crime node ${crime.crimeId} is not assigned to any zone.`
+                message: `Crime node ${crime.crimeId} was neither assigned to a zone nor recorded as excluded — silent drop in Stage 3.`
             };
         }
     }
@@ -286,13 +290,14 @@ export function verifyTSPRoute(route, dijkstraCache, k) {
 // Orchestrates all four verifications. Run after pipeline_complete.
 //
 // pipelineResult: {
-//   hull:            [{lat, lng}] — Stage 1 output
-//   incidents:       [{lat, lng}] — non-outlier incidents used for hull computation
-//   patrols:         [{id, nodeId, lat, lng, color}] — Stage 2 output
-//   validCandidates: [{id, lat, lng}] — Stage 1 output
-//   zones:           Array<Array<crimeNodeObj>> — Stage 3 output
-//   routes:          [routeObj] — Stage 4 output (may be empty in stationary mode)
-//   dijkstraCache:   { [sourceId]: { distances, parents } } — accumulated across Stages 3 and 4
+//   hull:                [{lat, lng}] — Stage 1 output
+//   incidents:           [{crimeId, lat, lng}] — non-outlier incidents used for hull computation
+//   patrols:             [{id, nodeId, lat, lng, color}] — Stage 2 output
+//   validCandidates:     [{id, lat, lng}] — Stage 1 output
+//   zones:               Array<Array<crimeNodeObj>> — Stage 3 output
+//   routes:              [routeObj] — Stage 4 output (may be empty in stationary mode)
+//   dijkstraCache:       { [sourceId]: { distances, parents } } — accumulated across Stages 3 and 4
+//   excludedCrimeNodes:  [{crimeId, ...}] — nodes Stage 3 excluded (snapping failure or zone cap)
 // }
 //
 // Returns:
@@ -312,7 +317,8 @@ export function verifyAll(pipelineResult) {
         validCandidates,
         zones,
         routes,
-        dijkstraCache
+        dijkstraCache,
+        excludedCrimeNodes
     } = pipelineResult;
 
     // Convex hull: all incidents inside hull
@@ -323,11 +329,11 @@ export function verifyAll(pipelineResult) {
         patrols || [], hull, validCandidates || []
     );
 
-    // Zone assignment: no duplicates, correct assignments
-    // allCrimeNodes = union of all zones (nodes that were actually assigned)
-    const allZonedCrimeNodes = zones ? zones.flat() : [];
+    // Zone assignment: no duplicates, no silent drops, correct assignments.
+    // Pass incidents (non-outlier, has crimeId) as the reference list so the missing-node
+    // check compares against every node that entered Stage 3, not just what came out.
     const zoneAssignmentResult = verifyZoneAssignment(
-        zones || [], patrols || [], allZonedCrimeNodes, dijkstraCache || {}
+        zones || [], patrols || [], incidents || [], excludedCrimeNodes || [], dijkstraCache || {}
     );
 
     // TSP routes: one per patrol (empty zones get a trivial pass)
