@@ -194,8 +194,8 @@ function initMap(ui) {
         if (!m) return;
         _patrolInfoControl?.hide();
         clearPatrolHighlight();
+        map.once('moveend', () => m.openPopup());
         map.panTo(m.getLatLng(), { animate: true, duration: 0.3 });
-        m.openPopup();
     };
 
     // Load Commonwealth boundary from bundled data file and render darkening mask
@@ -559,7 +559,7 @@ function plotCrimeMarker(point) {
         title: crimeId
     }).addTo(map);
 
-    marker.bindPopup(_buildCrimePopupHtml(crimeId), {
+    marker.bindPopup(() => _buildCrimePopupHtml(crimeId), {
         closeButton: false,
         className:   'crime-popup-wrapper',
         maxWidth:    260,
