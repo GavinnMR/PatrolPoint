@@ -658,7 +658,7 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
             const overlapEdges    = result.overlapEdges?.length ?? 0;
             const approxCount     = (result.routes || []).filter(r => r.approximate).length;
             const circuitsLabel   = approxCount > 0
-                ? `Circuits (${approxCount} approximate — nearest neighbor heuristic):`
+                ? `Circuits (${approxCount} approximate - nearest neighbor heuristic):`
                 : 'Optimal circuits:';
             const routeLines      = (result.routes || []).map(r => {
                 const dist   = r.circuitDistanceM != null ? Math.round(r.circuitDistanceM) + ' m' : 'N/A';
@@ -755,11 +755,11 @@ function buildStage1Subparts(result) {
     // Step 0 — Incremental cache check
     if (result.skipped) {
         subparts.push({ name: 'Incremental cache', status: 'skip',
-            detail: 'Hull reused from previous run — all new incidents inside previous danger zone' });
+            detail: 'Hull reused from previous run - all new incidents inside previous danger zone' });
         return subparts;
     }
     subparts.push({ name: 'Incremental cache', status: 'ok',
-        detail: 'No reusable hull — full computation required' });
+        detail: 'No reusable hull - full computation required' });
 
     // Step 1 — Outlier detection
     const outliers  = result.outlierCount ?? 0;
@@ -767,30 +767,30 @@ function buildStage1Subparts(result) {
     const total     = remaining + outliers;
     if (outliers > 0) {
         subparts.push({ name: 'Outlier detection', status: 'warn',
-            detail: `${outliers} of ${total} incident${total !== 1 ? 's' : ''} flagged — ${remaining} remaining` });
+            detail: `${outliers} of ${total} incident${total !== 1 ? 's' : ''} flagged - ${remaining} remaining` });
     } else {
         subparts.push({ name: 'Outlier detection', status: 'ok',
-            detail: `No outliers — all ${remaining} incident${remaining !== 1 ? 's' : ''} retained` });
+            detail: `No outliers - all ${remaining} incident${remaining !== 1 ? 's' : ''} retained` });
     }
 
     // Step 2 — Minimum points check
     const reason = result.linearHandlerReason;
     if (reason === 'two_points') {
         subparts.push({ name: 'Minimum points', status: 'warn',
-            detail: `Only ${remaining} incident${remaining !== 1 ? 's' : ''} after outlier removal — need 3+ for a polygon, linear handler triggered` });
+            detail: `Only ${remaining} incident${remaining !== 1 ? 's' : ''} after outlier removal - need 3+ for a polygon, linear handler triggered` });
         return subparts;
     }
     subparts.push({ name: 'Minimum points', status: 'ok',
-        detail: `${remaining} incident${remaining !== 1 ? 's' : ''} — hull computable` });
+        detail: `${remaining} incident${remaining !== 1 ? 's' : ''} - hull computable` });
 
     // Step 3 — Collinearity check
     if (reason === 'collinear') {
         subparts.push({ name: 'Collinearity check', status: 'warn',
-            detail: 'All incidents lie on one line — no 2D polygon possible, linear handler triggered' });
+            detail: 'All incidents lie on one line - no 2D polygon possible, linear handler triggered' });
         return subparts;
     }
     subparts.push({ name: 'Collinearity check', status: 'ok',
-        detail: 'Non-collinear — 2D convex hull computable' });
+        detail: 'Non-collinear - 2D convex hull computable' });
 
     // Step 4 — Brute force O(n³)
     const edges = result.validEdgesCount;
@@ -802,12 +802,12 @@ function buildStage1Subparts(result) {
     // Step 5 — Edge count validation
     if (reason === 'few_edges') {
         subparts.push({ name: 'Edge count check', status: 'warn',
-            detail: `${edges ?? 0} valid edge${(edges ?? 0) !== 1 ? 's' : ''} — fewer than 3 required for polygon, linear handler triggered` });
+            detail: `${edges ?? 0} valid edge${(edges ?? 0) !== 1 ? 's' : ''} - fewer than 3 required for polygon, linear handler triggered` });
         return subparts;
     }
     if (edges != null) {
         subparts.push({ name: 'Edge count check', status: 'ok',
-            detail: `${edges} edge${edges !== 1 ? 's' : ''} — sufficient for a polygon` });
+            detail: `${edges} edge${edges !== 1 ? 's' : ''} - sufficient for a polygon` });
     }
 
     // Step 6 — Edge ordering
@@ -822,8 +822,8 @@ function buildStage1Subparts(result) {
         const areaM2  = Math.round(result.hullArea).toLocaleString();
         const areaKm2 = (result.hullArea / 1e6).toFixed(4);
         let windingNote = '';
-        if      (result.windingReversed === true)  windingNote = ' — winding reversed to CCW';
-        else if (result.windingReversed === false)  windingNote = ' — winding already CCW';
+        if      (result.windingReversed === true)  windingNote = ' - winding reversed to CCW';
+        else if (result.windingReversed === false)  windingNote = ' - winding already CCW';
         subparts.push({ name: 'Shoelace + winding', status: 'ok',
             detail: `~${areaM2} m² (~${areaKm2} km²)${windingNote}` });
     }
@@ -842,7 +842,7 @@ function buildStage1Subparts(result) {
                         `(${rc.bboxRejected.toLocaleString()} bbox-rejected, ${rc.rayCastRejected.toLocaleString()} ray-cast-rejected)` });
         } else {
             subparts.push({ name: 'Ray cast filter', status: 'skip',
-                detail: `Hull-candidate cache reused — ${(result.validCandidateCount ?? 0).toLocaleString()} candidates` });
+                detail: `Hull-candidate cache reused - ${(result.validCandidateCount ?? 0).toLocaleString()} candidates` });
         }
     }
 
@@ -861,7 +861,7 @@ function buildStage3Subparts(result) {
         name:   'Crime node snapping',
         status: excluded > 0 ? 'warn' : 'ok',
         detail: excluded > 0
-            ? `${snapped} of ${total} snapped to road nodes — ${excluded} excluded (no reachable intersection)`
+            ? `${snapped} of ${total} snapped to road nodes - ${excluded} excluded (no reachable intersection)`
             : `All ${snapped} crime node${snapped !== 1 ? 's' : ''} snapped to nearest road node`
     });
 
@@ -872,7 +872,7 @@ function buildStage3Subparts(result) {
         name:   'Deduplication',
         status: merged > 0 ? 'warn' : 'ok',
         detail: merged > 0
-            ? `${merged} duplicate${merged !== 1 ? 's' : ''} merged — ${unique} unique position${unique !== 1 ? 's' : ''} remaining`
+            ? `${merged} duplicate${merged !== 1 ? 's' : ''} merged - ${unique} unique position${unique !== 1 ? 's' : ''} remaining`
             : 'No duplicate snapping positions'
     });
 
@@ -884,7 +884,7 @@ function buildStage3Subparts(result) {
         name:   'Road distance (Dijkstra)',
         status: 'ok',
         detail: total3 > 0
-            ? `${total3} source${total3 !== 1 ? 's' : ''} — ${calls} computed, ${hits} cache hit${hits !== 1 ? 's' : ''}`
+            ? `${total3} source${total3 !== 1 ? 's' : ''} - ${calls} computed, ${hits} cache hit${hits !== 1 ? 's' : ''}`
             : 'No Dijkstra runs needed'
     });
 
@@ -907,7 +907,7 @@ function buildStage3Subparts(result) {
         status: 'ok',
         detail: iters > 0
             ? `${iters} iteration${iters !== 1 ? 's' : ''} (${mode} mode)`
-            : `Balanced — no rebalancing needed (${mode} mode)`
+            : `Balanced - no rebalancing needed (${mode} mode)`
     });
 
     // Step 6 — Zone cap
@@ -917,7 +917,7 @@ function buildStage3Subparts(result) {
         name:   'Zone cap',
         status: capped > 0 ? 'warn' : 'ok',
         detail: capped > 0
-            ? `${capped} zone${capped !== 1 ? 's' : ''} capped at ${maxN} nodes — excess excluded`
+            ? `${capped} zone${capped !== 1 ? 's' : ''} capped at ${maxN} nodes - excess excluded`
             : `No zones exceeded the ${maxN}-node cap`
     });
 
@@ -956,7 +956,7 @@ function buildStage2Subparts(result) {
 
     if (n === 1) {
         subparts.push({ name: 'Single patrol mode', status: 'ok',
-            detail: 'Placed at the most central intersection node — minimises average road distance to all other candidates' });
+            detail: 'Placed at the most central intersection node - minimises average road distance to all other candidates' });
         return subparts;
     }
 
@@ -964,7 +964,7 @@ function buildStage2Subparts(result) {
     if (hullArea != null && candidates != null && candidates > 0) {
         const baseR = Math.round(Math.sqrt(hullArea / candidates) * (config.radiusMultiplier ?? 2));
         subparts.push({ name: 'Search radius R', status: 'ok',
-            detail: `sqrt(${Math.round(hullArea)}m² ÷ ${candidates}) × ${config.radiusMultiplier ?? 2} ≈ ${baseR}m — each patrol only considers unoccupied neighbors within this radius per iteration` });
+            detail: `sqrt(${Math.round(hullArea)}m² ÷ ${candidates}) × ${config.radiusMultiplier ?? 2} ≈ ${baseR}m - each patrol only considers unoccupied neighbors within this radius per iteration` });
     } else {
         subparts.push({ name: 'Search radius R', status: 'ok',
             detail: `Computed as sqrt(hull area / candidates) × ${config.radiusMultiplier ?? 2}` });
@@ -976,7 +976,7 @@ function buildStage2Subparts(result) {
     const minR      = Math.max(5, n);
     subparts.push({ name: 'Restart budget', status: 'ok',
         detail: completed != null
-            ? `${completed} of max ${maxR} restarts (min ${minR}) — each begins from a new random patrol configuration`
+            ? `${completed} of max ${maxR} restarts (min ${minR}) - each begins from a new random patrol configuration`
             : `Min ${minR} restarts, max ${maxR} (${config.restarts ?? 100} × n)` });
 
     // Step 3: Convergence / early stopping
@@ -985,17 +985,17 @@ function buildStage2Subparts(result) {
         const confirmed = completed - convRestart;
         if (confirmed > 0) {
             subparts.push({ name: 'Early convergence', status: 'ok',
-                detail: `Best found at restart #${convRestart} — confirmed ${confirmed}× more without improvement, adaptive stop triggered` });
+                detail: `Best found at restart #${convRestart} - confirmed ${confirmed}x more without improvement, adaptive stop triggered` });
         } else {
             subparts.push({ name: 'No early stop', status: 'warn',
-                detail: `Still improving at restart #${completed} — increase the restart budget in Settings for higher confidence` });
+                detail: `Still improving at restart #${completed} - increase the restart budget in Settings for higher confidence` });
         }
     }
 
     // Step 4: Best result selected
     const bestDist = result.bestMinPairwiseDist != null ? Math.round(result.bestMinPairwiseDist) : null;
     subparts.push({ name: 'Best result (S★)', status: 'ok',
-        detail: `Min pairwise distance: ${bestDist != null ? bestDist + 'm' : 'N/A'} — the shortest gap between any two patrols, maximized across all restarts` });
+        detail: `Min pairwise distance: ${bestDist != null ? bestDist + 'm' : 'N/A'} - the shortest gap between any two patrols, maximized across all restarts` });
 
     return subparts;
 }
@@ -1010,12 +1010,12 @@ function buildStage4Subparts(result) {
     for (const r of routes) {
         if (r.isEmpty) {
             subparts.push({ name: `Patrol ${r.patrolId}: empty zone`, status: 'skip',
-                detail: 'No incidents assigned — patrol remains stationary at deployment position' });
+                detail: 'No incidents assigned - patrol remains stationary at deployment position' });
             continue;
         }
         if (r.isSingleNode) {
             subparts.push({ name: `Patrol ${r.patrolId}: 1 incident`, status: 'ok',
-                detail: `Direct out-and-back visit (${r.patrolId} → crime node → ${r.patrolId}) — ${Math.round(r.circuitDistanceM)}m circuit` });
+                detail: `Direct out-and-back visit (${r.patrolId} -> crime node -> ${r.patrolId}): ${Math.round(r.circuitDistanceM)}m circuit` });
             continue;
         }
         // Multi-node: k = sequence length - 2 (sequence includes patrol start and end)
@@ -1025,9 +1025,9 @@ function buildStage4Subparts(result) {
             const fact = typeof k === 'number' ? _factorial(k) : null;
             detail = fact != null
                 ? `backtracking (exact): evaluated all ${fact.toLocaleString()} orderings (${k}!) → optimal ${Math.round(r.circuitDistanceM)}m circuit`
-                : `backtracking (exact) — ${k} waypoints → ${Math.round(r.circuitDistanceM)}m circuit`;
+                : `backtracking (exact) - ${k} waypoints -> ${Math.round(r.circuitDistanceM)}m circuit`;
         } else if (r.algorithmUsed === 'nearest-neighbor') {
-            detail = `nearest-neighbor heuristic (k=${k} > threshold ${threshold}) — approximate, not guaranteed optimal → ~${Math.round(r.circuitDistanceM)}m circuit`;
+            detail = `nearest-neighbor heuristic (k=${k} > threshold ${threshold}) - approximate, not guaranteed optimal -> ~${Math.round(r.circuitDistanceM)}m circuit`;
         } else if (r.algorithmUsed === 'k2-shortcut') {
             detail = `k=2 shortcut: both orderings produce identical distance on undirected graph → ${Math.round(r.circuitDistanceM)}m circuit`;
         } else {
@@ -1088,13 +1088,13 @@ function buildCircuitChart(result) {
 function buildNarrative(stage, result) {
     switch (stage) {
         case 1: {
-            if (result.skipped) return 'Hull unchanged from previous run — all new incidents fall within the existing danger zone.';
+            if (result.skipped) return 'Hull unchanged from previous run - all new incidents fall within the existing danger zone.';
             const n          = result.filteredCount ?? 0;
             const pairs      = n > 1 ? (n * (n - 1)).toLocaleString() : '0';
             const vertices   = result.hull?.length ?? 0;
             const candidates = result.validCandidateCount ?? 0;
             if (result.linearHandlerTriggered) {
-                return `All ${n} incident${n !== 1 ? 's' : ''} are collinear — no 2D polygon possible. Patrols placed along the incident line instead.`;
+                return `All ${n} incident${n !== 1 ? 's' : ''} are collinear - no 2D polygon possible. Patrols placed along the incident line instead.`;
             }
             return `With ${n} incident${n !== 1 ? 's' : ''}, the algorithm tested ${pairs} directed edge pairs (${n}×${n > 0 ? n - 1 : 0}) and produced a ${vertices}-vertex danger zone containing ${candidates} road intersections eligible for patrol placement.`;
         }
@@ -1104,7 +1104,7 @@ function buildNarrative(stage, result) {
             const convRestart = result.convergenceRestart ?? null;
             const completed   = result.restartsCompleted  ?? null;
             const confidence  = result.confidence != null ? Math.round(result.confidence) : null;
-            if (n === 1) return 'Single patrol placed at the most central road intersection — minimises average distance to all candidates.';
+            if (n === 1) return 'Single patrol placed at the most central road intersection - minimises average distance to all candidates.';
             let s = `${n} patrol${n !== 1 ? 's' : ''} placed with ${best != null ? best + 'm' : 'N/A'} minimum separation`;
             if (convRestart != null && completed != null) {
                 const confirmed = completed - convRestart;
@@ -1160,7 +1160,7 @@ function buildTraceMetrics(stage, result) {
                 {
                     label:   'Area (approx.)',
                     value:   result.hullArea != null ? '~' + (result.hullArea / 1e6).toFixed(3) + ' km²' : 'N/A',
-                    tooltip: 'Approximate area enclosed by the danger zone polygon. Computed using the Shoelace formula with a flat-plane projection — accurate to under 1% at barangay scale, not a geodetic measurement.'
+                    tooltip: 'Approximate area enclosed by the danger zone polygon. Computed using the Shoelace formula with a flat-plane projection - accurate to under 1% at barangay scale, not a geodetic measurement.'
                 },
                 {
                     label:   'Candidate nodes',
@@ -1276,7 +1276,7 @@ function buildTraceMetrics(stage, result) {
                     label:   'Zone balance',
                     value:   balanceValue,
                     warn:    balanceWarn,
-                    tooltip: 'How evenly incidents are spread across patrols. "Optimal" means every patrol is within one incident of the ideal equal split — the best mathematically possible. A percentage shows how far the distribution is from equal, using average deviation across all patrols (not just the best and worst).'
+                    tooltip: 'How evenly incidents are spread across patrols. "Optimal" means every patrol is within one incident of the ideal equal split - the best mathematically possible. A percentage shows how far the distribution is from equal, using average deviation across all patrols (not just the best and worst).'
                 },
                 {
                     label:   'Patrol zones',

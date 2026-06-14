@@ -488,9 +488,9 @@ function _crimeStatusLabel(status) {
 function _crimeStatusDetail(status) {
     return {
         active:      'Assigned to patrol zone',
-        outlier:     'Filtered — outside danger zone boundary',
-        excluded:    'Excluded — zone crime cap exceeded',
-        unreachable: 'Unreachable — no road network path found'
+        outlier:     'Filtered - outside danger zone boundary',
+        excluded:    'Excluded - zone crime cap exceeded',
+        unreachable: 'Unreachable - no road network path found'
     }[status] || 'Assigned to patrol zone';
 }
 
@@ -584,7 +584,7 @@ function plotCrimeMarker(point) {
             !pointInHull(nLat, nLng, window.currentHull)) {
             marker.setLatLng([savedLat, savedLng]);
             const ui = window.uiApp;
-            if (ui) ui.showBanner('Crime node moved outside danger zone — snapped back.', 'warning');
+            if (ui) ui.showBanner('Crime node moved outside danger zone - snapped back.', 'warning');
             return;
         }
         const ui = window.uiApp;
@@ -1026,7 +1026,7 @@ function renderNearestHighlights(nodes) {
             fillOpacity: 0.8, weight: 2, interactive: true
         })
         .bindTooltip(
-            'Nearest available road intersection — plot incident coordinates near here',
+            'Nearest available road intersection - plot incident coordinates near here',
             { permanent: false, direction: 'top' }
         )
         .addTo(map);

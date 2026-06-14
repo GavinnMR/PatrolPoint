@@ -18,20 +18,20 @@ function _haversine(lat1, lng1, lat2, lng2) {
 // Algorithm descriptions shown in the trace panel — educational, not data-driven.
 const STAGE_INFO = {
     1: {
-        description: 'Finds the smallest convex polygon enclosing all plotted crime incidents. This polygon defines the operational danger zone — all patrols and routes are constrained within it.',
-        algorithmNote: 'O(n³): for each of the n×(n−1) directed point pairs (A→B), the algorithm checks whether all remaining points lie to the left of that line — if yes, A→B is a valid hull edge. Valid edges are chained into the polygon. Small n (rarely exceeding 30 incidents) makes the cubic cost negligible. The hull also bounds the search space: only road intersection nodes inside the polygon are eligible for patrol placement.'
+        description: 'Finds the smallest convex polygon enclosing all plotted crime incidents. This polygon defines the operational danger zone - all patrols and routes are constrained within it.',
+        algorithmNote: 'O(n³): for each of the n×(n−1) directed point pairs (A→B), the algorithm checks whether all remaining points lie to the left of that line - if yes, A→B is a valid hull edge. Valid edges are chained into the polygon. Small n (rarely exceeding 30 incidents) makes the cubic cost negligible. The hull also bounds the search space: only road intersection nodes inside the polygon are eligible for patrol placement.'
     },
     2: {
         description: 'Places n patrol units at road intersection nodes inside the danger zone, maximizing the minimum pairwise distance between any two patrols.',
-        algorithmNote: 'Objective: maximize the worst-case gap — the minimum distance between any two patrols. A larger minimum gap means better territory coverage with less overlap. Each patrol moves to the neighbor intersection within radius R that most improves this objective. Multiple random restarts escape local optima; adaptive early stopping halts when the last few restarts agree. The best configuration across all restarts is S★.'
+        algorithmNote: 'Objective: maximize the worst-case gap - the minimum distance between any two patrols. A larger minimum gap means better territory coverage with less overlap. Each patrol moves to the neighbor intersection within radius R that most improves this objective. Multiple random restarts escape local optima; adaptive early stopping halts when the last few restarts agree. The best configuration across all restarts is S★.'
     },
     3: {
         description: 'Assigns each crime incident to its nearest patrol using shortest road-network distance, forming n distinct patrol responsibility zones.',
-        algorithmNote: 'Road distance, not straight-line distance, determines assignment — two map-adjacent points can be far apart by road if separated by a wall or block. Dijkstra runs once per unique crime node position and returns distances to all graph nodes simultaneously, so m incidents require only m Dijkstra calls total. The result is a set of Voronoi-like zones partitioned by road reachability.'
+        algorithmNote: 'Road distance, not straight-line distance, determines assignment - two map-adjacent points can be far apart by road if separated by a wall or block. Dijkstra runs once per unique crime node position and returns distances to all graph nodes simultaneously, so m incidents require only m Dijkstra calls total. The result is a set of Voronoi-like zones partitioned by road reachability.'
     },
     4: {
-        description: 'Computes the optimal closed-loop visiting circuit for each patrol through its assigned incidents. Routes follow actual road edges — never straight lines through buildings.',
-        algorithmNote: 'For k waypoints, the optimal visiting order requires evaluating k! permutations. Branch-and-bound pruning discards any partial route whose accumulated cost already exceeds the current best complete circuit — dramatically narrowing the search. For k > 12, the nearest-neighbor heuristic (O(k²)) is used instead. Dijkstra paths between waypoints are cached — each pair is computed once and reused across all patrol zones in the same run.'
+        description: 'Computes the optimal closed-loop visiting circuit for each patrol through its assigned incidents. Routes follow actual road edges - never straight lines through buildings.',
+        algorithmNote: 'For k waypoints, the optimal visiting order requires evaluating k! permutations. Branch-and-bound pruning discards any partial route whose accumulated cost already exceeds the current best complete circuit - dramatically narrowing the search. For k > 12, the nearest-neighbor heuristic (O(k²)) is used instead. Dijkstra paths between waypoints are cached - each pair is computed once and reused across all patrol zones in the same run.'
     }
 };
 
