@@ -690,38 +690,52 @@
             </div>
 
             <!-- Stage 2: Restart convergence chart -->
-            <div x-show="stage.id === 2 && stage.convergenceCurve && stage.convergenceCurve.length > 0" class="px-4 py-3">
-              <div class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500 mb-2">Best result per restart</div>
-              <template x-for="(item, i) in (stage.convergenceCurve || [])" :key="i">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="text-[9px] font-mono text-gray-400 w-5 text-right flex-shrink-0" x-text="'R' + (i + 1)"></span>
-                  <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-sm h-2 min-w-0">
-                    <div :style="'width: ' + item.pct + '%'"
-                         :class="item.improved ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-300 dark:bg-gray-600'"
-                         class="h-full rounded-sm"></div>
+            <div x-show="stage.id === 2 && stage.convergenceCurve && stage.convergenceCurve.length > 0"
+                 x-data="{ open: false }"
+                 class="px-4 py-3">
+              <button @click="open = !open"
+                      class="flex items-center gap-1 w-full text-left">
+                <span class="text-[9px] uppercase tracking-widest font-semibold text-gray-400 dark:text-gray-500">Best result per restart</span>
+                <span class="text-[9px] text-gray-400 dark:text-gray-500 ml-1"
+                      x-text="'(' + (stage.convergenceCurve?.length ?? 0) + ')'"></span>
+                <svg class="w-3 h-3 text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0 transition-transform duration-150"
+                     :class="open ? 'rotate-180' : ''"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              <div x-show="open" class="mt-2">
+                <template x-for="(item, i) in (stage.convergenceCurve || [])" :key="i">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[9px] font-mono text-gray-400 w-5 text-right flex-shrink-0" x-text="'R' + (i + 1)"></span>
+                    <div class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-sm h-2 min-w-0">
+                      <div :style="'width: ' + item.pct + '%'"
+                           :class="item.improved ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-300 dark:bg-gray-600'"
+                           class="h-full rounded-sm"></div>
+                    </div>
+                    <span class="text-[9px] font-mono text-gray-500 dark:text-gray-400 w-12 text-right flex-shrink-0"
+                          x-text="Math.round(item.bestSoFar) + 'm'"></span>
+                    <span class="text-[9px] text-blue-500 dark:text-blue-400 w-3 flex-shrink-0"
+                          x-text="item.improved ? '↑' : ''"></span>
                   </div>
-                  <span class="text-[9px] font-mono text-gray-500 dark:text-gray-400 w-12 text-right flex-shrink-0"
-                        x-text="Math.round(item.bestSoFar) + 'm'"></span>
-                  <span class="text-[9px] text-blue-500 dark:text-blue-400 w-3 flex-shrink-0"
-                        x-text="item.improved ? '↑' : ''"></span>
-                </div>
-              </template>
-              <div class="mt-2 space-y-1 text-[9px] text-gray-400 dark:text-gray-500">
-                <div>
-                  Best at restart
-                  <span class="font-semibold text-gray-700 dark:text-gray-200"
-                        x-text="'#' + (stage.convergenceRestart ?? 'N/A')"></span>
-                  of
-                  <span x-text="stage.restartsCompleted ?? 'N/A'"></span>
-                </div>
-                <div>
-                  Redundancy:
-                  <span :class="{
-                    'font-semibold text-green-600 dark:text-green-400':  stage.redundancy >= 75,
-                    'font-semibold text-yellow-600 dark:text-yellow-400': stage.redundancy >= 50 && stage.redundancy < 75,
-                    'font-semibold text-red-600 dark:text-red-400':      stage.redundancy < 50
-                  }" x-text="(stage.redundancy != null ? stage.redundancy.toFixed(1) : 'N/A') + '%'"></span>
-                  - fraction of restarts that confirmed the best result
+                </template>
+                <div class="mt-2 space-y-1 text-[9px] text-gray-400 dark:text-gray-500">
+                  <div>
+                    Best at restart
+                    <span class="font-semibold text-gray-700 dark:text-gray-200"
+                          x-text="'#' + (stage.convergenceRestart ?? 'N/A')"></span>
+                    of
+                    <span x-text="stage.restartsCompleted ?? 'N/A'"></span>
+                  </div>
+                  <div>
+                    Redundancy:
+                    <span :class="{
+                      'font-semibold text-green-600 dark:text-green-400':  stage.redundancy >= 75,
+                      'font-semibold text-yellow-600 dark:text-yellow-400': stage.redundancy >= 50 && stage.redundancy < 75,
+                      'font-semibold text-red-600 dark:text-red-400':      stage.redundancy < 50
+                    }" x-text="(stage.redundancy != null ? stage.redundancy.toFixed(1) : 'N/A') + '%'"></span>
+                    - fraction of restarts that confirmed the best result
+                  </div>
                 </div>
               </div>
             </div>
