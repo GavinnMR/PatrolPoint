@@ -44,12 +44,15 @@ function nearestNeighborTSP(startId, crimeNodeIds, D) {
 // Exact solution — O(k!) worst case, tractable for k ≤ nearestNeighborFallbackThreshold.
 // Pruning: discard any branch where accumulated >= bestCircuit.
 function backtrackingTSP(startId, crimeNodeIds, D) {
-    const k             = crimeNodeIds.length;
-    let bestCircuit     = Infinity;
-    let optimalSequence = [];
+    const k              = crimeNodeIds.length;
+    let bestCircuit      = Infinity;
+    let optimalSequence  = [];
+    let branchesExplored = 0;
+    let branchesPruned   = 0;
 
     function backtrack(currentId, accumulated, visited, route) {
-        if (accumulated >= bestCircuit) return; // prune — cannot improve
+        branchesExplored++;
+        if (accumulated >= bestCircuit) { branchesPruned++; return; }
 
         if (visited.size === k) {
             const returnDist   = D[currentId]?.[startId] ?? Infinity;
@@ -74,7 +77,7 @@ function backtrackingTSP(startId, crimeNodeIds, D) {
     }
 
     backtrack(startId, 0, new Set(), []);
-    return { sequence: optimalSequence, totalDist: bestCircuit };
+    return { sequence: optimalSequence, totalDist: bestCircuit, branchesExplored, branchesPruned };
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -140,6 +143,8 @@ export function runTSP(
     let totalDijkstraCalls       = 0;
     let totalCacheHits           = 0;
     let totalSequenceAdjustments = 0;
+    let totalBranchesExplored    = 0;
+    let totalBranchesPruned      = 0;
     const algorithmBreakdown     = { backtracking: 0, nearestNeighbor: 0, k2Shortcut: 0 };
 
     // ── Inner helpers (closures — access nodeMap, adjacencyList, effectiveCache, edgeUsage) ──
@@ -356,6 +361,7 @@ export function runTSP(
 
         // Step 3: TSP or nearest neighbor heuristic
         let sequence, totalDist, approximate = false, algorithmUsed;
+        let patrolBranchesExplored = 0, patrolBranchesPruned = 0;
 
         if (actualK === 2) {
             // k=2 special case: both visiting sequences produce identical circuit distance
@@ -385,6 +391,10 @@ export function runTSP(
             totalDist     = result.totalDist;
             algorithmUsed = 'backtracking';
             algorithmBreakdown.backtracking++;
+            patrolBranchesExplored = result.branchesExplored;
+            patrolBranchesPruned   = result.branchesPruned;
+            totalBranchesExplored += result.branchesExplored;
+            totalBranchesPruned   += result.branchesPruned;
             if (sequence.length === 0 && actualK > 0) {
                 // Backtracking found no complete circuit — all paths blocked by Infinity
                 log.push(`Patrol ${patrol.id}: backtracking found no complete circuit. Falling back to nearest neighbor.`);
@@ -450,7 +460,9 @@ export function runTSP(
             isEmpty:                 false,
             isSingleNode:            false,
             algorithmUsed,
-            sequenceAdjustmentsMade: adjustmentsMade
+            sequenceAdjustmentsMade: adjustmentsMade,
+            branchesExplored:        patrolBranchesExplored,
+            branchesPruned:          patrolBranchesPruned
         });
 
         if (typeof pushProgress === 'function') {
@@ -475,6 +487,10 @@ export function runTSP(
     log.push(`Patrols stationary due to all unreachable nodes: ${routes.filter(r => r.isEmpty).length}`);
     log.push(`Total Dijkstra calls: ${totalDijkstraCalls}`);
     log.push(`Total cache hits: ${totalCacheHits}`);
+    if (totalBranchesExplored > 0) {
+        const prunePct = Math.round((totalBranchesPruned / totalBranchesExplored) * 100);
+        log.push(`Backtracking: ${totalBranchesExplored.toLocaleString()} branches explored, ${totalBranchesPruned.toLocaleString()} pruned (${prunePct}% cut)`);
+    }
     log.push(`Route overlap: ${twoPatrolOverlaps} edge(s) with 2 patrols, ${threeOrMoreOverlaps} edge(s) with 3+ patrols`);
 
     const allEmpty = routes.length > 0 && routes.every(r => r.isEmpty);
@@ -497,6 +513,8 @@ export function runTSP(
             totalDijkstraCalls,
             totalCacheHits,
             totalSequenceAdjustments,
+            totalBranchesExplored,
+            totalBranchesPruned,
             algorithmBreakdown,
             traceLog: log,
             tspCache: effectiveCache

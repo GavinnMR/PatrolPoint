@@ -1023,9 +1023,16 @@ function buildStage4Subparts(result) {
         let detail = '';
         if (r.algorithmUsed === 'backtracking') {
             const fact = typeof k === 'number' ? _factorial(k) : null;
-            detail = fact != null
-                ? `backtracking (exact): evaluated all ${fact.toLocaleString()} orderings (${k}!) → optimal ${Math.round(r.circuitDistanceM)}m circuit`
-                : `backtracking (exact) - ${k} waypoints -> ${Math.round(r.circuitDistanceM)}m circuit`;
+            if (r.branchesExplored != null && r.branchesExplored > 0) {
+                const prunePct = Math.round((r.branchesPruned / r.branchesExplored) * 100);
+                detail = fact != null
+                    ? `backtracking (exact): ${r.branchesExplored.toLocaleString()} branches explored, ${r.branchesPruned.toLocaleString()} pruned (${prunePct}% cut) of ${fact.toLocaleString()} worst-case (${k}!) - optimal ${Math.round(r.circuitDistanceM)}m circuit`
+                    : `backtracking (exact): ${r.branchesExplored.toLocaleString()} branches explored, ${r.branchesPruned.toLocaleString()} pruned (${prunePct}% cut) - ${Math.round(r.circuitDistanceM)}m circuit`;
+            } else {
+                detail = fact != null
+                    ? `backtracking (exact): evaluated all ${fact.toLocaleString()} orderings (${k}!) - optimal ${Math.round(r.circuitDistanceM)}m circuit`
+                    : `backtracking (exact) - ${k} waypoints - ${Math.round(r.circuitDistanceM)}m circuit`;
+            }
         } else if (r.algorithmUsed === 'nearest-neighbor') {
             detail = `nearest-neighbor heuristic (k=${k} > threshold ${threshold}) - approximate, not guaranteed optimal -> ~${Math.round(r.circuitDistanceM)}m circuit`;
         } else if (r.algorithmUsed === 'k2-shortcut') {
@@ -1219,6 +1226,11 @@ function buildTraceMetrics(stage, result) {
                     label:   'Restarts',
                     value:   result.restartsCompleted ?? 'N/A',
                     tooltip: 'Number of independent Hill Climbing runs performed. More restarts reduce the chance of being stuck in a local optimum.'
+                },
+                {
+                    label:   'Total iterations',
+                    value:   result.totalIterations != null ? result.totalIterations.toLocaleString() : 'N/A',
+                    tooltip: 'Total number of Hill Climbing iterations across all restarts. Each iteration attempts to move every patrol to a better neighbouring position.'
                 },
                 {
                     label:   'Best at restart',

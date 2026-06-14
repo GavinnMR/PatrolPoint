@@ -237,6 +237,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     const allRestartResults   = [];   // { positions, minDist, iterations, maxIterReached, nodeIdSet }
     let bestResult            = null; // { positions, minDist, restartIndex }
     let anyMaxIterWarning     = false;
+    let totalIterations       = 0;
     let totalRadiusExpansions = 0;
     let duplicateConfigCount  = 0;
 
@@ -419,6 +420,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
 
             iteration++;
         }
+        totalIterations += iteration;
 
         // Max iteration cap check
         if (iteration >= maxIterations) {
@@ -566,6 +568,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
             bestMinPairwiseDist: bestResult.minDist,
             bestRestart:         bestResult.restartIndex + 1,
             restartsCompleted,
+            totalIterations,
             confidence:          Math.round(confidence * 10) / 10,
             cappedFrom,
             traceLog:            log,
