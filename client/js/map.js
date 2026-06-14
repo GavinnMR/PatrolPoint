@@ -153,16 +153,7 @@ function initMap(ui) {
             return;
         }
 
-        // Hull membership check — only when a hull exists
-        if (window.currentHull && window.currentHull.length > 0) {
-            if (!pointInHull(lat, lng, window.currentHull)) {
-                if (ui) ui.showBanner(
-                    'Incident plotted outside the current danger zone boundary. Point ignored.',
-                    'warning'
-                );
-                return;
-            }
-        }
+
 
         if (ui) ui.addCrimeNode(lat, lng);
     });

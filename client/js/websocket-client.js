@@ -525,13 +525,8 @@ function handlePipelineComplete(data) {
             ui.scrollTracePanelToBottom();
         }
 
-        // Verification report — store on Alpine component and optionally banner if failed
+        // Verification report — store on Alpine component for trace panel only
         ui.verificationReport = verificationReport || null;
-        if (verificationReport && !verificationReport.overallPass && verificationReport.failureCount > 0) {
-            const vMsg = 'Algorithm verification detected issues. Results may be suboptimal. Check the trace panel for details.';
-            pipelineWarnings.push(vMsg);
-            ui.showBanner(pipelineWarnings[0], 'warning', [...pipelineWarnings]);
-        }
 
         // Comparison mode: auto-store current result as Run B when Run A already exists
         if (window.comparisonModeActive && ui.comparisonRunA) {
