@@ -133,6 +133,76 @@ def build_network(clipped_roads):
     return nodes, edges
 
 
+def remove_boundary_stubs(nodes, edges, boundary_geom):
+    """
+    Iteratively remove degree-1 nodes that sit on the boundary polygon edge.
+    These are clip artifacts — points where a road was cut at the barangay
+    border. Iterates because removing a stub can expose its neighbor as a new
+    degree-1 stub. Stops when no boundary-adjacent degree-1 nodes remain.
+    Interior dead ends (cul-de-sacs) are far from the boundary and are left
+    untouched. Tolerance of 2e-5 degrees (~2 m) accounts for floating-point
+    imprecision from the clip operation.
+    """
+    from shapely.geometry import Point
+
+    TOLERANCE = 2e-5
+    total_removed = 0
+
+    while True:
+        degree = {n['id']: 0 for n in nodes}
+        for e in edges:
+            degree[e['from']] += 1
+            degree[e['to']] += 1
+
+        to_remove = set()
+        for n in nodes:
+            if degree[n['id']] == 1:
+                pt = Point(n['lng'], n['lat'])
+                if boundary_geom.exterior.distance(pt) < TOLERANCE:
+                    to_remove.add(n['id'])
+
+        if not to_remove:
+            break
+
+        nodes = [n for n in nodes if n['id'] not in to_remove]
+        edges = [e for e in edges if e['from'] not in to_remove and e['to'] not in to_remove]
+        total_removed += len(to_remove)
+
+    return nodes, edges, total_removed
+
+
+def prune_to_lcc(nodes, edges):
+    """Keep only nodes and edges in the largest connected component."""
+    adj = {n['id']: [] for n in nodes}
+    for e in edges:
+        adj[e['from']].append(e['to'])
+        adj[e['to']].append(e['from'])
+
+    seen = set()
+    best = []
+
+    for n in nodes:
+        if n['id'] in seen:
+            continue
+        queue = [n['id']]
+        seen.add(n['id'])
+        component = []
+        while queue:
+            cur = queue.pop()
+            component.append(cur)
+            for nb in adj[cur]:
+                if nb not in seen:
+                    seen.add(nb)
+                    queue.append(nb)
+        if len(component) > len(best):
+            best = component
+
+    lcc = set(best)
+    pruned_nodes = [n for n in nodes if n['id'] in lcc]
+    pruned_edges = [e for e in edges if e['from'] in lcc and e['to'] in lcc]
+    return pruned_nodes, pruned_edges, len(nodes) - len(pruned_nodes)
+
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -190,6 +260,8 @@ def main():
             continue
 
         nodes, edges = build_network(clipped)
+        nodes, edges, pruned_count = prune_to_lcc(nodes, edges)
+        nodes, edges, stub_count = remove_boundary_stubs(nodes, edges, polygon)
 
         if not nodes or not edges:
             print(f"  [{idx}/{len(admin)}] ⚠  {name} — no road segments extracted, skipped")
@@ -218,7 +290,11 @@ def main():
             json.dump({"nodes": nodes, "edges": edges, "boundary": boundary}, f)
 
         manifest[name] = {"slug": slug, "bbox": bbox}
-        print(f"  [{idx}/{len(admin)}] ✓  {name}: {len(nodes)} nodes, {len(edges)} edges → {slug}.json")
+        notes = []
+        if pruned_count: notes.append(f"pruned {pruned_count} disconnected")
+        if stub_count:   notes.append(f"removed {stub_count} boundary stubs")
+        note_str = f"  ({', '.join(notes)})" if notes else ""
+        print(f"  [{idx}/{len(admin)}] ✓  {name}: {len(nodes)} nodes, {len(edges)} edges{note_str} → {slug}.json")
 
     # ── Write manifest ─────────────────────────────────────────────────────────
     manifest_path = os.path.join(OUTPUT_DIR, 'manifest.json')
