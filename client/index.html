@@ -491,8 +491,8 @@
   <!-- Algorithm trace panel (slide-in from right, overlaps map)               -->
   <!-- ──────────────────────────────────────────────────────────────────────── -->
   <div x-show="showTracePanel" x-cloak
-       class="trace-panel fixed h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-20 flex flex-col shadow-2xl overflow-hidden"
-       :class="isMobile ? 'inset-0 w-full' : 'top-0 right-80 w-[26rem]'">
+       class="trace-panel fixed bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-20 flex flex-col shadow-2xl overflow-hidden"
+       :class="isMobile ? 'inset-0 w-full' : ('top-0 right-80 w-[26rem] ' + (showPlayback ? 'bottom-12' : 'bottom-0'))">
 
     <!-- Panel header -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
