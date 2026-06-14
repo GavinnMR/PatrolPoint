@@ -918,7 +918,7 @@ function buildStage3Subparts(result) {
 
     // Step 6 — Zone cap
     const capped = result.cappedZonesCount ?? 0;
-    const maxN   = window.uiApp?.activeConfig?.tsp?.maxCrimeNodesPerZone ?? 10;
+    const maxN   = window.uiApp?.activeConfig?.tsp?.maxCrimeNodesPerZone ?? 12;
     subparts.push({
         name:   'Zone cap',
         status: capped > 0 ? 'warn' : 'ok',

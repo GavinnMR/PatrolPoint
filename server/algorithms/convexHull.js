@@ -494,18 +494,6 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     const hullAreaM2  = hullAreaDeg * 111000 * lngScale;
     log.push(`Hull area (approx.): ${Math.round(hullAreaM2)} m² — Shoelace flat-plane estimate, accurate to <1% at barangay scale`);
 
-    // Area threshold check — warn if hull is much smaller than the barangay
-    let areaWarning = false;
-    if (barangayAreaM2 > 0) {
-        const areaThreshold = barangayAreaM2 / config.convexHull.areaThresholdDivisor;
-        if (hullAreaM2 < areaThreshold) {
-            warnings.push('Incident coordinates are tightly clustered. Patrol spread may be limited. Consider spreading incident coordinates across a wider area.');
-            areaWarning = true;
-            log.push(`Area threshold: WARNING - ${Math.round(hullAreaM2)} m² < ${Math.round(areaThreshold)} m²`);
-        } else {
-            log.push(`Area threshold: passed (${Math.round(hullAreaM2)} m² >= ${Math.round(areaThreshold)} m²)`);
-        }
-    }
 
     // ── Step 10: Ray Casting pre-filter ───────────────────────────────────────
     // MUST run after hull validation and winding normalization — never before.
@@ -592,10 +580,8 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
     log.push(`Stage 1 complete - ${hull.length} hull vertices, ${Math.round(hullAreaM2)} m², ${validCandidates.length} valid candidates`);
 
     return {
-        status: areaWarning ? 'warning' : 'success',
-        message: areaWarning
-            ? 'Danger zone computed: incident coordinates are tightly clustered.'
-            : 'Danger zone boundary computed successfully.',
+        status: 'success',
+        message: 'Danger zone boundary computed successfully.',
         warnings,
         data: {
             hull,

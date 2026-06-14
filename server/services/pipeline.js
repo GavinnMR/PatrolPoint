@@ -49,7 +49,7 @@ export const DEFAULT_CONFIG = {
         includeOutliers: true
     },
     tsp: {
-        maxCrimeNodesPerZone: 10,
+        maxCrimeNodesPerZone: 12,
         nearestNeighborFallbackThreshold: 12,
         hullExteriorPenalty: 1
     },

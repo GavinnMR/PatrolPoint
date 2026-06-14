@@ -137,12 +137,11 @@ document.addEventListener('alpine:init', () => {
                 synchronousMode:        false
             },
             convexHull: {
-                areaThresholdDivisor:   100,
                 outlierMultiplier:      2.5,
                 includeOutliers:        true
             },
             tsp: {
-                maxCrimeNodesPerZone:                10,
+                maxCrimeNodesPerZone:                12,
                 nearestNeighborFallbackThreshold:    12,
                 hullExteriorPenalty:                 1
             },
@@ -168,12 +167,11 @@ document.addEventListener('alpine:init', () => {
                 synchronousMode:        false
             },
             convexHull: {
-                areaThresholdDivisor:   100,
                 outlierMultiplier:      2.5,
                 includeOutliers:        true
             },
             tsp: {
-                maxCrimeNodesPerZone:                10,
+                maxCrimeNodesPerZone:                12,
                 nearestNeighborFallbackThreshold:    12,
                 hullExteriorPenalty:                 1
             },
@@ -731,7 +729,7 @@ document.addEventListener('alpine:init', () => {
                     includeOutliers:        true
                 },
                 tsp: {
-                    maxCrimeNodesPerZone:                10,
+                    maxCrimeNodesPerZone:                12,
                     nearestNeighborFallbackThreshold:    12,
                     hullExteriorPenalty:                 1
                 },

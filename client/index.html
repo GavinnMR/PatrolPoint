@@ -966,13 +966,6 @@
           <div class="space-y-2">
             <label class="flex items-center justify-between">
               <span class="text-gray-600 dark:text-gray-400 cursor-help"
-                    title="If the computed danger zone area is smaller than barangay area divided by this number, a 'tightly clustered' warning is shown. Lower value = more sensitive to small zones.">Area threshold divisor</span>
-              <input type="number" x-model.number="settingsDraft.convexHull.areaThresholdDivisor"
-                     min="10" max="500"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
-            </label>
-            <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400 cursor-help"
                     title="Incidents farther from the group centroid than this multiplier times the average distance are flagged as outliers. Lower = stricter flagging. Default 2.5 flags only extreme outliers.">Outlier multiplier</span>
               <input type="number" x-model.number="settingsDraft.convexHull.outlierMultiplier"
                      min="1" max="5" step="0.1"
@@ -995,15 +988,6 @@
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Patrol Routes</h3>
           <div class="space-y-2">
-            <label class="flex items-center justify-between gap-2">
-              <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
-                    title="Maximum number of incidents any one patrol visits per circuit. Zones with more are trimmed to the nearest incidents. Higher values produce longer routes and slower computation.">Max incidents per patrol
-                <span class="block text-xs text-gray-400 dark:text-gray-500">Cap on how many incidents one patrol visits</span>
-              </span>
-              <input type="number" x-model.number="settingsDraft.tsp.maxCrimeNodesPerZone"
-                     min="3" max="20"
-                     class="w-20 text-right text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
-            </label>
             <label class="flex items-center justify-between gap-2">
               <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
                     title="Zones with more incidents than this threshold use nearest-neighbor heuristic instead of exact backtracking TSP. Exact TSP is O(k!) and becomes impractically slow above 10-12 nodes.">Fast route above N incidents
@@ -1044,37 +1028,6 @@
           </div>
         </div>
 
-        <!-- Display settings -->
-        <div>
-          <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Display</h3>
-          <div class="space-y-2">
-            <template x-for="item in [
-              { key: 'showZoneLines',       label: 'Zone assignment lines',   tip: 'Show dashed lines connecting each incident to its assigned patrol. Useful for verifying zone boundaries after deployment.' },
-              { key: 'showRouteArrows',     label: 'Route direction arrows',  tip: 'Show travel direction indicators along patrol routes in roaming mode. Arrows indicate the order in which incidents are visited.' },
-              { key: 'showOverlapColoring', label: 'Overlap coloring',        tip: 'Highlight road segments used by more than one patrol circuit. Orange = 2 patrols share the segment, red = 3 or more.' },
-              { key: 'showCoverageRadius',  label: 'Patrol coverage radius',  tip: 'Draw an estimated coverage area circle around each patrol position based on the minimum pairwise distance between patrols.' }
-            ]" :key="item.key">
-              <label class="flex items-center justify-between">
-                <span class="text-gray-600 dark:text-gray-400 cursor-help" x-text="item.label" :title="item.tip"></span>
-                <button @click="settingsDraft.display[item.key] = !settingsDraft.display[item.key]"
-                        :class="settingsDraft.display[item.key] ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
-                        class="relative w-10 h-5 rounded-full transition-colors">
-                  <span :class="settingsDraft.display[item.key] ? 'translate-x-5' : 'translate-x-0'"
-                        class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
-                </button>
-              </label>
-            </template>
-            <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Animations</span>
-              <button @click="settingsDraft.display.animationsEnabled = !settingsDraft.display.animationsEnabled"
-                      :class="settingsDraft.display.animationsEnabled ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
-                      class="relative w-10 h-5 rounded-full transition-colors">
-                <span :class="settingsDraft.display.animationsEnabled ? 'translate-x-5' : 'translate-x-0'"
-                      class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
-              </button>
-            </label>
-          </div>
-        </div>
 
       </div><!-- end settings scrollable content -->
 
