@@ -131,8 +131,8 @@ document.addEventListener('alpine:init', () => {
         activeConfig: {
             candidateNodes:     'all',
             hillClimbing: {
-                restarts:               50,
-                maxIterations:          500,
+                restarts:               100,
+                maxIterations:          1000,
                 radiusMultiplier:       2,
                 synchronousMode:        false
             },
@@ -162,8 +162,8 @@ document.addEventListener('alpine:init', () => {
         settingsDraft: {
             candidateNodes:     'all',
             hillClimbing: {
-                restarts:               50,
-                maxIterations:          500,
+                restarts:               100,
+                maxIterations:          1000,
                 radiusMultiplier:       2,
                 synchronousMode:        false
             },
@@ -720,8 +720,8 @@ document.addEventListener('alpine:init', () => {
             this.settingsDraft = {
                 candidateNodes:     'all',
                 hillClimbing: {
-                    restarts:               50,
-                    maxIterations:          500,
+                    restarts:               100,
+                    maxIterations:          1000,
                     radiusMultiplier:       2,
                         synchronousMode:        false
                 },
