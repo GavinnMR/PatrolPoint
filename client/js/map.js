@@ -45,6 +45,9 @@ let _lastZones        = null;   // stored for patrol popup content
 let _selectedPatrolId = null;   // currently highlighted patrol
 let _patrolInfoControl = null;  // L.Control panel anchored top-right (replaces L.popup)
 
+let _crimeStatusMap     = {};   // crimeId → 'active' | 'outlier' | 'excluded' | 'unreachable'
+let _crimeAssignmentMap = {};   // crimeId → { patrolId, patrolNum, patrolColor, seqIndex, zoneSize }
+
 // Comparison overlay layers
 let comparisonLayersA = [];   // Leaflet layers for Run A
 let comparisonLayersB = [];   // Leaflet layers for Run B
@@ -184,6 +187,26 @@ function initMap(ui) {
     _patrolInfoControl = new PatrolInfoPanel();
     _patrolInfoControl.addTo(map);
 
+    // Global handlers for crime popup buttons
+    window._crimePopupClose = (crimeId) => {
+        const m = crimeMarkerMap[crimeId];
+        if (m) m.closePopup();
+    };
+    window._crimePopupRemove = (crimeId) => {
+        const m = crimeMarkerMap[crimeId];
+        if (m) m.closePopup();
+        const ui = window.uiApp;
+        if (ui) ui.removeCrimeNode(crimeId);
+    };
+    window._openCrimePopup = (crimeId) => {
+        const m = crimeMarkerMap[crimeId];
+        if (!m) return;
+        _patrolInfoControl?.hide();
+        clearPatrolHighlight();
+        map.panTo(m.getLatLng(), { animate: true, duration: 0.3 });
+        m.openPopup();
+    };
+
     // Load Commonwealth boundary from bundled data file and render darkening mask
     fetch('./data/commonwealth_boundary.json')
         .then(r => r.json())
@@ -212,6 +235,15 @@ function initMap(ui) {
     replacePlaceholder('onHullComplete', (result) => {
         _clearRoutePolylines();
         clearZoneLines();
+        // New pipeline run — reset all crime status and assignment data
+        _crimeStatusMap     = {};
+        _crimeAssignmentMap = {};
+        Object.keys(crimeMarkerMap).forEach(crimeId => {
+            const el = document.getElementById(`cm-${crimeId}`);
+            if (el) el.className = 'crime-marker';
+            const m = crimeMarkerMap[crimeId];
+            if (m) m.setPopupContent(_buildCrimePopupHtml(crimeId));
+        });
         if (result.hull && result.hull.length >= 3) renderHull(result.hull);
         if (result.nearestHighlights) renderNearestHighlights(result.nearestHighlights);
     });
@@ -230,6 +262,28 @@ function initMap(ui) {
             (result.emptyZones || []).forEach(idx => {
                 const p = result.patrols[idx];
                 if (p) updatePatrolMarkerStyle(p.id || `p${idx}`, 'stationary');
+            });
+            // Build crime assignment map for popups
+            _crimeAssignmentMap = {};
+            result.zones.forEach((zone, pi) => {
+                const patrol = result.patrols[pi];
+                if (!patrol || !zone) return;
+                const patrolColor = patrol.color || PATROL_COLORS[pi % PATROL_COLORS.length];
+                zone.forEach((node, ni) => {
+                    if (!node.crimeId) return;
+                    _crimeAssignmentMap[node.crimeId] = {
+                        patrolId:    patrol.id || `p${pi}`,
+                        patrolNum:   pi + 1,
+                        patrolColor,
+                        seqIndex:    ni,
+                        zoneSize:    zone.length
+                    };
+                });
+            });
+            // Refresh all crime popups with assignment data
+            Object.keys(crimeMarkerMap).forEach(crimeId => {
+                const m = crimeMarkerMap[crimeId];
+                if (m) m.setPopupContent(_buildCrimePopupHtml(crimeId));
             });
         }
         // Grey out zone-capped and unreachable crime nodes so user can see they won't be visited
@@ -435,6 +489,67 @@ function mapResetView() {
     }
 }
 
+// ── Crime popup helpers ────────────────────────────────────────────────────────
+function _crimeStatusLabel(status) {
+    return { active: 'Active', outlier: 'Outlier', excluded: 'Excluded', unreachable: 'Unreachable' }[status] || 'Active';
+}
+
+function _crimeStatusDetail(status) {
+    return {
+        active:      'Assigned to patrol zone',
+        outlier:     'Filtered — outside danger zone boundary',
+        excluded:    'Excluded — zone crime cap exceeded',
+        unreachable: 'Unreachable — no road network path found'
+    }[status] || 'Assigned to patrol zone';
+}
+
+function _crimeStatusColor(status) {
+    return { active: '#ef4444', outlier: '#f97316', excluded: '#9ca3af', unreachable: '#6b7280' }[status] || '#ef4444';
+}
+
+function _buildCrimePopupHtml(crimeId) {
+    const marker = crimeMarkerMap[crimeId];
+    if (!marker) return '';
+
+    const latlng     = marker.getLatLng();
+    const status     = _crimeStatusMap[crimeId] || 'active';
+    const assignment = _crimeAssignmentMap[crimeId] || null;
+    const headerColor = _crimeStatusColor(status);
+
+    let rows = `
+      <div class="cp-row">
+        <span class="cp-label">Coordinates</span>
+        <span class="cp-value">${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}</span>
+      </div>
+      <div class="cp-row">
+        <span class="cp-label">Status</span>
+        <span class="cp-value cp-status-text" style="color:${headerColor}">${_crimeStatusDetail(status)}</span>
+      </div>`;
+
+    if (assignment) {
+        rows += `
+      <div class="cp-row">
+        <span class="cp-label">Assigned to</span>
+        <span class="cp-value"><span class="cp-patrol-badge" style="background:${assignment.patrolColor}">Patrol ${assignment.patrolNum}</span></span>
+      </div>
+      <div class="cp-row">
+        <span class="cp-label">Zone position</span>
+        <span class="cp-value">#${assignment.seqIndex + 1} of ${assignment.zoneSize}</span>
+      </div>`;
+    }
+
+    return `
+      <div class="cp-header" style="background:${headerColor}">
+        <span class="cp-title">${crimeId}</span>
+        <span class="cp-badge">${_crimeStatusLabel(status)}</span>
+        <button class="cp-close" onclick="window._crimePopupClose('${crimeId}')" title="Close">&#x2715;</button>
+      </div>
+      <div class="cp-body">
+        ${rows}
+        <button class="cp-remove-btn" onclick="window._crimePopupRemove('${crimeId}')">Remove incident</button>
+      </div>`;
+}
+
 // ── Crime node markers ─────────────────────────────────────────────────────────
 function plotCrimeMarker(point) {
     const { crimeId, lat, lng } = point;
@@ -453,20 +568,17 @@ function plotCrimeMarker(point) {
         title: crimeId
     }).addTo(map);
 
-    // Click to remove with 300ms flash
+    marker.bindPopup(_buildCrimePopupHtml(crimeId), {
+        closeButton: false,
+        className:   'crime-popup-wrapper',
+        maxWidth:    260,
+        minWidth:    220,
+        autoPan:     true
+    });
+
     marker.on('click', (e) => {
         L.DomEvent.stopPropagation(e);
         if (window.pipelineRunning) return;
-        const el = document.getElementById(`cm-${crimeId}`);
-        if (el) {
-            const orig = el.style.backgroundColor;
-            el.style.backgroundColor = '#ffffff';
-            setTimeout(() => { el.style.backgroundColor = orig; }, 150);
-        }
-        setTimeout(() => {
-            const ui = window.uiApp;
-            if (ui) ui.removeCrimeNode(crimeId);
-        }, 300);
     });
 
     // Drag with hull boundary validation
@@ -514,12 +626,17 @@ function updateCrimeMarkerStyle(crimeId, style) {
     if (style === 'outlier')     el.classList.add('outlier');
     if (style === 'excluded')    el.classList.add('excluded');
     if (style === 'unreachable') el.classList.add('unreachable');
+    _crimeStatusMap[crimeId] = style;
+    const m = crimeMarkerMap[crimeId];
+    if (m) m.setPopupContent(_buildCrimePopupHtml(crimeId));
 }
 
 function restoreCrimeMarkers(points) {
     Object.keys(crimeMarkerMap).forEach(id => map.removeLayer(crimeMarkerMap[id]));
-    crimeMarkerMap      = {};
-    window.crimeMarkers = {};
+    crimeMarkerMap          = {};
+    window.crimeMarkers     = {};
+    _crimeStatusMap         = {};
+    _crimeAssignmentMap     = {};
     for (const pt of (points || [])) plotCrimeMarker(pt);
 }
 
@@ -736,9 +853,13 @@ function _buildPatrolPopupContent(patrolId) {
       </div>`;
 
         if (nodeCount > 0) {
-            const items = zone.map((node, i) =>
-                `<li class="pp-crime-item">${i + 1}. ${node.lat.toFixed(5)}, ${node.lng.toFixed(5)}</li>`
-            ).join('');
+            const items = zone.map((node, i) => {
+                const label = node.crimeId || `${node.lat.toFixed(5)}, ${node.lng.toFixed(5)}`;
+                const clickable = node.crimeId
+                    ? `<button class="pp-crime-link" onclick="window._openCrimePopup('${node.crimeId}')">${label}</button>`
+                    : `<span>${label}</span>`;
+                return `<li class="pp-crime-item">${i + 1}. ${clickable}</li>`;
+            }).join('');
             rows += `<ul class="pp-crime-list">${items}</ul>`;
         }
     }
@@ -954,9 +1075,11 @@ function clearAllMapResults() {
 
     // Crime markers
     Object.keys(crimeMarkerMap).forEach(id => map.removeLayer(crimeMarkerMap[id]));
-    crimeMarkerMap       = {};
-    window.crimeMarkers  = {};
-    window.P             = [];
+    crimeMarkerMap          = {};
+    window.crimeMarkers     = {};
+    window.P                = [];
+    _crimeStatusMap         = {};
+    _crimeAssignmentMap     = {};
 
     window.currentHull     = null;
     window.pipelineComplete = false;
@@ -1072,6 +1195,28 @@ function renderSessionResults(session, ui) {
             window.zones = zones;
             _lastPatrols = patrols;
             _lastZones   = zones;
+            // Build assignment map so crime popups show patrol info
+            _crimeStatusMap     = {};
+            _crimeAssignmentMap = {};
+            zones.forEach((zone, pi) => {
+                const patrol = patrols[pi];
+                if (!patrol || !zone) return;
+                const patrolColor = patrol.color || PATROL_COLORS[pi % PATROL_COLORS.length];
+                zone.forEach((node, ni) => {
+                    if (!node.crimeId) return;
+                    _crimeAssignmentMap[node.crimeId] = {
+                        patrolId:  patrol.id || `p${pi}`,
+                        patrolNum: pi + 1,
+                        patrolColor,
+                        seqIndex:  ni,
+                        zoneSize:  zone.length
+                    };
+                });
+            });
+            Object.keys(crimeMarkerMap).forEach(crimeId => {
+                const m = crimeMarkerMap[crimeId];
+                if (m) m.setPopupContent(_buildCrimePopupHtml(crimeId));
+            });
             const mode = session.deployment_mode || 'stationary';
             if (mode === 'roaming' && routes && routes.length > 0) {
                 renderRoutes(routes);
