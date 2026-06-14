@@ -88,6 +88,22 @@ function yieldToEventLoop() {
     return new Promise(resolve => setTimeout(resolve, 0));
 }
 
+// Point-in-polygon Ray Casting — used to filter snap candidates to nodes inside the hull.
+// Hull vertices are [{lat, lng}] in CCW order.
+function pointInHull(lat, lng, hull) {
+    let inside = false;
+    const n = hull.length;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = hull[i].lng, yi = hull[i].lat;
+        const xj = hull[j].lng, yj = hull[j].lat;
+        if (((yi > lat) !== (yj > lat)) &&
+            (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
 // ── Main pipeline runner ──────────────────────────────────────────────────────
 //
 // networkData:   full network from cache.js getOrFetchNetwork — shape:
@@ -131,11 +147,17 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         ? null
         : previousValidCandidates;
 
+    // All road nodes minus removed — always computed regardless of candidateNodes toggle.
+    // Used for snap candidates in Stage 3 so crimes always attach to the nearest road node,
+    // not just the nearest intersection node.
+    const allNodesMap = removedNodes && removedNodes.size > 0
+        ? Object.fromEntries(Object.entries(networkData.nodes).filter(([id]) => !removedNodes.has(id)))
+        : networkData.nodes;
+
+    // Patrol candidate nodes — controlled by candidateNodes toggle
     let filteredNodeMap;
     if (useAllNodes) {
-        filteredNodeMap = removedNodes && removedNodes.size > 0
-            ? Object.fromEntries(Object.entries(networkData.nodes).filter(([id]) => !removedNodes.has(id)))
-            : networkData.nodes;
+        filteredNodeMap = allNodesMap;
     } else {
         const filteredIds = removedNodes
             ? networkData.intersectionNodeIds.filter(id => !removedNodes.has(id))
@@ -245,6 +267,13 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     finalValidCandidates = validCandidates;
     finalHullAreaM2      = s1Data.hullAreaM2 ?? previousHullAreaM2;
 
+    // Snap candidates: all road nodes inside the hull, independent of patrol placement toggle.
+    // When toggle = 'all', validCandidates already covers all nodes — no extra work.
+    // When toggle = 'intersection', filter the full node map through the hull via Ray Casting.
+    const snapCandidates = useAllNodes
+        ? validCandidates
+        : Object.values(allNodesMap).filter(node => pointInHull(node.lat, node.lng, hull));
+
     // ── Road distance matrix — precomputed once, shared by Stage 2 and Stage 3 ─
     // Runs Dijkstra from each valid candidate. O(|candidates| × (V+E)logV).
     // Worst case ~914 candidates × ~90k ops ≈ 82M ops (~1-2s). Typical hull
@@ -323,7 +352,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         zone3Result = runZoneAssignment(
             incidents, patrols, validCandidates, hull,
             networkData.adjacencyList, dijkstraCache, config,
-            { bestRestartIndex: s2Data.bestRestart, removedNodes }
+            { bestRestartIndex: s2Data.bestRestart, removedNodes, snapCandidates }
         );
     } catch (err) {
         pushMessage({ type: 'error', data: { stage: 3, message: `Stage 3 error: ${err.message}`, fatal: true } });

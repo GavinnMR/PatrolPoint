@@ -219,7 +219,8 @@ export function runZoneAssignment(
     incidents, patrols, validCandidates, hull,
     adjacencyList, dijkstraCache, config, options = {}
 ) {
-    const { bestRestartIndex = null, removedNodes = null } = options;
+    const { bestRestartIndex = null, removedNodes = null, snapCandidates = null } = options;
+    const effectiveSnapCandidates = snapCandidates || validCandidates;
     const log      = [];
     const warnings = [];
 
@@ -265,7 +266,7 @@ export function runZoneAssignment(
     let maxSnappingDist      = 0;
 
     for (const inc of numberedIncidents) {
-        const result = snapToNearestCandidate(inc, validCandidates, hullDiameterM, config);
+        const result = snapToNearestCandidate(inc, effectiveSnapCandidates, hullDiameterM, config);
         if (!result) {
             const msg = `Crime node ${inc.crimeId} at (${inc.lat.toFixed(6)}, ${inc.lng.toFixed(6)}) has no reachable road intersection inside the danger zone. Point excluded.`;
             log.push(msg);
@@ -308,16 +309,7 @@ export function runZoneAssignment(
         log.push(`Duplicate snapping: ${mergedCount} crime node(s) merged`);
     }
 
-    // ── Zero distance waypoint detection ─────────────────────────────────────
     let zeroDistWaypoints = 0;
-    for (const node of deduplicatedNodes) {
-        for (const patrol of patrols) {
-            if (node.snappedNodeId === patrol.nodeId) {
-                zeroDistWaypoints++;
-                log.push(`Crime node ${node.crimeId} already at patrol ${patrol.id} position (${patrol.nodeId}) - zero distance waypoint.`);
-            }
-        }
-    }
 
     // ── Dijkstra pre-computation (V2) ─────────────────────────────────────────
     // Run Dijkstra once per unique snapped node ID — single-source gives distances to ALL nodes
@@ -375,13 +367,25 @@ export function runZoneAssignment(
                     assignedIdx = pi;
                 }
             }
-            log.push(`Crime node ${node.crimeId} (${node.lat.toFixed(6)}, ${node.lng.toFixed(6)}): all road network distances Infinity - Euclidean Haversine fallback → patrol ${patrols[assignedIdx].id}`);
+            log.push(`Crime node ${node.crimeId} (${node.lat.toFixed(6)}, ${node.lng.toFixed(6)}): all road network distances Infinity - Euclidean Haversine fallback → patrol ${patrols[assignedIdx].id} (straight-line dist: ${Math.round(haverMin)}m)`);
             warnings.push(`Crime node ${node.crimeId}: road network disconnected from all patrols - using straight-line distance for assignment.`);
+            zones[assignedIdx].push({ ...node, roadDistToPatrol: haverMin, haversineFallback: true });
         } else {
             log.push(`Crime node ${node.crimeId} (${node.lat.toFixed(6)}, ${node.lng.toFixed(6)}) → patrol ${patrols[assignedIdx].id} (road dist: ${Math.round(minDist)}m)`);
+            zones[assignedIdx].push({ ...node, roadDistToPatrol: minDist });
         }
+    }
 
-        zones[assignedIdx].push({ ...node, roadDistToPatrol: minDist });
+    // ── Zero distance waypoint detection (post-assignment) ────────────────────
+    // Checked after assignment so "zero distance" is accurate: only fires when the crime node
+    // snapped to its own assigned patrol's node, not any patrol's node.
+    for (let pi = 0; pi < n; pi++) {
+        for (const node of zones[pi]) {
+            if (node.snappedNodeId === patrols[pi].nodeId) {
+                zeroDistWaypoints++;
+                log.push(`Crime node ${node.crimeId} already at patrol ${patrols[pi].id} position (${patrols[pi].nodeId}) - zero distance waypoint.`);
+            }
+        }
     }
 
     // ── Zone rebalancing ──────────────────────────────────────────────────────
