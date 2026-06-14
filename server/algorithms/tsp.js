@@ -498,7 +498,8 @@ export function runTSP(
             totalCacheHits,
             totalSequenceAdjustments,
             algorithmBreakdown,
-            traceLog: log
+            traceLog: log,
+            tspCache: effectiveCache
         }
     };
 }

@@ -318,6 +318,7 @@ export function verifyAll(pipelineResult) {
         zones,
         routes,
         dijkstraCache,
+        tspCache,
         excludedCrimeNodes
     } = pipelineResult;
 
@@ -359,7 +360,7 @@ export function verifyAll(pipelineResult) {
                 continue;
             }
 
-            const result = verifyTSPRoute(route, dijkstraCache || {}, k);
+            const result = verifyTSPRoute(route, tspCache || dijkstraCache || {}, k);
             tspRouteResults.push({ patrolId: patrols[pi].id, ...result });
         }
     }

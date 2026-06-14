@@ -489,6 +489,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
             zones,
             routes:             routes || [],
             dijkstraCache,
+            tspCache:           tsp4Result?.data?.tspCache || dijkstraCache,
             excludedCrimeNodes: s3Data.excludedCrimeNodes || []
         });
     } catch (err) {
