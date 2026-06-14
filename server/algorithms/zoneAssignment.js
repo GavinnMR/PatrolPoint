@@ -274,7 +274,7 @@ export function runZoneAssignment(
         if (!result) {
             const msg = `Crime node ${inc.crimeId} at (${inc.lat.toFixed(6)}, ${inc.lng.toFixed(6)}) has no reachable road intersection inside the danger zone. Point excluded.`;
             log.push(msg);
-            warnings.push(`Crime node at (${inc.lat.toFixed(6)}, ${inc.lng.toFixed(6)}) has no reachable road intersection inside the danger zone. Point excluded.`);
+            warnings.push(`Crime node at (${inc.lat.toFixed(6)}, ${inc.lng.toFixed(6)}) has no reachable road intersection inside the danger zone. Point excluded. Try moving this incident point closer to a road.`);
             excludedCrimeNodes.push({ ...inc, excluded: true, reason: 'no_reachable_intersection' });
             continue;
         }
@@ -465,7 +465,7 @@ export function runZoneAssignment(
     }
 
     if (emptyZones.length > 0) {
-        warnings.push(`${emptyZones.length} patrol(s) have no assigned crime nodes and will remain stationary.`);
+        warnings.push(`${emptyZones.length} patrol(s) have no assigned crime nodes and will remain stationary. Consider reducing the number of patrols or plotting more incidents.`);
     }
 
     // ── Aggregate snapping statistics ─────────────────────────────────────────
@@ -495,7 +495,7 @@ export function runZoneAssignment(
     // ── Status determination ──────────────────────────────────────────────────
     let status = 'success';
     if (maxSnappingDist > 200) {
-        warnings.push(`Maximum snapping distance (${Math.round(maxSnappingDist)}m) exceeds 200m. Some crime nodes are far from road intersections.`);
+        warnings.push(`Maximum snapping distance (${Math.round(maxSnappingDist)}m) exceeds 200m. Some crime nodes are far from road intersections. Try moving incident points closer to road intersections for more accurate routing.`);
         status = 'warning';
     }
     if (

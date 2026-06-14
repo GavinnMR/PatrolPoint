@@ -205,7 +205,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
     if (n > validCandidates.length) {
         cappedFrom  = n;
         effectiveN  = validCandidates.length;
-        const msg   = `Only ${effectiveN} valid patrol positions exist inside the danger zone. Number of patrols reduced from ${n} to ${effectiveN}.`;
+        const msg   = `Only ${effectiveN} valid patrol positions exist inside the danger zone. Number of patrols reduced from ${n} to ${effectiveN}. Try reducing the number of patrols to ${effectiveN} or fewer.`;
         warnings.push(msg);
         log.push(msg);
         if (effectiveN === 0) {
@@ -424,7 +424,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
         if (iteration >= maxIterations) {
             maxIterReached    = true;
             anyMaxIterWarning = true;
-            const msg = `Restart ${restartIdx + 1} reached maximum ${maxIterations} iterations without converging. Result may be suboptimal.`;
+            const msg = `Restart ${restartIdx + 1} reached maximum ${maxIterations} iterations without converging. Result may be suboptimal. Try increasing maxIterations or restarts in Settings.`;
             log.push(`  ${msg}`);
             warnings.push(msg);
         }

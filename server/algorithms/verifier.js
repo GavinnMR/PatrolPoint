@@ -147,7 +147,7 @@ export function verifyZoneAssignment(zones, patrols, allCrimeNodes, excludedCrim
         if (crimeIdToZone[crime.crimeId] === undefined && !excludedIds.has(crime.crimeId)) {
             return {
                 pass:    false,
-                message: `Crime node ${crime.crimeId} was neither assigned to a zone nor recorded as excluded — silent drop in Stage 3.`
+                message: `Crime node ${crime.crimeId} was neither assigned to a zone nor recorded as excluded (silent drop in Stage 3). Please recalculate. If the issue persists, report it.`
             };
         }
     }

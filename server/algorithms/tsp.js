@@ -375,7 +375,7 @@ export function runTSP(
             approximate   = true;
             algorithmUsed = 'nearest-neighbor';
             algorithmBreakdown.nearestNeighbor++;
-            const msg     = `Patrol ${patrol.id}: zone size k=${actualK} exceeds threshold ${fallbackThreshold}. Using nearest neighbor heuristic (result is approximate, not guaranteed optimal).`;
+            const msg     = `Patrol ${patrol.id}: zone size k=${actualK} exceeds threshold ${fallbackThreshold}. Using nearest neighbor heuristic (result is approximate, not guaranteed optimal). Consider adding more patrols to reduce zone sizes.`;
             log.push(msg);
             warnings.push(msg);
 
