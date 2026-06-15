@@ -366,7 +366,7 @@ function handleStageComplete(data) {
             runtimeMs: Math.round(runtimeMs)
         };
         // Attach stage subpart breakdowns and supporting chart data
-        if (stage === 1) stageUpdate.subparts = buildStage1Subparts(result);
+        // Stage 1 subparts intentionally omitted — debug log covers the same information
         if (stage === 2) stageUpdate.subparts = buildStage2Subparts(result);
         if (stage === 3) {
             stageUpdate.subparts  = buildStage3Subparts(result);
@@ -590,6 +590,7 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
                 `Hull area        : ~${areaM2} m²  (~${areaKm2} km²)  [Shoelace approx.]`,
                 `Valid road nodes inside hull   : ${candidates} of ${(window.uiApp?.activeConfig?.candidateNodes === 'intersection' ? window._intersectionCount : window._nodeCount) ?? '?'} total`,
                 result.linearHandlerTriggered ? 'Linear handler   : TRIGGERED (patrols placed along incident line)' : 'Collinearity     : passed (full hull computed)',
+                result.validEdgesCount != null ? `Edge count check : ${result.validEdgesCount} edge${result.validEdgesCount !== 1 ? 's' : ''} - ${result.validEdgesCount >= 3 ? 'sufficient for a polygon' : 'insufficient (linear handler triggered)'}` : '',
                 result.skipped ? 'Cache            : hull unchanged (valid candidates reused from previous run)' : '',
                 hr
             ].filter(Boolean).join('\n');
