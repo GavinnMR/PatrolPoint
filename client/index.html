@@ -212,7 +212,7 @@
         <!-- Expanded list -->
         <div x-show="!bannerCollapsed && bannerList.length > 1" class="px-3 pb-2">
           <ul class="list-disc list-inside space-y-1">
-            <template x-for="msg in bannerList" :key="msg">
+            <template x-for="msg in bannerList.slice(1)" :key="msg">
               <li x-text="msg"></li>
             </template>
           </ul>
