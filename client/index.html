@@ -84,6 +84,11 @@
                 class="text-[11px] px-3 py-1.5 rounded shadow border bg-white dark:bg-gray-800 text-red-500 border-red-400 hover:bg-red-50 dark:hover:bg-gray-700">
           Reset Graph
         </button>
+        <button x-show="!showPlayback && routes.length > 0" x-cloak
+                @click="showPlayback = true"
+                class="text-[11px] px-3 py-1.5 rounded shadow border bg-white dark:bg-gray-800 text-blue-500 border-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700">
+          Route Playback
+        </button>
       </div>
 
 <!-- Bottom-left row: legend toggle + coordinate display -->
