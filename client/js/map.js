@@ -751,7 +751,7 @@ function _stationaryIcon(color, num) {
                 <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22s14-12.667 14-22C28 6.268 21.732 0 14 0z"
                       fill="${color}"/>
               </svg>
-              <span class="patrol-pin-label">${num}S</span>
+              <span class="patrol-pin-label">${num}</span>
             </div>
           </div>`,
         iconSize:   [28, 36],
