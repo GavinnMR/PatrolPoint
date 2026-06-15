@@ -1200,11 +1200,6 @@ function buildTraceMetrics(stage, result) {
             }
             return [
                 {
-                    label:   'Matrix build',
-                    value:   result.matrixRuntimeMs != null ? result.matrixRuntimeMs + ' ms' : 'N/A',
-                    tooltip: 'Time to precompute road distances between all valid candidate nodes before Hill Climbing starts. Shared by Stage 2 (neighbor evaluation) and Stage 3 (zone assignment).'
-                },
-                {
                     label:   'Patrols placed',
                     value:   n,
                     tooltip: 'Number of patrol units successfully positioned inside the danger zone.'
@@ -1215,11 +1210,6 @@ function buildTraceMetrics(stage, result) {
                     tooltip: 'Shortest straight-line distance between any two patrols. Hill Climbing maximizes this to spread patrols as far apart as possible.'
                 },
                 {
-                    label:   'Spread quality',
-                    value:   spreadQuality != null ? spreadQuality + '%' : 'N/A',
-                    tooltip: 'How close the achieved patrol spread is to the theoretical ideal spacing for this zone area and patrol count. 100% = perfect grid-like distribution.'
-                },
-                {
                     label:   'Confidence',
                     value:   result.confidence != null ? result.confidence.toFixed(1) + '%' : 'N/A',
                     tooltip: 'How reliable this result is: 50% restart consistency (do all restarts agree on the same answer?) + 50% confirmation rate (how many restarts confirmed the best without improving it?).'
@@ -1228,11 +1218,6 @@ function buildTraceMetrics(stage, result) {
                     label:   'Restarts',
                     value:   result.restartsCompleted ?? 'N/A',
                     tooltip: 'Number of independent Hill Climbing runs performed. More restarts reduce the chance of being stuck in a local optimum.'
-                },
-                {
-                    label:   'Total iterations',
-                    value:   result.totalIterations != null ? result.totalIterations.toLocaleString() : 'N/A',
-                    tooltip: 'Total number of Hill Climbing iterations across all restarts. Each iteration attempts to move every patrol to a better neighbouring position.'
                 },
                 {
                     label:   'Best at restart',
@@ -1287,12 +1272,6 @@ function buildTraceMetrics(stage, result) {
                     tooltip: 'Percentage of plotted incidents that were successfully assigned to a patrol zone. Incidents too far from any road intersection are excluded.'
                 },
                 {
-                    label:   'Zone balance',
-                    value:   balanceValue,
-                    warn:    balanceWarn,
-                    tooltip: 'How evenly incidents are spread across patrols. "Optimal" means every patrol is within one incident of the ideal equal split - the best mathematically possible. A percentage shows how far the distribution is from equal, using average deviation across all patrols (not just the best and worst).'
-                },
-                {
                     label:   'Patrol zones',
                     value:   result.zones?.length ?? 0,
                     tooltip: 'Total number of patrol zones, one per patrol unit.'
@@ -1332,11 +1311,6 @@ function buildTraceMetrics(stage, result) {
                     tooltip: 'Number of closed-loop patrol routes generated. Each route visits all assigned incidents and returns to the starting position.'
                 },
                 {
-                    label:   'Total circuit dist',
-                    value:   totalCircuitDist > 0 ? (totalCircuitDist / 1000).toFixed(2) + ' km' : 'N/A',
-                    tooltip: 'Sum of all patrol circuit lengths following actual road paths. Represents the total distance all patrols would travel on one complete round.'
-                },
-                {
                     label:   'Dijkstra calls',
                     value:   totalCalls,
                     tooltip: 'Number of shortest-path computations run against the full road network graph.'
@@ -1351,11 +1325,6 @@ function buildTraceMetrics(stage, result) {
                     value:   result.overlapEdges?.length ?? 0,
                     warn:    (result.overlapEdges?.length ?? 0) > 0,
                     tooltip: 'Road segments used by more than one patrol circuit. Shown as orange (2 patrols) or red (3+) overlays on the map. High overlap may indicate patrol territory consolidation could help.'
-                },
-                {
-                    label:   'Seq. adjustments',
-                    value:   result.totalSequenceAdjustments ?? 0,
-                    tooltip: 'Number of times a crime node was moved earlier in the visit sequence because it was a natural intermediate stop on the road path to the next waypoint. Eliminates redundant backtracking.'
                 },
             ];
         }
