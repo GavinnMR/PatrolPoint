@@ -1041,6 +1041,32 @@ function clearNearestHighlights() {
     window.nearestHighlights = nearestHighlightMarkers;
 }
 
+// ── Clear pipeline layers only (keeps crime markers) ──────────────────────────
+function clearPipelineMapLayers() {
+    if (hullPolygon) { map.removeLayer(hullPolygon); hullPolygon = null; window.hullPolygon = null; }
+
+    patrolClusterGroup.clearLayers();
+    Object.values(patrolMarkerMap).forEach(entry => {
+        if (entry.coverageCircle) map.removeLayer(entry.coverageCircle);
+    });
+    patrolMarkerMap      = {};
+    window.patrolMarkers = {};
+    window.S_star        = [];
+
+    _clearRoutePolylines();
+    clearZoneLines();
+    clearNearestHighlights();
+
+    _lastRoutes       = null;
+    _lastPatrols      = null;
+    _lastZones        = null;
+    _selectedPatrolId = null;
+    _patrolInfoControl?.hide();
+
+    window.currentHull     = null;
+    window.pipelineComplete = false;
+}
+
 // ── Clear all pipeline results ─────────────────────────────────────────────────
 function clearAllMapResults() {
     // Hull
@@ -1394,6 +1420,7 @@ window.renderOverlapOverlay       = renderOverlapOverlay;
 window.renderCoverageRadius       = renderCoverageRadius;
 window.renderNearestHighlights    = renderNearestHighlights;
 window.clearNearestHighlights     = clearNearestHighlights;
+window.clearPipelineMapLayers     = clearPipelineMapLayers;
 window.clearAllMapResults         = clearAllMapResults;
 
 window.startRoutePlayback         = startRoutePlayback;

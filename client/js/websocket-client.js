@@ -235,6 +235,10 @@ function handleNetworkLoaded(data) {
 function handlePipelineStart(data) {
     console.log('PIPELINE_START:', { totalStages: data.totalStages, mode: data.mode });
 
+    // Clear previous pipeline map layers (patrol markers, hull, routes, zones)
+    // so stale markers from a different patrol count don't bleed into the new run's animation
+    window.clearPipelineMapLayers?.();
+
     // Clear previous pipeline result globals
     window.currentHull      = null;
     window.S_star           = [];
