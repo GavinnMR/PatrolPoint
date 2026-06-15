@@ -359,6 +359,10 @@ async function toggleOsmGraphMode(active) {
 
     if (!active) {
         if (currentTileLayer) currentTileLayer.addTo(map);
+        graphNodeMarkers = {};
+        graphNodeEdgeMap = {};
+        window.graphNodeMarkers = graphNodeMarkers;
+        window.graphNodeEdgeMap = graphNodeEdgeMap;
         return;
     }
 
@@ -391,6 +395,10 @@ async function toggleOsmGraphMode(active) {
     const { nodeMap: nm, adjacencyList: adj, intersectionNodeIds: intersections } = osmNetworkCache;
     const drawn = new Set();
 
+    // Reset both maps before building so re-toggles start clean
+    graphNodeMarkers = {};
+    graphNodeEdgeMap = {};
+
     for (const nodeId of Object.keys(adj)) {
         const from = nm[nodeId];
         if (!from) continue;
@@ -414,9 +422,6 @@ async function toggleOsmGraphMode(active) {
         }
     }
 
-    graphNodeMarkers = {};
-    graphNodeEdgeMap = {};
-
     for (const nodeId of Object.keys(nm)) {
         const node = nm[nodeId];
         if (!node) continue;
@@ -435,6 +440,10 @@ async function toggleOsmGraphMode(active) {
         graphNodeMarkers[nodeId] = marker;
         osmGraphLayers.push(marker);
     }
+
+    // Re-export so tests and external code always see current maps
+    window.graphNodeMarkers = graphNodeMarkers;
+    window.graphNodeEdgeMap = graphNodeEdgeMap;
 }
 
 function toggleNodeRemoval(nodeId, marker) {

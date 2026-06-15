@@ -266,10 +266,18 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     const hull            = s1Data.hull;
     // When hull was skipped (incremental), hullAreaM2 is null — fall back to previousHullAreaM2
     const hullAreaM2      = s1Data.hullAreaM2 ?? previousHullAreaM2 ?? barangayAreaM2 * 0.01;
-    const validCandidates = s1Data.validCandidates;
+
+    // When the hull is skipped (incremental — same incidents, same hull), Stage 1 returns the
+    // cached validCandidates from the previous run. If removedNodes changed since that run,
+    // those cached candidates may include nodes that are now removed. Re-filter them here so
+    // every downstream stage always sees a removedNodes-clean candidate list.
+    let validCandidates = s1Data.validCandidates;
+    if (removedNodes && removedNodes.size > 0 && validCandidates) {
+        validCandidates = validCandidates.filter(c => !removedNodes.has(c.id));
+    }
 
     finalHull            = hull;
-    finalValidCandidates = validCandidates;
+    finalValidCandidates = s1Data.validCandidates; // cache the unfiltered set for next incremental check
     finalHullAreaM2      = s1Data.hullAreaM2 ?? previousHullAreaM2;
 
     // Snap candidates: all road nodes inside the hull, independent of patrol placement toggle.

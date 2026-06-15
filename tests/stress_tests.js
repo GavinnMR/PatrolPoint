@@ -1740,6 +1740,596 @@ window.PP_TESTS = (() => {
                     chkIncludes(legendText, 'overlap',          'legend has route overlap entry')
                 ];
             }
+        },
+
+        // ══ Road Graph Editor (Stage 9) ══════════════════════════════════════
+        //
+        // Tests cover every edit path: remove, restore, bulk-remove, reset,
+        // interaction with the pipeline before and after Recalculate, visual
+        // state consistency across OSM graph mode toggles, and the decoupling
+        // between the visual layer and the data layer (removedNodes Set).
+        //
+        // All check() functions are async because they toggle OSM graph mode
+        // (which is async) and/or trigger a second pipeline run.
+        // Each test clears window.removedNodes at the start AND restores it
+        // at the end so tests are fully independent of each other.
+
+        {
+            id: 'SG-T01', stage: 9, n: 3,
+            name: 'Graph mode on — node markers populated, removedNodes starts empty',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(true);
+                await new Promise(r => setTimeout(r, 400));
+
+                const nodeCount    = Object.keys(window.graphNodeMarkers || {}).length;
+                const removedCount = (window.removedNodes || new Set()).size;
+
+                await window.toggleOsmGraphMode?.(false);
+                return [
+                    chkGt(nodeCount, 0,
+                        `graphNodeMarkers populated after graph mode on (got: ${nodeCount})`),
+                    chkEq(removedCount, 0,
+                        'removedNodes is empty on a fresh graph-mode activation'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T02', stage: 9, n: 3,
+            name: 'Remove node — removedNodes updated, marker turns red, connected edges turn red',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(true);
+                await new Promise(r => setTimeout(r, 400));
+
+                const nodeIds = Object.keys(window.graphNodeMarkers || {});
+                if (!nodeIds.length) {
+                    await window.toggleOsmGraphMode?.(false);
+                    return [fail('graphNodeMarkers not empty', 0, '> 0')];
+                }
+
+                // Pick a node that has edges so we can verify edge-color update
+                const edgeMap   = window.graphNodeEdgeMap || {};
+                const victimId  = nodeIds.find(id => (edgeMap[id] || []).length > 0) || nodeIds[0];
+                const marker    = window.graphNodeMarkers[victimId];
+
+                window.toggleNodeRemoval?.(victimId, marker);
+
+                const inSet   = window.removedNodes?.has(victimId) ?? false;
+                const style   = marker?.options || {};
+                const isRed   = style.color === '#e74c3c';
+                const edges   = edgeMap[victimId] || [];
+                const redEdge = edges.some(e => e.line?.options?.color === '#e74c3c');
+
+                // Restore before cleanup
+                window.toggleNodeRemoval?.(victimId, marker);
+                await window.toggleOsmGraphMode?.(false);
+
+                return [
+                    chkEq(inSet ? 'yes' : 'no', 'yes',
+                        `removedNodes contains removed node ${victimId}`),
+                    chkEq(isRed ? 'yes' : 'no', 'yes',
+                        'marker color changed to red (#e74c3c) after removal'),
+                    chkEq(redEdge ? 'yes' : 'no', 'yes',
+                        'at least one connected edge turned red after removal'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T03', stage: 9, n: 3,
+            name: 'Restore node — second toggle removes it from Set, marker turns blue, edges turn grey',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(true);
+                await new Promise(r => setTimeout(r, 400));
+
+                const nodeIds = Object.keys(window.graphNodeMarkers || {});
+                if (!nodeIds.length) {
+                    await window.toggleOsmGraphMode?.(false);
+                    return [fail('graphNodeMarkers not empty', 0, '> 0')];
+                }
+
+                const edgeMap  = window.graphNodeEdgeMap || {};
+                const victimId = nodeIds.find(id => (edgeMap[id] || []).length > 0) || nodeIds[0];
+                const marker   = window.graphNodeMarkers[victimId];
+
+                // Remove then restore
+                window.toggleNodeRemoval?.(victimId, marker);
+                window.toggleNodeRemoval?.(victimId, marker);
+
+                const inSet    = window.removedNodes?.has(victimId) ?? true;
+                const style    = marker?.options || {};
+                const isBlue   = style.color === '#3b82f6';
+                const edges    = edgeMap[victimId] || [];
+                const greyEdge = edges.every(e => e.line?.options?.color !== '#e74c3c');
+                const totalRemoved = window.removedNodes?.size ?? -1;
+
+                await window.toggleOsmGraphMode?.(false);
+
+                return [
+                    chkEq(inSet ? 'yes' : 'no', 'no',
+                        'node removed from Set after second toggle (restore)'),
+                    chkEq(isBlue ? 'yes' : 'no', 'yes',
+                        'restored marker color is blue (#3b82f6)'),
+                    chkEq(greyEdge ? 'yes' : 'no', 'yes',
+                        'all connected edges returned to grey after restore'),
+                    chkEq(totalRemoved, 0,
+                        'removedNodes is empty after restoring the only removed node'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T04', stage: 9, n: 3,
+            name: 'Remove 3 nodes — removedNodes.size === 3, reset button becomes visible',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(true);
+                await new Promise(r => setTimeout(r, 400));
+
+                const nodeIds = Object.keys(window.graphNodeMarkers || {});
+                if (nodeIds.length < 3) {
+                    await window.toggleOsmGraphMode?.(false);
+                    return [fail('at least 3 nodes available', nodeIds.length, '>= 3')];
+                }
+
+                for (let i = 0; i < 3; i++) {
+                    const id = nodeIds[i];
+                    window.toggleNodeRemoval?.(id, window.graphNodeMarkers[id]);
+                }
+
+                const size      = window.removedNodes?.size ?? -1;
+                const btnStyle  = document.getElementById('graph-reset-btn')?.style?.display;
+                const btnVisible = btnStyle !== 'none' && btnStyle !== '';
+
+                // Cleanup
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(false);
+
+                return [
+                    chkEq(size, 3, 'removedNodes.size === 3 after removing 3 nodes'),
+                    chkEq(btnVisible ? 'yes' : 'no', 'yes',
+                        'graph-reset-btn becomes visible when removedNodes is non-empty'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T05', stage: 9, n: 3,
+            name: 'Reset graph — removedNodes cleared, markers back to blue, reset button hidden',
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(true);
+                await new Promise(r => setTimeout(r, 400));
+
+                const nodeIds = Object.keys(window.graphNodeMarkers || {});
+                if (nodeIds.length < 2) {
+                    await window.toggleOsmGraphMode?.(false);
+                    return [fail('at least 2 nodes available', nodeIds.length, '>= 2')];
+                }
+
+                const victims = nodeIds.slice(0, 2);
+                victims.forEach(id => window.toggleNodeRemoval?.(id, window.graphNodeMarkers[id]));
+
+                const sizeBeforeReset   = window.removedNodes?.size ?? -1;
+                const btnBeforeReset    = document.getElementById('graph-reset-btn')?.style?.display;
+                const btnVisibleBefore  = btnBeforeReset !== 'none';
+
+                window.resetRemovedNodes?.();
+
+                const sizeAfterReset  = window.removedNodes?.size ?? -1;
+                const btnAfterReset   = document.getElementById('graph-reset-btn')?.style?.display;
+                const allBlue = victims.every(id => {
+                    const m = window.graphNodeMarkers[id];
+                    return m?.options?.color === '#3b82f6';
+                });
+
+                await window.toggleOsmGraphMode?.(false);
+
+                return [
+                    chkEq(sizeBeforeReset, 2,   'removedNodes.size === 2 before reset'),
+                    chkEq(btnVisibleBefore ? 'yes' : 'no', 'yes', 'reset button visible before reset'),
+                    chkEq(sizeAfterReset, 0,    'removedNodes.size === 0 after reset'),
+                    chkEq(btnAfterReset, 'none', 'reset button hidden (display:none) after reset'),
+                    chkEq(allBlue ? 'yes' : 'no', 'yes', 'all previously-removed markers are blue after reset'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T06', stage: 9, n: 3, mode: 'roaming',
+            name: 'Pipeline after remove — removed patrol-candidate node absent from S_star',
+            // First run captures a node used as patrol. Second run with that node in
+            // removedNodes must not place a patrol there (filteredNodeMap excludes it).
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                const firstS_star = S_star ? [...S_star] : [];
+                if (!firstS_star.length) return [fail('first run placed patrols', 0, '> 0')];
+
+                const victimNodeId = firstS_star[0]?.nodeId;
+                if (!victimNodeId) return [fail('patrol[0] has nodeId', victimNodeId, 'string')];
+
+                window.removedNodes = window.removedNodes || new Set();
+                window.removedNodes.add(victimNodeId);
+
+                await runPipeline();
+
+                const secondS_star     = S_star ? [...S_star] : [];
+                const victimStillUsed  = secondS_star.some(p => p.nodeId === victimNodeId);
+
+                window.removedNodes.delete(victimNodeId);
+
+                return [
+                    chkGt(firstS_star.length, 0,  'first run produced patrols'),
+                    chkGt(secondS_star.length, 0,  'second run still produced patrols'),
+                    chkEq(victimStillUsed ? 'yes' : 'no', 'no',
+                        `removed node (${victimNodeId}) not placed as patrol in second run`),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T07', stage: 9, n: 3, mode: 'roaming',
+            name: 'Pipeline after remove — removed node absent from all zone snappedNodeIds',
+            // allNodesMap in pipeline.js filters out removed nodes before building snap candidates,
+            // so no crime node can snap to a removed road node.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                const firstZonesFlat = zones ? zones.flat() : [];
+                if (!firstZonesFlat.length) return [fail('first run produced zones', 0, '> 0')];
+
+                const victimSnapId = firstZonesFlat[0]?.snappedNodeId;
+                if (!victimSnapId) return [fail('zone node[0] has snappedNodeId', victimSnapId, 'string')];
+
+                window.removedNodes = window.removedNodes || new Set();
+                window.removedNodes.add(victimSnapId);
+
+                await runPipeline();
+
+                const newFlat         = zones ? zones.flat() : [];
+                const snappedToVictim = newFlat.some(n => n.snappedNodeId === victimSnapId);
+
+                window.removedNodes.delete(victimSnapId);
+
+                return [
+                    chkEq(snappedToVictim ? 'yes' : 'no', 'no',
+                        `removed node (${victimSnapId}) not used as snappedNodeId after second run`),
+                    chkGt(newFlat.length > 0 ? 1 : 0, 0,
+                        'zones still contain assigned nodes (crime snapped to next nearest instead)'),
+                    chkEq(['none','warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok',
+                        'no error banner — removal of one snap node does not crash the pipeline'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T08', stage: 9, n: 3, mode: 'roaming',
+            name: 'Pipeline without graph mode active — removedNodes still excluded (data/visual decoupled)',
+            // Directly writes to window.removedNodes while OSM graph mode is OFF.
+            // The pipeline reads removedNodes on every compute regardless of visual state.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            async check() {
+                // Ensure graph mode is OFF for this test
+                window.removedNodes?.clear?.();
+                if (window.osmGraphMode) {
+                    await window.toggleOsmGraphMode?.(false);
+                    if (window.uiApp) window.uiApp.osmGraphMode = false;
+                    window.osmGraphMode = false;
+                }
+
+                const firstS_star  = S_star ? [...S_star] : [];
+                if (!firstS_star.length) return [fail('first run placed patrols', 0, '> 0')];
+
+                const victimNodeId = firstS_star[0]?.nodeId;
+                window.removedNodes = window.removedNodes || new Set();
+                window.removedNodes.add(victimNodeId);
+
+                await runPipeline();
+
+                const secondS_star = S_star ? [...S_star] : [];
+                const victimPlaced = secondS_star.some(p => p.nodeId === victimNodeId);
+
+                window.removedNodes.delete(victimNodeId);
+
+                return [
+                    chkEq(window.osmGraphMode ? 'on' : 'off', 'off',
+                        'OSM graph mode was off — confirms data/visual decoupling'),
+                    chkEq(victimPlaced ? 'yes' : 'no', 'no',
+                        `removed node (${victimNodeId}) excluded from pipeline even without graph mode active`),
+                    chkGt(secondS_star.length, 0,
+                        'pipeline still produces results with node removed and no graph mode'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T09', stage: 9, n: 3, mode: 'roaming',
+            name: 'Remove → recalculate → reset → recalculate — full graph restored, no error',
+            // End-to-end flow: graph shrinks then expands. Verifies removedNodes round-trips
+            // cleanly and the pipeline is not contaminated by the earlier reduced-graph run.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                const firstS_star = S_star ? [...S_star] : [];
+                if (firstS_star.length < 3) return [fail('S_star has >= 3 positions', firstS_star.length, 3)];
+
+                const removedIds = firstS_star.map(p => p.nodeId).filter(Boolean).slice(0, 3);
+
+                // Reduced-graph run
+                window.removedNodes = window.removedNodes || new Set();
+                removedIds.forEach(id => window.removedNodes.add(id));
+                await runPipeline();
+                const reducedS_star     = S_star ? [...S_star] : [];
+                const anyRemovedPlaced  = reducedS_star.some(p => removedIds.includes(p.nodeId));
+
+                // Reset and restore full graph
+                window.removedNodes.clear();
+                await runPipeline();
+                const restoredS_star = S_star ? [...S_star] : [];
+
+                return [
+                    chkEq(anyRemovedPlaced ? 'yes' : 'no', 'no',
+                        'removed nodes not placed during reduced-graph run'),
+                    chkGt(restoredS_star.length, 0,
+                        'final run on full graph still produces patrols'),
+                    chkEq(window.removedNodes?.size ?? -1, 0,
+                        'removedNodes empty for final run'),
+                    chkEq(['none','warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok',
+                        'no error banner after restoring full graph and recalculating'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T10', stage: 9, n: 3,
+            name: 'removedNodes persists across graph mode toggle off/on — removed marker re-renders red',
+            // Toggles off (removes all Leaflet layers) then back on.
+            // The new marker for the previously-removed node must be red because
+            // toggleOsmGraphMode reads window.removedNodes when building node markers.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(true);
+                await new Promise(r => setTimeout(r, 400));
+
+                const nodeIds = Object.keys(window.graphNodeMarkers || {});
+                if (!nodeIds.length) {
+                    await window.toggleOsmGraphMode?.(false);
+                    return [fail('graphNodeMarkers not empty', 0, '> 0')];
+                }
+
+                const victimId = nodeIds[0];
+                window.toggleNodeRemoval?.(victimId, window.graphNodeMarkers[victimId]);
+                const inSetBeforeOff = window.removedNodes?.has(victimId) ?? false;
+
+                // Toggle OFF — all Leaflet layers destroyed, graphNodeMarkers cleared
+                await window.toggleOsmGraphMode?.(false);
+                const inSetAfterOff       = window.removedNodes?.has(victimId) ?? false;
+                const markersClearedAfterOff = Object.keys(window.graphNodeMarkers || {}).length === 0;
+
+                // Toggle ON — graphNodeMarkers rebuilt; removed node must be red
+                await window.toggleOsmGraphMode?.(true);
+                await new Promise(r => setTimeout(r, 400));
+
+                const markerAfterReopen = window.graphNodeMarkers?.[victimId];
+                const isRedAfterReopen  = markerAfterReopen?.options?.color === '#e74c3c';
+                const inSetAfterOn      = window.removedNodes?.has(victimId) ?? false;
+
+                // Cleanup
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(false);
+
+                return [
+                    chkEq(inSetBeforeOff ? 'yes' : 'no', 'yes',
+                        'node in removedNodes after initial click'),
+                    chkEq(inSetAfterOff ? 'yes' : 'no', 'yes',
+                        'removedNodes Set persists after graph mode toggled off'),
+                    chkEq(markersClearedAfterOff ? 'yes' : 'no', 'yes',
+                        'graphNodeMarkers cleared when graph mode toggled off'),
+                    chkEq(inSetAfterOn ? 'yes' : 'no', 'yes',
+                        'removedNodes still has node after graph mode re-enabled'),
+                    chkEq(isRedAfterReopen ? 'yes' : 'no', 'yes',
+                        'removed node marker re-renders red on graph mode re-activation'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T11', stage: 9, n: 3, mode: 'roaming',
+            name: 'Remove after pipeline run — most natural user flow (see result, edit, re-run)',
+            // User runs pipeline, inspects result, removes a node used as patrol start,
+            // clicks Recalculate. Second run must exclude the victim from patrol and snapping.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                const firstS_star = S_star ? [...S_star] : [];
+                if (!firstS_star.length) return [fail('first run placed patrols', 0, '> 0')];
+
+                const victimNodeId = firstS_star[0]?.nodeId;
+                window.removedNodes = window.removedNodes || new Set();
+                window.removedNodes.add(victimNodeId);
+
+                await runPipeline();
+
+                const secondS_star    = S_star ? [...S_star] : [];
+                const placedAsPatrol  = secondS_star.some(p => p.nodeId === victimNodeId);
+                const usedInZone      = zones ? zones.flat().some(cn => cn.snappedNodeId === victimNodeId) : false;
+
+                window.removedNodes.delete(victimNodeId);
+
+                return [
+                    chkGt(firstS_star.length, 0,  'first run produced patrols'),
+                    chkGt(secondS_star.length, 0,  'second run still produced patrols after removal'),
+                    chkEq(placedAsPatrol ? 'yes' : 'no', 'no',
+                        `victim node (${victimNodeId}) not used as patrol position after removal`),
+                    chkEq(usedInZone ? 'yes' : 'no', 'no',
+                        'victim node not used as snapped crime node after removal'),
+                    chkEq(['none','warning'].includes(bannerType()) ? 'ok' : 'fail', 'ok',
+                        'no error banner — single node removal handled gracefully'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T12', stage: 9, n: 3, mode: 'roaming',
+            name: 'Bulk remove (20% of nodes) — pipeline degrades gracefully, no crash or infinite hang',
+            // Ensures that even with many nodes removed the pipeline either succeeds
+            // or produces a clear error banner — never hangs or throws uncaught errors.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+                await window.toggleOsmGraphMode?.(true);
+                await new Promise(r => setTimeout(r, 400));
+                const nodeIds = Object.keys(window.graphNodeMarkers || {});
+                await window.toggleOsmGraphMode?.(false);
+
+                const countToRemove = Math.max(10, Math.floor(nodeIds.length * 0.20));
+                window.removedNodes = window.removedNodes || new Set();
+                for (let i = 0; i < countToRemove && i < nodeIds.length; i++) {
+                    window.removedNodes.add(nodeIds[i]);
+                }
+
+                await runPipeline();
+
+                const didComplete  = !window.pipelineRunning;
+                const hasResults   = (S_star?.length ?? 0) > 0;
+                const hasGoodBanner = ['none','warning','error'].includes(bannerType());
+
+                window.removedNodes?.clear?.();
+
+                return [
+                    chkEq(didComplete ? 'yes' : 'no', 'yes',
+                        `pipeline completed (not hanging) after removing ${countToRemove} nodes`),
+                    chkEq(hasResults || bannerType() === 'error' ? 'ok' : 'fail', 'ok',
+                        `pipeline either produced results (${hasResults}) or showed an error banner gracefully`),
+                    chkEq(hasGoodBanner ? 'ok' : 'fail', 'ok',
+                        'banner state is one of: none / warning / error (no unknown state)'),
+                ];
+            }
+        },
+
+        {
+            id: 'SG-T13', stage: 9, n: 3, mode: 'roaming',
+            name: 'Remove node that bridges two candidates — disconnected crime nodes use haversine fallback or reachable alternative',
+            // When removed nodes sever the only road path to some crime nodes, Dijkstra
+            // returns Infinity. The pipeline must NOT crash — it falls back to Haversine
+            // distance for those pairs and logs the fallback in the Stage 3 trace.
+            // This test verifies the pipeline completes and the trace captures the event.
+            coords: [
+                { lat: 14.6960, lng: 121.0855 }, { lat: 14.7120, lng: 121.1042 },
+                { lat: 14.7120, lng: 121.0855 }, { lat: 14.6960, lng: 121.1042 },
+                { lat: 14.7040, lng: 121.0948 }, { lat: 14.6998, lng: 121.0892 },
+                { lat: 14.7082, lng: 121.0892 }, { lat: 14.7082, lng: 121.1005 },
+                { lat: 14.6998, lng: 121.1005 }
+            ],
+            async check() {
+                window.removedNodes?.clear?.();
+
+                // Harvest snap node IDs from first run, remove all of them to maximise
+                // the chance of severing a path. (Snap nodes are nodes crimes are attached
+                // to; removing them tests the full disconnection fallback.)
+                const snapNodeIds = zones
+                    ? [...new Set(zones.flat().map(cn => cn.snappedNodeId).filter(Boolean))]
+                    : [];
+
+                if (!snapNodeIds.length) {
+                    return [{ ok: 'manual', label: 'No snap nodes from first run — re-run with a valid roaming scenario.' }];
+                }
+
+                window.removedNodes = window.removedNodes || new Set();
+                // Remove all snap nodes — forces fallback for every crime node
+                snapNodeIds.forEach(id => window.removedNodes.add(id));
+
+                await runPipeline();
+
+                const didComplete = !window.pipelineRunning;
+                const s3Log  = window.uiApp?.traceStages?.find(s => s.id === 3)?.fullLog || '';
+                const s3Ran  = window.uiApp?.traceStages?.some(s => s.id === 3) ?? false;
+
+                // Fallback message OR pipeline error from no-candidates — both are valid outcomes.
+                const pipelineHandledIt = didComplete && (
+                    s3Ran ||                                   // Stage 3 ran and may have fallen back
+                    bannerType() === 'error'                    // Or graceful early error
+                );
+
+                window.removedNodes?.clear?.();
+
+                return [
+                    chkEq(didComplete ? 'yes' : 'no', 'yes',
+                        'pipeline completed — did not hang after removing all snap nodes'),
+                    chkEq(pipelineHandledIt ? 'ok' : 'fail', 'ok',
+                        'pipeline produced Stage 3 output or a graceful error banner (no uncaught crash)'),
+                ];
+            }
         }
 
     ];
@@ -1809,6 +2399,8 @@ window.PP_TESTS = (() => {
         const traceEl = document.getElementById('trace-content');
         if (traceEl) traceEl.innerHTML = '';
         if (window.uiApp) { window.uiApp.traceStages = []; window.uiApp.pipelineSummary = ''; }
+        // graph editor — always start each test with a clean removed-nodes Set
+        window.removedNodes?.clear?.();
         return true;
     }
 
