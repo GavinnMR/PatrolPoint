@@ -588,7 +588,7 @@ function buildFullLogPreamble(stage, result, runtimeMs) {
                 `Outliers flagged : ${outliers} (threshold: ${window.uiApp?.activeConfig?.convexHull?.outlierMultiplier ?? 2.5}x avg distance from centroid)`,
                 `Hull vertices    : ${vertexCount}`,
                 `Hull area        : ~${areaM2} m²  (~${areaKm2} km²)  [Shoelace approx.]`,
-                `Road intersections inside hull : ${candidates} of ${window._intersectionCount ?? '?'} total`,
+                `Valid road nodes inside hull   : ${candidates} of ${(window.uiApp?.activeConfig?.candidateNodes === 'intersection' ? window._intersectionCount : window._nodeCount) ?? '?'} total`,
                 result.linearHandlerTriggered ? 'Linear handler   : TRIGGERED (patrols placed along incident line)' : 'Collinearity     : passed (full hull computed)',
                 result.skipped ? 'Cache            : hull unchanged (valid candidates reused from previous run)' : '',
                 hr
@@ -1097,7 +1097,7 @@ function buildCircuitChart(result) {
 function buildNarrative(stage, result) {
     switch (stage) {
         case 1: {
-            if (result.skipped) return 'Hull unchanged from previous run - all new incidents fall within the existing danger zone.';
+            if (result.skipped) return 'Hull unchanged from previous run. All new incidents fall within the existing danger zone.';
             const n          = result.filteredCount ?? 0;
             const pairs      = n > 1 ? (n * (n - 1)).toLocaleString() : '0';
             const vertices   = result.hull?.length ?? 0;
@@ -1157,9 +1157,16 @@ function buildNarrative(stage, result) {
 function buildTraceMetrics(stage, result) {
     switch (stage) {
         case 1: {
-            const totalIntersections = window._intersectionCount ?? null;
+            const uiApp = window.uiApp;
+            const candidateNodesMode = uiApp?.activeConfig?.candidateNodes ?? 'all';
+            const totalNodes = candidateNodesMode === 'intersection'
+                ? (window._intersectionCount ?? null)
+                : (window._nodeCount ?? null);
             const inside = result.validCandidateCount ?? 0;
-            const coveragePct = totalIntersections > 0 ? Math.round((inside / totalIntersections) * 100) : null;
+            const coveragePct = totalNodes > 0 ? Math.round((inside / totalNodes) * 100) : null;
+            const candidateTooltip = candidateNodesMode === 'intersection'
+                ? 'Road intersection nodes (junctions with 3+ connections) inside the danger zone. The only positions eligible for patrol placement. Switch to "All nodes" in Settings for finer placement granularity.'
+                : 'All road nodes inside the danger zone. The only positions eligible for patrol placement. Switch to "Intersection nodes" in Settings to restrict placement to road junctions only.';
             return [
                 {
                     label:   'Hull vertices',
@@ -1174,7 +1181,7 @@ function buildTraceMetrics(stage, result) {
                 {
                     label:   'Candidate nodes',
                     value:   coveragePct != null ? `${inside} (${coveragePct}% of all)` : inside,
-                    tooltip: 'Road intersection nodes inside the danger zone. The only positions eligible for patrol placement.'
+                    tooltip: candidateTooltip
                 },
                 {
                     label:   'Outliers flagged',

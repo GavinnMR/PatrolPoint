@@ -18,8 +18,8 @@ function _haversine(lat1, lng1, lat2, lng2) {
 // Algorithm descriptions shown in the trace panel — educational, not data-driven.
 const STAGE_INFO = {
     1: {
-        description: 'Finds the smallest convex polygon enclosing all plotted crime incidents. This polygon defines the operational danger zone - all patrols and routes are constrained within it.',
-        algorithmNote: 'O(n³): for each of the n×(n−1) directed point pairs (A→B), the algorithm checks whether all remaining points lie to the left of that line - if yes, A→B is a valid hull edge. Valid edges are chained into the polygon. Small n (rarely exceeding 30 incidents) makes the cubic cost negligible. The hull also bounds the search space: only road intersection nodes inside the polygon are eligible for patrol placement.'
+        description: 'Finds the smallest convex polygon enclosing all plotted crime incidents. This polygon defines the operational danger zone where all patrols and routes are constrained within it.',
+        algorithmNote: 'O(n³): for each of the n×(n-1) directed point pairs (A→B), the algorithm checks whether all remaining points lie to the left of that line. If yes, A→B is a valid hull edge. Valid edges are chained into the polygon. The hull also bounds the search space which are the only road nodes inside the polygon that are eligible for patrol placement.'
     },
     2: {
         description: 'Places n patrol units at road intersection nodes inside the danger zone, maximizing the minimum pairwise distance between any two patrols.',

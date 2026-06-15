@@ -209,7 +209,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
             stage: 1,
             result: {
                 hull:                   s1Data.hull,
-                hullArea:               s1Data.hullAreaM2,
+                hullArea:               s1Data.hullAreaM2 ?? previousHullAreaM2,
                 validCandidateCount:    s1Data.validCandidates ? s1Data.validCandidates.length : 0,
                 outlierCount:           s1Data.outlierCount,
                 filteredCount:          s1Data.filteredCount,

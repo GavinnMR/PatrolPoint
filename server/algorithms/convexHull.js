@@ -193,7 +193,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
 
                 if (!anyRemoved) {
                     // Incident set is identical — hull is guaranteed unchanged
-                    log.push('Incremental hull update: incident set identical to previous run - skipping full computation.');
+                    log.push('Incremental hull update: incident set identical to previous run. Full computation skipped.');
                     return {
                         status: 'success',
                         message: 'Hull unchanged - incident set identical to previous run.',
