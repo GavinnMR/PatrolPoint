@@ -365,17 +365,9 @@ function handleStageComplete(data) {
             fullLog:   combinedLog,
             runtimeMs: Math.round(runtimeMs)
         };
-        // Attach stage subpart breakdowns and supporting chart data
-        // Stage 1 subparts intentionally omitted — debug log covers the same information
-        if (stage === 2) stageUpdate.subparts = buildStage2Subparts(result);
-        if (stage === 3) {
-            stageUpdate.subparts  = buildStage3Subparts(result);
-            stageUpdate.zoneChart = buildZoneChart(result);
-        }
-        if (stage === 4) {
-            stageUpdate.subparts     = buildStage4Subparts(result);
-            stageUpdate.circuitChart = buildCircuitChart(result);
-        }
+        // Attach supporting chart data
+        if (stage === 3) stageUpdate.zoneChart    = buildZoneChart(result);
+        if (stage === 4) stageUpdate.circuitChart = buildCircuitChart(result);
         const _narrative = buildNarrative(stage, result);
         if (_narrative) stageUpdate.narrative = _narrative;
         // Attach Stage 2 convergence data for trace panel display
