@@ -22,7 +22,10 @@ const STAGE_INFO = {
         algorithmNote: 'O(n³): for each of the n×(n-1) directed point pairs (A→B), the algorithm checks whether all remaining points lie to the left of that line. If yes, A→B is a valid hull edge. Valid edges are chained into the polygon. The hull also bounds the search space which are the only road nodes inside the polygon that are eligible for patrol placement.'
     },
     2: {
-        description: 'Places n patrol units at road intersection nodes inside the danger zone, maximizing the minimum pairwise distance between any two patrols.',
+        description: (config) => {
+            const nodes = config?.candidateNodes === 'intersection' ? 'road intersection nodes' : 'road nodes';
+            return `Places n patrol units at ${nodes} inside the danger zone, maximizing the minimum pairwise distance between any two patrols.`;
+        },
         algorithmNote: 'Objective: maximize the worst-case gap - the minimum distance between any two patrols. A larger minimum gap means better territory coverage with less overlap. Each patrol moves to the neighbor intersection within radius R that most improves this objective. Multiple random restarts escape local optima; adaptive early stopping halts when the last few restarts agree. The best configuration across all restarts is S★.'
     },
     3: {
@@ -130,8 +133,8 @@ document.addEventListener('alpine:init', () => {
         activeConfig: {
             candidateNodes:     'all',
             hillClimbing: {
-                restarts:               100,
-                maxIterations:          1000,
+                restarts:               10,
+                maxIterations:          500,
                 radiusMultiplier:       2,
                 synchronousMode:        false
             },
@@ -160,8 +163,8 @@ document.addEventListener('alpine:init', () => {
         settingsDraft: {
             candidateNodes:     'all',
             hillClimbing: {
-                restarts:               100,
-                maxIterations:          1000,
+                restarts:               10,
+                maxIterations:          500,
                 radiusMultiplier:       2,
                 synchronousMode:        false
             },
@@ -886,7 +889,7 @@ document.addEventListener('alpine:init', () => {
             this.traceStages.push({
                 id,
                 name,
-                description:        info.description   || '',
+                description:        typeof info.description === 'function' ? info.description(this.activeConfig) : (info.description || ''),
                 algorithmNote:      info.algorithmNote  || '',
                 status:             'running',
                 summary:            '',
