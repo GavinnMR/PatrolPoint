@@ -414,9 +414,7 @@ function handleWarning(data) {
             }
         }
 
-        // Consolidate all pipeline warnings into a single banner with list format
         pipelineWarnings.push(data.message);
-        ui.showBanner(pipelineWarnings[0], 'warning', [...pipelineWarnings]);
     }
 }
 

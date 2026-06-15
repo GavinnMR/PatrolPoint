@@ -140,7 +140,7 @@ function initMap(ui) {
 
         // Barangay boundary check — hard block
         if (window.boundaryPolygon && !pointInHull(lat, lng, window.boundaryPolygon)) {
-            if (ui) ui.showBanner('Incident plotted outside Barangay Commonwealth boundary. Point ignored.', 'warning');
+            // warning suppressed
             return;
         }
 
@@ -149,7 +149,7 @@ function initMap(ui) {
             p => Math.abs(p.lat - lat) < 1e-7 && Math.abs(p.lng - lng) < 1e-7
         );
         if (dup) {
-            if (ui) ui.showBanner('Incident already plotted at this location.', 'warning');
+            // warning suppressed
             return;
         }
 
@@ -584,7 +584,7 @@ function plotCrimeMarker(point) {
             !pointInHull(nLat, nLng, window.currentHull)) {
             marker.setLatLng([savedLat, savedLng]);
             const ui = window.uiApp;
-            if (ui) ui.showBanner('Crime node moved outside danger zone - snapped back.', 'warning');
+            // warning suppressed
             return;
         }
         const ui = window.uiApp;

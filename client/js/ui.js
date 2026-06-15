@@ -674,9 +674,7 @@ document.addEventListener('alpine:init', () => {
 
             this.importText = '';
 
-            if (warnings.length > 0) {
-                this.showBanner(warnings[0], 'warning', warnings);
-            }
+            // import warnings suppressed
 
             const skippedMsg = skipped ? `, ${skipped} line${skipped !== 1 ? 's' : ''} skipped (invalid format or outside boundary)` : '';
             this.importMessage = `${valid_filtered.length} point${valid_filtered.length !== 1 ? 's' : ''} imported successfully${skippedMsg}.`;

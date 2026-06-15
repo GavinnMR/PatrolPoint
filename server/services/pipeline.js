@@ -412,13 +412,12 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
     let routes = null;
 
     // ── Stage 4: Backtracking TSP — roaming mode only ─────────────────────────
+    let tsp4Result;
     if (mode === 'roaming') {
         if (isCancelled()) return { previousState: { hull: finalHull, validCandidates: finalValidCandidates, incidents, hullAreaM2: finalHullAreaM2, candidateNodes: currentCandidateNodes } };
 
         pushMessage({ type: 'stage_start', data: { stage: 4, name: 'Backtracking TSP' } });
         const stage4StartMs = performance.now();
-
-        let tsp4Result;
         try {
             tsp4Result = runTSP(
                 zones, patrols, multiNodeZones, singleNodeZones,

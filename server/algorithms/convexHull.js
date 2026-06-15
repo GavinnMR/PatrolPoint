@@ -555,7 +555,7 @@ export function runConvexHull(incidents, n, config, networkData, options = {}) {
 
         return {
             status: 'error',
-            message: 'No road intersections found inside the danger zone. Please plot incident coordinates closer to road intersections or expand the incident area.',
+            message: 'No road nodes found inside the danger zone. Please plot incident coordinates closer to roads or expand the incident area.',
             warnings,
             data: {
                 hull,
