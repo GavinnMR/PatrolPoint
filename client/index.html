@@ -918,43 +918,10 @@
           </div>
         </div>
 
-        <!-- Convex Hull settings -->
-        <div>
-          <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Convex Hull</h3>
-          <div class="space-y-2">
-            <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400 cursor-help"
-                    title="Incidents farther from the group centroid than this multiplier times the average distance are flagged as outliers. Lower = stricter flagging. Default 2.5 flags only extreme outliers.">Outlier multiplier</span>
-              <input type="number" x-model.number="settingsDraft.convexHull.outlierMultiplier"
-                     min="1" max="5" step="0.1"
-                     class="w-20 text-right text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700" />
-            </label>
-            <label class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-400 cursor-help"
-                    title="When on, all plotted incidents are used in the hull computation regardless of distance from the cluster. Outlier markers are shown but not excluded from the algorithm.">Include outliers</span>
-              <button @click="settingsDraft.convexHull.includeOutliers = !settingsDraft.convexHull.includeOutliers"
-                      :class="settingsDraft.convexHull.includeOutliers ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'"
-                      class="relative w-10 h-5 rounded-full transition-colors">
-                <span :class="settingsDraft.convexHull.includeOutliers ? 'translate-x-5' : 'translate-x-0'"
-                      class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span>
-              </button>
-            </label>
-          </div>
-        </div>
-
         <!-- TSP settings -->
         <div>
           <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2">Patrol Routes</h3>
           <div class="space-y-2">
-            <label class="flex items-center justify-between gap-2">
-              <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
-                    title="Zones with more incidents than this threshold use nearest-neighbor heuristic instead of exact backtracking TSP. Exact TSP is O(k!) and becomes impractically slow above 10-12 nodes.">Fast route above N incidents
-                <span class="block text-[11px] text-gray-400 dark:text-gray-500">Zones larger than this use a quick estimate instead of exact optimal</span>
-              </span>
-              <input type="number" x-model.number="settingsDraft.tsp.nearestNeighborFallbackThreshold"
-                     min="6" max="20"
-                     class="w-20 text-right text-[11px] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 flex-shrink-0" />
-            </label>
             <label class="flex items-center justify-between gap-2">
               <span class="text-gray-600 dark:text-gray-400 leading-tight cursor-help"
                     title="Road segments outside the danger zone boundary have their cost multiplied by this value. Set to 1 to allow any road. Higher values strongly discourage routes that leave the zone.">Stay-inside penalty
