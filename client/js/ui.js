@@ -245,10 +245,15 @@ document.addEventListener('alpine:init', () => {
             // Expose Alpine component instance globally so map.js can call methods
             window.uiApp = this;
 
-            // Load manifest for slug lookups — barangay is locked to Commonwealth
+            // Load manifest — populate barangay selector from non-hidden entries
             fetch('/data/barangays/manifest.json')
                 .then(r => r.json())
-                .then(manifest => { window.barangayManifest = manifest; })
+                .then(manifest => {
+                    window.barangayManifest = manifest;
+                    this.barangayOptions = Object.keys(manifest)
+                        .filter(name => !manifest[name].hidden)
+                        .sort();
+                })
                 .catch(() => {});
 
             if (typeof initMap === 'function')       initMap(this);

@@ -227,11 +227,38 @@
       <!-- Main controls (scrollable) -->
       <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
 
-        <!-- Barangay (locked to Commonwealth) -->
-        <div>
+        <!-- Barangay selector -->
+        <div x-data="{ open: false }" @click.outside="open = false">
           <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">Barangay</label>
-          <div class="w-full text-[11px] rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-gray-500 dark:text-gray-400 select-none">
-            Commonwealth
+          <div class="relative">
+            <input
+              type="text"
+              x-model="barangayQuery"
+              @focus="open = true; barangayQuery = ''"
+              @blur="if (!open) barangayQuery = selectedBarangay"
+              @input="open = true"
+              @keydown.escape="open = false"
+              @keydown.enter.prevent="
+                const matches = barangayOptions.filter(b => b.toLowerCase().includes(barangayQuery.toLowerCase()));
+                if (matches.length === 1) { selectedBarangay = matches[0]; barangayQuery = matches[0]; open = false; onBarangayChange(); }
+              "
+              class="w-full text-[11px] rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Search barangay..."
+            />
+            <ul
+              x-show="open && barangayOptions.filter(b => b.toLowerCase().includes(barangayQuery.toLowerCase())).length > 0"
+              x-cloak
+              class="absolute z-[9999] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg text-[11px]"
+            >
+              <template x-for="b in barangayOptions.filter(b => b.toLowerCase().includes(barangayQuery.toLowerCase()))" :key="b">
+                <li
+                  @click="selectedBarangay = b; barangayQuery = b; open = false; onBarangayChange()"
+                  class="px-3 py-1.5 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
+                  :class="{ 'bg-blue-100 dark:bg-gray-600 font-medium': b === selectedBarangay }"
+                  x-text="b"
+                ></li>
+              </template>
+            </ul>
           </div>
         </div>
 
@@ -751,8 +778,8 @@
               <p class="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed" x-text="stage.algorithmNote"></p>
             </div>
 
-            <!-- Debug log (collapsible) -->
-            <template x-if="stage.fullLog">
+            <!-- Debug log (collapsible) — hidden for Hill Climbing (stage 2) -->
+            <template x-if="stage.fullLog && stage.id !== 2">
               <details class="group">
                 <summary class="px-4 py-2.5 cursor-pointer list-none flex items-center gap-2 text-[9px] uppercase tracking-widest font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none">
                   <svg class="w-2.5 h-2.5 transition-transform group-open:rotate-90 flex-shrink-0"
