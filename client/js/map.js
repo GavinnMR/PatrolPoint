@@ -433,10 +433,6 @@ async function toggleOsmGraphMode(active) {
             fillOpacity:  isRemoved ? 1 : 0.7,
             weight:       isRemoved ? 2 : 0
         }).addTo(map);
-        marker.on('click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            toggleNodeRemoval(nodeId, marker);
-        });
         graphNodeMarkers[nodeId] = marker;
         osmGraphLayers.push(marker);
     }
