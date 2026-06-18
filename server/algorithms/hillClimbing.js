@@ -340,7 +340,7 @@ export function runHillClimbing(validCandidates, n, hullAreaM2, config, options 
 
                 // pushProgress once per iteration in sync mode (after batch apply)
                 if (anyPatrolMoved && typeof pushProgress === 'function') {
-                    const currentMin = globalMinPairwiseDist(positions);
+                    const currentMin = globalMinPairwiseDist(positions, roadDistMatrix);
                     pushProgress({
                         stage:           2,
                         restart:         restartIdx + 1,

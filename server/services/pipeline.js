@@ -287,7 +287,7 @@ export async function runPipeline(networkData, data, pushMessage, isCancelled, p
         ? validCandidates
         : Object.values(allNodesMap).filter(node => pointInHull(node.lat, node.lng, hull));
 
-    // ── Road distance matrix — precomputed once, shared by Stage 2 and Stage 3 ─
+    // ── Road distance matrix — precomputed once, used exclusively by Stage 2 ──
     // Runs Dijkstra from each valid candidate. O(|candidates| × (V+E)logV).
     // Worst case ~914 candidates × ~90k ops ≈ 82M ops (~1-2s). Typical hull
     // covers far fewer candidates so cost is usually well under 1s.
