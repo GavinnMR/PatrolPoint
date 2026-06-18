@@ -37,8 +37,8 @@ const PATROL_COLORS = [
 // All pipeline constants. Every algorithm reads from the merged config — never hardcoded.
 export const DEFAULT_CONFIG = {
     hillClimbing: {
-        restarts: 10,
-        maxIterations: 500,
+        restarts: 100,
+        maxIterations: 1000,
         radiusMultiplier: 2,
         synchronousMode: false
     },
