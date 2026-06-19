@@ -722,8 +722,8 @@ document.addEventListener('alpine:init', () => {
             this.settingsDraft = {
                 candidateNodes:     'all',
                 hillClimbing: {
-                    restarts:               100,
-                    maxIterations:          1000,
+                    restarts:               10,
+                    maxIterations:          500,
                     radiusMultiplier:       2,
                         synchronousMode:        false
                 },

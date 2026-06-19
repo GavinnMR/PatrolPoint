@@ -975,12 +975,12 @@ function buildStage2Subparts(result) {
 
     // Step 2: Restart budget
     const completed = result.restartsCompleted ?? null;
-    const maxR      = (config.restarts ?? 100) * n;
+    const maxR      = (config.restarts ?? 10) * n;
     const minR      = Math.max(5, n);
     subparts.push({ name: 'Restart budget', status: 'ok',
         detail: completed != null
             ? `${completed} of max ${maxR} restarts (min ${minR}) - each begins from a new random patrol configuration`
-            : `Min ${minR} restarts, max ${maxR} (${config.restarts ?? 100} × n)` });
+            : `Min ${minR} restarts, max ${maxR} (${config.restarts ?? 10} × n)` });
 
     // Step 3: Convergence / early stopping
     const convRestart = result.convergenceRestart ?? null;

@@ -25,7 +25,7 @@ O(n³) brute-force edge testing: for each ordered point pair (A → B), check wh
 Places *n* patrol units at road nodes inside the danger zone, maximising the minimum pairwise **road-network distance** between any two patrols.
 
 Each patrol iterates: find all road neighbors within radius R, move to the neighbor that most improves the global minimum spacing. Multiple restarts escape local optima. V2 additions:
-- **Adaptive restart count**: stops early when the last 3 restarts converge within 0.1%. Minimum restarts = max(5, n); maximum = configured restarts × n (default 100 × n).
+- **Adaptive restart count**: stops early when the last 3 restarts converge within 0.1%. Minimum restarts = max(5, n); maximum = configured restarts × n (default 10 × n).
 - **Seeded RNG**: initial placement is derived from incident coordinates via FNV-1a hash → mulberry32 PRNG, so the same incident set always produces the same result.
 - **Synchronous mode**: all patrols compute their best move based on the current snapshot, then apply simultaneously, as opposed to the default sequential mode where each patrol sees the moves of the previous one.
 - **Confidence indicator**: weighted composite — 50% consistency ((1 − σ/μ) × 100 across all restart scores) + 50% confirmation (fraction of restarts that verified the best without improving it). High confidence means results were tightly clustered and stable; low confidence means the landscape has many comparable local optima.
@@ -164,8 +164,8 @@ All parameters are adjustable via the Settings panel (gear icon). Changes take e
 | Parameter | Default | Description |
 |---|---|---|
 | candidateNodes | `all` | Node pool for patrol placement: `all` road nodes or `intersection` nodes only |
-| hillClimbing.restarts | 100 | Per-patrol restart multiplier; total max restarts = restarts × n (adaptive early stop may halt sooner) |
-| hillClimbing.maxIterations | 1000 | Iterations per restart |
+| hillClimbing.restarts | 10 | Per-patrol restart multiplier; total max restarts = restarts × n (adaptive early stop may halt sooner) |
+| hillClimbing.maxIterations | 500 | Iterations per restart |
 | hillClimbing.radiusMultiplier | 2 | Neighbourhood radius = mean patrol spacing × this multiplier |
 | hillClimbing.synchronousMode | false | Move all patrols simultaneously (vs. sequential default) |
 | convexHull.outlierMultiplier | 2.5 | Distance threshold for outlier flagging (× average distance from centroid) |
