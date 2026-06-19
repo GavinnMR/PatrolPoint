@@ -1,11 +1,11 @@
 // test_tsp_verifier.js — focused tests for tsp.js and verifier.js
 // Run: node test_tsp_verifier.js
 
-import { runTSP } from './server/algorithms/tsp.js';
+import { runTSP } from '../server/algorithms/tsp.js';
 import {
     verifyConvexHull, verifyPatrolPositions,
     verifyZoneAssignment, verifyTSPRoute, verifyAll
-} from './server/algorithms/verifier.js';
+} from '../server/algorithms/verifier.js';
 
 const CFG = { tsp: { maxCrimeNodesPerZone: 10, nearestNeighborFallbackThreshold: 12 } };
 

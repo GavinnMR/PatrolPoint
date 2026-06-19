@@ -1,8 +1,8 @@
 // test_tsp.js — comprehensive tests for server/algorithms/tsp.js
 // Run: node test_tsp.js
 
-import { runTSP } from './server/algorithms/tsp.js';
-import { runDijkstra, normalizedCacheKey } from './server/algorithms/dijkstra.js';
+import { runTSP } from '../server/algorithms/tsp.js';
+import { runDijkstra, normalizedCacheKey } from '../server/algorithms/dijkstra.js';
 
 const CFG = { tsp: { maxCrimeNodesPerZone: 10, nearestNeighborFallbackThreshold: 12 } };
 

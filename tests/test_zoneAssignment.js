@@ -1,8 +1,8 @@
 // test_zoneAssignment.js — comprehensive test suite for server/algorithms/zoneAssignment.js
 // Run: node test_zoneAssignment.js
 
-import { runZoneAssignment } from './server/algorithms/zoneAssignment.js';
-import { haversineDistance }  from './server/algorithms/dijkstra.js';
+import { runZoneAssignment } from '../server/algorithms/zoneAssignment.js';
+import { haversineDistance }  from '../server/algorithms/dijkstra.js';
 
 // ── Harness ───────────────────────────────────────────────────────────────────
 let passed = 0, failed = 0;
