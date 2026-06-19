@@ -23,10 +23,10 @@ O(n³) brute-force edge testing: for each ordered point pair (A → B), check wh
 Places *n* patrol units at road nodes inside the danger zone, maximising the minimum pairwise **road-network distance** between any two patrols.
 
 Each patrol iterates: find all road neighbors within radius R, move to the neighbor that most improves the global minimum spacing. Multiple restarts escape local optima. V2 additions:
-- **Adaptive restart count**: stops early when the last 3 restarts converge within 0.1%. Range: 5 to the configured maximum (default 100).
+- **Adaptive restart count**: stops early when the last 3 restarts converge within 0.1%. Minimum restarts = max(5, n); maximum = configured restarts × n (default 100 × n).
 - **Seeded RNG**: initial placement is derived from incident coordinates via FNV-1a hash → mulberry32 PRNG, so the same incident set always produces the same result.
 - **Synchronous mode**: all patrols compute their best move based on the current snapshot, then apply simultaneously, as opposed to the default sequential mode where each patrol sees the moves of the previous one.
-- **Confidence indicator**: (1 − σ/μ) × 100 across all restart results. High confidence means restarts converged on the same answer; low confidence means the landscape has many comparable local optima.
+- **Confidence indicator**: weighted composite — 50% consistency ((1 − σ/μ) × 100 across all restart scores) + 50% confirmation (fraction of restarts that verified the best without improving it). High confidence means results were tightly clustered and stable; low confidence means the landscape has many comparable local optima.
 - **candidateNodes setting**: choose between all road nodes (default, gives finer placement granularity) or intersection nodes only.
 
 ### Stage 3: Zone Assignment
@@ -55,7 +55,7 @@ Express + ws
         ├── algorithms/    convexHull · hillClimbing · zoneAssignment · tsp · dijkstra · verifier
         ├── services/      cache · pipeline
         ├── websocket/     pipelineSocket
-        └── data/barangays/  358 pre-processed Quezon City road networks (local .json files)
+        └── data/barangays/  359 pre-processed Quezon City road networks (local .json files)
 ```
 
 Road network data is pre-processed from OpenStreetMap and stored as local JSON files. No live Overpass API call is made at runtime. The server loads each barangay file on first request and keeps it in memory for the lifetime of the process.
@@ -88,7 +88,7 @@ client/
 
 ## Supported Barangays
 
-358 Quezon City barangays are available, all pre-processed from OSM data. The barangay selector in the control panel is a searchable combobox. Start typing a name to filter. Selecting a new barangay clears all incident points and loads the new road network.
+359 Quezon City barangays are available, all pre-processed from OSM data. The barangay selector in the control panel is a searchable combobox. Start typing a name to filter. Selecting a new barangay clears all incident points and loads the new road network.
 
 ---
 
@@ -162,7 +162,7 @@ All parameters are adjustable via the Settings panel (gear icon). Changes take e
 | Parameter | Default | Description |
 |---|---|---|
 | candidateNodes | `all` | Node pool for patrol placement: `all` road nodes or `intersection` nodes only |
-| hillClimbing.restarts | 100 | Maximum Hill Climbing restarts (adaptive early stop may halt sooner) |
+| hillClimbing.restarts | 100 | Per-patrol restart multiplier; total max restarts = restarts × n (adaptive early stop may halt sooner) |
 | hillClimbing.maxIterations | 1000 | Iterations per restart |
 | hillClimbing.radiusMultiplier | 2 | Neighbourhood radius = mean patrol spacing × this multiplier |
 | hillClimbing.synchronousMode | false | Move all patrols simultaneously (vs. sequential default) |
