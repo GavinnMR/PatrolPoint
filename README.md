@@ -100,9 +100,9 @@ client/
 |---|---|
 | Frontend | HTML5, vanilla JS, Tailwind CSS (CDN), Alpine.js (CDN), GSAP (CDN) |
 | Map | Leaflet.js 1.9.4, Leaflet.markercluster, Leaflet.PolylineDecorator |
-| Tiles | OpenStreetMap (light) / CartoDB Dark Matter (dark mode) |
+| Tiles | OpenStreetMap |
 | Backend | Node.js, Express 4, ws (WebSocket) |
-| Road data | Pre-processed OSM files (local), no live Overpass calls at runtime |
+| Road data | Pre-processed OSM files (local) |
 | Hosting | Render |
 
 ---
@@ -181,18 +181,12 @@ All parameters are adjustable via the Settings panel (gear icon). Changes take e
 
 - **Stationary / Roaming mode**: Stationary shows zone assignment lines only; Roaming adds TSP road-following circuits with direction arrows and parallel offset rendering for outbound vs. return legs.
 - **Algorithm trace panel**: Collapsible side panel showing per-stage metrics, algorithm descriptions, log output, Hill Climbing convergence curve, and a post-pipeline correctness verification report.
-- **Dark mode**: Switches Leaflet tiles to CartoDB Dark Matter. Persisted in `localStorage`.
 - **Undo / Redo**: Full history of incident add, remove, drag, bulk import, and reset actions. Keyboard shortcuts: `Ctrl+Z` / `Ctrl+Shift+Z`.
 - **Import coordinates**: Paste bulk `lat, lng` pairs (one per line) into the Import section. Points outside the barangay boundary are rejected. Outlier flagging runs immediately.
 - **Drag incidents**: Drag existing crime markers to new positions. Points snapped back if dragged outside the boundary.
 - **OSM graph mode**: Toggle ("Road Graph" button) replaces tiles with the raw road graph drawn as grey polylines. Individual road nodes can be right-clicked and excluded from routing, narrowing the patrol candidate pool for the next run.
-- **Comparison mode**: Store Run A, change settings or patrol count, run again, store Run B. Both sets of patrol markers render simultaneously (solid vs. hollow) with side-by-side summary metrics.
 - **Route playback**: Animate a selected patrol marker along its road-following circuit. Adjustable speed (0.5× – 3×), pause/resume/stop.
 - **Patrol info panel**: Click any patrol marker to open a detail panel (top-right) showing zone size, circuit distance, and assigned incidents.
-- **Coverage radius**: Optional translucent circle around each patrol (configurable radius, default 500 m).
-- **Print view**: `window.print()` with CSS rules that hide all UI chrome and show only the map with markers and routes.
-- **Mobile layout**: Control panel becomes a draggable bottom sheet on viewports narrower than 768 px.
-- **Recalculate shortcut**: `Ctrl+Enter` triggers Recalculate when no input is focused.
 
 ---
 
