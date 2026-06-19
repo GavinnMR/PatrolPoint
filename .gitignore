@@ -8,3 +8,4 @@ data/source/
 # Local-only docs (kept on disk, not published)
 TECHNICAL_DOCUMENTATION.md
 TIME_COMPLEXITY.txt
+pseudocode.txt
