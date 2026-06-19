@@ -90,7 +90,7 @@ client/
 
 ## Supported Barangays
 
-359 Quezon City barangays are available, all pre-processed from OSM data. The barangay selector in the control panel is a searchable combobox. Start typing a name to filter. Selecting a new barangay clears all incident points and loads the new road network.
+359 barangays inside and around Quezon City are available, all pre-processed from OSM data. The barangay selector in the control panel is a searchable combobox. Start typing a name to filter. Selecting a new barangay clears all incident points and loads the new road network.
 
 ---
 
